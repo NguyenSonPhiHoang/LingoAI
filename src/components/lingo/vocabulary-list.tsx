@@ -200,12 +200,12 @@ const AddWordDialog: FC<{
                   </div>
                 ) : generatedDetails ? (
                   <div className="space-y-2 text-sm">
-                     <p><strong className="text-muted-foreground">Part of Speech:</strong> {generatedDetails.partOfSpeech}</p>
-                     <p><strong className="text-muted-foreground">Pronunciation:</strong> {generatedDetails.pronunciation}</p>
-                     <p><strong className="text-muted-foreground">Definition (EN):</strong> {generatedDetails.definition}</p>
-                     <p><strong className="text-muted-foreground">Definition (VI):</strong> {generatedDetails.vietnameseDefinition}</p>
-                     <p><strong className="text-muted-foreground">Example (EN):</strong> "{generatedDetails.sentence}"</p>
-                     <p><strong className="text-muted-foreground">Example (VI):</strong> "{generatedDetails.vietnameseSentence}"</p>
+                     <div><strong className="text-muted-foreground">Part of Speech:</strong> {generatedDetails.partOfSpeech}</div>
+                     <div><strong className="text-muted-foreground">Pronunciation:</strong> {generatedDetails.pronunciation}</div>
+                     <div><strong className="text-muted-foreground">Definition (EN):</strong> {generatedDetails.definition}</div>
+                     <div><strong className="text-muted-foreground">Definition (VI):</strong> {generatedDetails.vietnameseDefinition}</div>
+                     <div><strong className="text-muted-foreground">Example (EN):</strong> "{generatedDetails.sentence}"</div>
+                     <div><strong className="text-muted-foreground">Example (VI):</strong> "{generatedDetails.vietnameseSentence}"</div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
@@ -426,7 +426,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
           if (!word.sentenceAudioUrl) {
               try {
                   const result = await generateAudio(word.sentence);
-                  await updateWordInFirestore(word.docId, { sentenceAudioUrl: result.audioUrl });
+                  await updateWordInFirestore(word.docId, { sentenceAudioUrl: result.sentenceAudioUrl });
                   setWords(prev => prev.map(w => w.id === word.id ? { ...w, sentenceAudioUrl: result.audioUrl } : w));
               } catch (e) {
                   console.error(`Error generating audio for sentence "${word.sentence}"`, e);
@@ -495,9 +495,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         description: `${newWords.length} words were successfully imported. Audio generation will continue in the background.`,
       });
       
-      // Start background audio generation without blocking UI
-      handleAudioGeneration(newWords);
-
     } catch (error) {
       console.error("Error importing file:", error);
       toast({
@@ -535,7 +532,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     if (audioUrl) {
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
-        audioRef.current.play();
+        audioRef.current.play().catch(e => console.error("Error playing audio:", e));
       }
     } else {
        setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
@@ -546,7 +543,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
          
          if (audioRef.current) {
            audioRef.current.src = newAudioUrl;
-           audioRef.current.play();
+           audioRef.current.play().catch(e => console.error("Error playing audio:", e));
          }
          
          const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
@@ -622,10 +619,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
                   <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                     <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
-                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group">
-                          <div className="grid grid-cols-[auto,1fr] md:grid-cols-[auto,1fr,1fr] flex-1 items-center gap-x-4">
-                            {/* Audio Button */}
+                     <div className="flex items-center hover:bg-muted/50 transition-colors pr-4">
+                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group px-4 py-2">
+                          <div className="flex items-center gap-4 flex-1">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -637,21 +633,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                               <span className="sr-only">Play term audio</span>
                             </Button>
                             
-                            {/* Term and Pronunciation */}
                             <div className="flex-1">
-                              <p className="font-semibold">{word.term}</p>
-                              <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
-                            </div>
-                            
-                            {/* Definition and Part of Speech */}
-                            <div className="hidden md:flex items-center">
-                              <Badge variant="outline" className="mr-3">{word.partOfSpeech}</Badge>
-                              <p className="text-sm text-muted-foreground truncate">{word.definition}</p>
+                              <p className="font-semibold">{word.term} <span className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</span></p>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{word.partOfSpeech}</Badge>
+                                <p className="text-sm text-muted-foreground truncate">{word.definition}</p>
+                              </div>
                             </div>
                           </div>
                         </AccordionTrigger>
-
-                        {/* Action Buttons */}
                         <div className="flex justify-end items-center gap-1 pl-4">
                            <EditWordDialog word={word} setWords={setWords} />
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
@@ -666,10 +656,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                      </div>
                      <AccordionContent className="px-4 pb-4 pt-0 bg-background">
                         <div className="pl-12 space-y-4 text-sm">
-                           <div className="md:hidden">
-                              <p className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></p>
-                              <p className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</p>
-                           </div>
                            <div>
                              <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
                              <p>{word.vietnameseDefinition}</p>
@@ -712,5 +698,3 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
-    
