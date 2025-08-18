@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, ChevronDown } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, Search } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -587,7 +587,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       const result = await extractVocabularyFromFile({ documentContent: text });
       
-      const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
+      const newWords = await addWordToVocabulary(user.uid, result.vocabulary);
 
       setWords(prevWords => {
           const prevWordsMap = new Map(prevWords.map(w => [w.userVocabularyId, w]));
@@ -700,23 +700,31 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>My Vocabulary</CardTitle>
-              <CardDescription>
-                A personalized list of words, phrases, and sentences you are learning.
-              </CardDescription>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div className="flex-1">
-                  <Input
+          <CardTitle>My Vocabulary</CardTitle>
+          <CardDescription>
+            A personalized list of words, phrases, and sentences you are learning.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+           <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative flex-grow w-full sm:w-auto">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                 <Input
                       placeholder="Search by word or topic..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full"
+                      className="pl-10 w-full"
                     />
-                </div>
-                <div className="flex items-center justify-end gap-2 flex-wrap">
+              </div>
+              <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="favorites-only"
+                      checked={showOnlyFavorites}
+                      onCheckedChange={setShowOnlyFavorites}
+                    />
+                    <Label htmlFor="favorites-only">Favorites</Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                       <Switch
                           id="view-mode"
@@ -730,45 +738,36 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                           }}
                           disabled={isGrouping}
                       />
-                      <Label htmlFor="view-mode">Group by Topic</Label>
+                      <Label htmlFor="view-mode">Group</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="favorites-only"
-                      checked={showOnlyFavorites}
-                      onCheckedChange={setShowOnlyFavorites}
-                    />
-                    <Label htmlFor="favorites-only">Favorites</Label>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept=".docx"
-                    />
-                    <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
-                      {isImporting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="mr-2 h-4 w-4" />
-                      )}
-                      Import
-                    </Button>
-                     <AddWordDialog
-                        setWords={setWords}
-                        trigger={
-                            <Button>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-                            </Button>
-                        }
-                    />
-                  </div>
-                </div>
-            </div>
-          </div>
-        </CardHeader>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept=".docx"
+                />
+                <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
+                  {isImporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Import
+                </Button>
+                 <AddWordDialog
+                    setWords={setWords}
+                    trigger={
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                        </Button>
+                    }
+                />
+              </div>
+           </div>
+        </CardContent>
       </Card>
       
       <Card>
