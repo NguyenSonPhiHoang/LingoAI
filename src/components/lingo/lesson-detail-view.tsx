@@ -471,19 +471,16 @@ const useTranslation = () => {
     const { toast } = useToast();
 
     const toggleTranslation = async (key: string, text: string) => {
-        // If translation is already visible, just hide it
         if (visibility[key]) {
             setVisibility(prev => ({ ...prev, [key]: false }));
             return;
         }
 
-        // If translation has been fetched, just show it
         if (translations[key]) {
             setVisibility(prev => ({ ...prev, [key]: true }));
             return;
         }
 
-        // Otherwise, fetch it for the first time
         setIsTranslating(prev => ({ ...prev, [key]: true }));
         try {
             const result = await translateText({ text });
@@ -497,11 +494,12 @@ const useTranslation = () => {
         }
     };
     
-    // Return an object that combines the translation text with its visibility status
     const visibleTranslations: Record<string, string | null> = {};
     for (const key in translations) {
         if (visibility[key]) {
             visibleTranslations[key] = translations[key];
+        } else {
+            visibleTranslations[key] = null;
         }
     }
 
@@ -512,12 +510,22 @@ const useTranslation = () => {
 const useAudioPlayback = () => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
+    const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
     const { toast } = useToast();
 
     const playAudio = async (key: string, text: string) => {
+        if (audioUrls[key]) {
+            if (audioRef.current) {
+                audioRef.current.src = audioUrls[key];
+                audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+            }
+            return;
+        }
+
         setIsPlaying(prev => ({ ...prev, [key]: true }));
         try {
             const result = await generateAudio(text);
+            setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
             if (audioRef.current) {
                 audioRef.current.src = result.audioUrl;
                 audioRef.current.play().catch(e => console.error("Error playing audio:", e));
@@ -547,7 +555,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
     const [isChecking, setIsChecking] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { isPlaying, playAudio } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio } = useAudioPlayback();
 
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
@@ -595,6 +603,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
 
     return (
         <div className="p-4 space-y-6">
+            <audio ref={audioRef} className="hidden" />
             {questions.map((q, qIndex) => {
                 const selectedAnswer = answers[qIndex];
                 const isCorrectSelection = selectedAnswer === q.correctOption;
@@ -650,10 +659,10 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                      <div className="flex items-center">
                                          {feedback[qIndex] && (
                                             <>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playAudio(`feedback-${qIndex}`, feedback[qIndex])} disabled={isPlaying[`feedback-${qIndex}`]}>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playAudio(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={isPlaying[`feedback-${qIndex}`]}>
                                                 {isPlaying[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex])} disabled={isTranslating[`feedback-${qIndex}`]}>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={isTranslating[`feedback-${qIndex}`]}>
                                                 {isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                             </Button>
                                             </>
@@ -688,7 +697,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
     const [isGettingFeedback, setIsGettingFeedback] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { isPlaying, playAudio } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio } = useAudioPlayback();
 
 
     const handleGetFeedback = async () => {
@@ -721,6 +730,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
 
     return (
         <Card className="bg-background">
+            <audio ref={audioRef} className="hidden" />
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -859,7 +869,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ exercise }) => {
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { isPlaying, playAudio } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio } = useAudioPlayback();
 
 
     const copyToClipboard = (text: string) => {
@@ -869,6 +879,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
     
     return (
         <div className="p-4 space-y-6">
+            <audio ref={audioRef} className="hidden" />
             <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
                 <h4 className="font-semibold">Role-Play Scenario</h4>
                 <p className="text-sm text-blue-800">{exercise.scenario}</p>
@@ -914,5 +925,3 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
 
 
 export default LessonDetailView;
-
-    
