@@ -47,48 +47,46 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect now only handles data fetching for an authenticated user.
-    // The redirection logic is handled by the main return block.
-    if (!authLoading && user) {
-      // If we have a user and they are approved, fetch their vocabulary data.
-      if (user.status === 'approved') {
-        const fetchWords = async () => {
-          setIsLoading(true);
-          try {
-            const fetchedWords = await getVocabulary(user.uid);
-            setWords(fetchedWords);
-          } catch (error) {
-            console.error("Error fetching vocabulary:", error);
-            toast({
-              variant: "destructive",
-              title: "Error Fetching Vocabulary",
-              description: "Could not fetch your vocabulary. Please try again later.",
-            });
-          } finally {
-              setIsLoading(false);
-          }
-        };
-        fetchWords();
+    // This effect handles both data fetching and redirection logic.
+    if (!authLoading) {
+      if (user) {
+        // If we have a user and they are approved, fetch their vocabulary data.
+        if (user.status === 'approved') {
+          const fetchWords = async () => {
+            setIsLoading(true);
+            try {
+              const fetchedWords = await getVocabulary(user.uid);
+              setWords(fetchedWords);
+            } catch (error) {
+              console.error("Error fetching vocabulary:", error);
+              toast({
+                variant: "destructive",
+                title: "Error Fetching Vocabulary",
+                description: "Could not fetch your vocabulary. Please try again later.",
+              });
+            } finally {
+                setIsLoading(false);
+            }
+          };
+          fetchWords();
+        } else {
+          // For 'pending' or 'rejected' users, no vocabulary data is needed.
+          setIsLoading(false);
+        }
       } else {
-        // For 'pending' or 'rejected' users, no vocabulary data is needed.
-        setIsLoading(false);
+        // If there's no user after auth has resolved, redirect to login.
+        router.push("/login");
       }
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, router, toast]);
   
   // This is the primary loading screen. It shows until the auth state is definitively known.
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
-  }
-  
-  // If, after auth resolution, there's no user, redirect to login.
-  if (!user) {
-    router.push("/login");
-    return null; // Return null to prevent rendering anything while redirecting.
   }
   
   const favoriteWords = words.filter((word) => word.favorite);
