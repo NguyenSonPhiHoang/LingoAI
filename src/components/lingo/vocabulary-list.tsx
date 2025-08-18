@@ -144,7 +144,6 @@ const AddWordDialog: FC<{
             favorite: false,
             viewCount: 0,
             userId: user.uid,
-            topic: undefined, // New words don't have a topic yet
         };
 
         try {
@@ -431,6 +430,14 @@ const GroupedView: FC<{
   }, {} as Record<string, Word[]>);
 
   const topics = Object.keys(grouped).sort();
+  
+  if (topics.length === 0) {
+    return (
+      <div className="h-24 text-center flex items-center justify-center text-sm text-muted-foreground">
+          No words found for your current filter.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -486,7 +493,8 @@ const VocabularyListInternal: FC<{
   
   const incrementViewCount = async (word: Word) => {
     const newViewCount = (word.viewCount || 0) + 1;
-    setWords(prev => prev.map(w => w.id === word.id ? { ...w, viewCount: newViewCount } : w));
+     const updatedWords = allWords.map(w => w.id === word.id ? { ...w, viewCount: newViewCount } : w);
+    setWords(updatedWords);
     try {
         await updateWordInFirestore(word.docId, { viewCount: newViewCount });
     } catch (error) {
@@ -673,6 +681,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const [isGrouping, setIsGrouping] = useState(false);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
+  const [searchQuery, setSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -767,9 +776,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     fileInputRef.current?.click();
   }
 
-  const wordsToDisplay = showOnlyFavorites
-    ? words.filter((word) => word.favorite)
-    : words;
+  const filteredWords = words
+    .filter(word => showOnlyFavorites ? word.favorite : true)
+    .filter(word => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      const termMatch = word.term.toLowerCase().includes(query);
+      const topicMatch = word.topic?.toLowerCase().includes(query);
+      return termMatch || topicMatch;
+    });
 
   const renderContent = () => {
     if (viewMode === 'grouped') {
@@ -781,23 +796,31 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 </div>
             )
         }
-        return <GroupedView words={wordsToDisplay} setWords={setWords} />;
+        return <GroupedView words={filteredWords} setWords={setWords} />;
     }
 
-    return <VocabularyListInternal words={wordsToDisplay} allWords={words} setWords={setWords} />;
+    return <VocabularyListInternal words={filteredWords} allWords={words} setWords={setWords} />;
   }
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="flex-1">
             <CardTitle>My Vocabulary</CardTitle>
             <CardDescription>
               A personalized list of words, phrases, and sentences you are learning.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex-1">
+             <Input
+                placeholder="Search by word or topic..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full md:max-w-xs"
+              />
+          </div>
+          <div className="flex items-center justify-end gap-2 flex-wrap">
              <div className="flex items-center space-x-2">
                 <Switch
                     id="view-mode"
@@ -809,6 +832,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                         setViewMode('list');
                       }
                     }}
+                    disabled={isGrouping}
                 />
                 <Label htmlFor="view-mode">Group by Topic</Label>
             </div>
@@ -818,7 +842,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 checked={showOnlyFavorites}
                 onCheckedChange={setShowOnlyFavorites}
               />
-              <Label htmlFor="favorites-only">Favorites Only</Label>
+              <Label htmlFor="favorites-only">Favorites</Label>
             </div>
             <div className="flex gap-2">
               <Input
@@ -854,3 +878,5 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+
+    
