@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -541,11 +541,10 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   }
   
   useEffect(() => {
-    words.forEach(word => {
-        if (word.id === accordionValue) {
-            incrementViewCount(word);
-        }
-    });
+    const wordToUpdate = words.find(word => word.id === accordionValue);
+    if (wordToUpdate) {
+        incrementViewCount(wordToUpdate);
+    }
   }, [accordionValue]);
 
   const filteredWords = showOnlyFavorites
@@ -671,7 +670,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                              <span className="sr-only">Delete</span>
                            </Button>
-                           <AccordionTrigger className="p-2 hover:no-underline" />
+                           <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
+                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                           </AccordionTrigger>
                         </div>
                      </div>
                      <AccordionContent className="px-4 pb-4 pt-0 bg-background">
@@ -722,7 +723,3 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
-    
-
-    
