@@ -423,7 +423,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
           <div className="border-b">
              <div className="flex font-medium text-muted-foreground px-4 py-3 text-sm">
                 <div className="w-[30%]">Term</div>
-                <div className="flex-1">Definition & Example</div>
+                <div className="flex-1">Definition &amp; Example</div>
                 <div className="w-[150px] text-center">Actions</div>
              </div>
           </div>
@@ -431,29 +431,27 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
               filteredWords.map((word) => (
                 <AccordionItem value={word.id} key={word.id} className="border-b group">
                    <div className="flex items-center w-full text-left py-0 px-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                            disabled={word.isGeneratingAudio || !word.audioUrl}
+                            className="h-8 w-8 flex-shrink-0 mr-2"
+                        >
+                            {word.isGeneratingAudio ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                            <Volume2 className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Play term audio</span>
+                        </Button>
                         <AccordionTrigger className="flex-1 py-4 pr-4 hover:no-underline">
                             <div className="flex items-center w-full text-left">
-                                <div className="font-medium w-[calc(30%/0.85)] pr-4">
-                                    <div className="flex items-start gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                                            disabled={word.isGeneratingAudio || !word.audioUrl}
-                                            className="h-8 w-8 flex-shrink-0"
-                                        >
-                                            {word.isGeneratingAudio ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                            <Volume2 className="h-4 w-4" />
-                                            )}
-                                            <span className="sr-only">Play term audio</span>
-                                        </Button>
-                                        <div>
-                                            <p>{word.term}</p>
-                                            <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
-                                            <Badge variant="outline" className="mt-1">{word.partOfSpeech}</Badge>
-                                        </div>
+                                <div className="font-medium w-[calc(30%_/_0.85)] pr-4">
+                                    <div>
+                                        <p>{word.term}</p>
+                                        <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
+                                        <Badge variant="outline" className="mt-1">{word.partOfSpeech}</Badge>
                                     </div>
                                 </div>
                                 <div className="flex-1 pr-4">
@@ -516,4 +514,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+    
+
     
