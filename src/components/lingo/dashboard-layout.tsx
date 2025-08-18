@@ -75,7 +75,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
 
   return (
     <>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
           <Link href="/" className="block" onClick={() => handleViewChange('overview')}>
             <h1 className="text-2xl font-bold text-primary">LingoAI</h1>
