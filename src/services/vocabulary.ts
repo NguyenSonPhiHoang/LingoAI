@@ -40,7 +40,7 @@ export interface UserVocabulary {
 }
 
 // This is the combined, denormalized type used in the application UI.
-export interface CombinedVocabulary extends Word, Omit<UserVocabulary, 'id' | 'createdAt'> {
+export interface CombinedVocabulary extends Word, Omit<UserVocabulary, 'id' | 'createdAt' | 'wordId' | 'userId'> {
     userVocabularyId: string; // The ID from the user's personal list
 }
 
@@ -71,26 +71,29 @@ export const getVocabulary = async (userId: string): Promise<CombinedVocabulary[
   for (const userVocabDoc of userVocabSnapshot.docs) {
       const userVocabData = userVocabDoc.data() as Omit<UserVocabulary, 'id'>;
       
-      const wordDocRef = doc(db, "words", userVocabData.wordId);
-      const wordDocSnap = await getDoc(wordDocRef);
+      // FIX: Ensure userVocabData.wordId exists before proceeding.
+      // This prevents crashes from old/corrupted data that might not have a wordId.
+      if (userVocabData.wordId) {
+        const wordDocRef = doc(db, "words", userVocabData.wordId);
+        const wordDocSnap = await getDoc(wordDocRef);
 
-      if (wordDocSnap.exists()) {
-          const wordData = wordDocSnap.data() as Omit<Word, 'id'>;
-          combinedVocabList.push({
-              id: wordDocSnap.id,
-              ...wordData,
-              userVocabularyId: userVocabDoc.id,
-              wordId: userVocabData.wordId,
-              userId: userVocabData.userId,
-              favorite: userVocabData.favorite,
-              viewCount: userVocabData.viewCount,
-              topic: userVocabData.topic,
-          });
+        if (wordDocSnap.exists()) {
+            const wordData = wordDocSnap.data() as Omit<Word, 'id'>;
+            combinedVocabList.push({
+                ...wordData,
+                id: wordDocSnap.id,
+                userVocabularyId: userVocabDoc.id,
+                favorite: userVocabData.favorite,
+                viewCount: userVocabData.viewCount,
+                topic: userVocabData.topic,
+            });
+        }
       }
   }
   
   return combinedVocabList;
 };
+
 
 // ADD a new word. This function handles both the global 'words' collection
 // and the user-specific 'userVocabulary' collection.
@@ -111,11 +114,12 @@ export const addWordToVocabulary = async (userId: string, wordData: VocabularyEn
             createdAt: Timestamp.now(),
         };
         const wordDocRef = await addDoc(wordsCollection, newWordPayload);
-        wordDoc = { id: wordDocRef.id, ...newWordPayload };
+        wordDoc = { id: wordDocRef.id, ...newWordPayload, createdAt: newWordPayload.createdAt.toDate() };
     } else {
         // 2b. If word exists, use the existing document.
         const doc = wordSnap.docs[0];
-        wordDoc = { id: doc.id, ...doc.data() } as Word;
+        const data = doc.data();
+        wordDoc = { id: doc.id, ...data, createdAt: data.createdAt.toDate() } as Word;
     }
 
     // 3. Check if the user already has this word in their personal list.
@@ -140,22 +144,21 @@ export const addWordToVocabulary = async (userId: string, wordData: VocabularyEn
             createdAt: Timestamp.now(),
         };
         const userVocabDocRef = await addDoc(userVocabularyCollection, newUserVocabularyPayload);
-        userVocabDoc = { id: userVocabDocRef.id, ...newUserVocabularyPayload };
+        userVocabDoc = { id: userVocabDocRef.id, ...newUserVocabularyPayload, createdAt: newUserVocabularyPayload.createdAt.toDate() };
     } else {
         // 4b. If user already has it, use the existing document.
          const doc = userVocabSnap.docs[0];
-         userVocabDoc = { id: doc.id, ...doc.data() } as UserVocabulary;
+         const data = doc.data();
+         userVocabDoc = { id: doc.id, ...data, createdAt: data.createdAt.toDate() } as UserVocabulary;
     }
     
     // 5. Return the combined data for immediate UI update.
+    const { id: wordId, userId: uId, createdAt, ...restOfUserVocab } = userVocabDoc;
+
     return {
         ...wordDoc,
         userVocabularyId: userVocabDoc.id,
-        wordId: userVocabDoc.wordId,
-        userId: userVocabDoc.userId,
-        favorite: userVocabDoc.favorite,
-        viewCount: userVocabDoc.viewCount,
-        topic: userVocabDoc.topic,
+        ...restOfUserVocab,
     };
 };
 
@@ -176,7 +179,7 @@ export const deleteUserVocabulary = async (userVocabularyId: string) => {
 };
 
 // Updates fields in the `userVocabulary` collection (e.g., favorite, viewCount).
-export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id' | 'wordId' | 'userId'>>) => {
+export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id' | 'wordId' | 'userId' | 'createdAt'>>) => {
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   const cleanUpdates = cleanObject(updates);
   if (Object.keys(cleanUpdates).length > 0) {
@@ -185,7 +188,7 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
 };
 
 // Updates fields in the global `words` collection (e.g., adding an audioUrl).
-export const updateWord = async (wordId: string, updates: Partial<Omit<Word, 'id'>>) => {
+export const updateWord = async (wordId: string, updates: Partial<Omit<Word, 'id' | 'createdAt' | 'term_normalized'>>) => {
     const wordDoc = doc(db, "words", wordId);
     const cleanUpdates = cleanObject(updates);
     if(Object.keys(cleanUpdates).length > 0) {
