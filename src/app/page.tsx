@@ -40,28 +40,41 @@ const Home: FC = () => {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user?.uid && user.status === 'approved') {
-      const fetchWords = async () => {
-        try {
-          setIsLoading(true);
-          const fetchedWords = await getVocabulary(user.uid);
-          setWords(fetchedWords);
-        } catch (error) {
-          console.error("Error fetching vocabulary:", error);
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not fetch vocabulary from Firebase.",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchWords();
-    } else {
-        setIsLoading(false);
+    // Don't do anything until auth is resolved
+    if (authLoading) {
+      return;
     }
-  }, [user, toast]);
+  
+    // If the user is logged in, handle data fetching or show pending status
+    if (user) {
+      if (user.status === 'approved') {
+        const fetchWords = async () => {
+          try {
+            setIsLoading(true); // Keep loading while fetching words
+            const fetchedWords = await getVocabulary(user.uid);
+            setWords(fetchedWords);
+          } catch (error) {
+            console.error("Error fetching vocabulary:", error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Could not fetch vocabulary from Firebase.",
+            });
+          } finally {
+            setIsLoading(false); // Stop loading after fetching
+          }
+        };
+        fetchWords();
+      } else {
+        // For 'pending' or 'rejected' users, just stop loading
+        setIsLoading(false);
+      }
+    } else {
+      // If there's no user and auth is done, stop loading
+      setIsLoading(false);
+    }
+  }, [user, authLoading, toast]);
+
 
   const favoriteWords = words.filter((word) => word.favorite);
 
@@ -80,6 +93,12 @@ const Home: FC = () => {
     }
     
     if (user.status === 'pending') {
+        return <WaitingForApproval />;
+    }
+    
+    // Add this check to handle rejected users
+    if (user.status !== 'approved') {
+        // You can create a dedicated 'rejected' component later
         return <WaitingForApproval />;
     }
 
