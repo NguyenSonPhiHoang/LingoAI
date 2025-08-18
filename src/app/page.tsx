@@ -34,46 +34,42 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
-
-  useEffect(() => {
-    // Don't do anything until auth is resolved
+    // Wait until authentication is resolved.
     if (authLoading) {
+      setIsLoading(true);
       return;
     }
-  
-    // If the user is logged in, handle data fetching or show pending status
-    if (user) {
-      if (user.status === 'approved') {
-        const fetchWords = async () => {
-          try {
-            setIsLoading(true); // Keep loading while fetching words
-            const fetchedWords = await getVocabulary(user.uid);
-            setWords(fetchedWords);
-          } catch (error) {
-            console.error("Error fetching vocabulary:", error);
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Could not fetch vocabulary from Firebase.",
-            });
-          } finally {
-            setIsLoading(false); // Stop loading after fetching
-          }
-        };
-        fetchWords();
-      } else {
-        // For 'pending' or 'rejected' users, just stop loading
-        setIsLoading(false);
-      }
+
+    // If there is no user, redirect to login.
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // If user is present, handle approved vs. pending status.
+    if (user.status === 'approved') {
+      const fetchWords = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedWords = await getVocabulary(user.uid);
+          setWords(fetchedWords);
+        } catch (error) {
+          console.error("Error fetching vocabulary:", error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch vocabulary from Firebase.",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchWords();
     } else {
-      // If there's no user and auth is done, stop loading
+      // For 'pending' or 'rejected' users, just stop loading and let the UI show the appropriate message.
       setIsLoading(false);
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, router, toast]);
 
 
   const favoriteWords = words.filter((word) => word.favorite);
@@ -92,33 +88,37 @@ const Home: FC = () => {
       return null;
     }
     
-    if (user.status === 'pending') {
+    if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
     }
     
-    // Add this check to handle rejected users
-    if (user.status !== 'approved') {
-        // You can create a dedicated 'rejected' component later
-        return <WaitingForApproval />;
+    // Only render the main dashboard if user is approved
+    if (user.status === 'approved') {
+      switch (activeView) {
+        case "overview":
+          return <DashboardOverview setActiveView={setActiveView} />;
+        case "levels":
+          return <LevelView />;
+        case "ai-suggester":
+          return <AiSuggester />;
+        case "vocabulary":
+          return <VocabularyList words={words} setWords={setWords} />;
+        case "review":
+          return <ReviewView words={favoriteWords} />;
+        case "user-management":
+          return <UserManagement />;
+        default:
+          return <DashboardOverview setActiveView={setActiveView} />;
+      }
     }
 
-    switch (activeView) {
-      case "overview":
-        return <DashboardOverview setActiveView={setActiveView} />;
-      case "levels":
-        return <LevelView />;
-      case "ai-suggester":
-        return <AiSuggester />;
-      case "vocabulary":
-        return <VocabularyList words={words} setWords={setWords} />;
-      case "review":
-        return <ReviewView words={favoriteWords} />;
-      case "user-management":
-        return <UserManagement />;
-      default:
-        return <DashboardOverview setActiveView={setActiveView} />;
-    }
+    // Fallback for any other state, though it shouldn't be reached
+    return <WaitingForApproval />;
   };
+
+  if (!user && !authLoading) {
+    return null; // Don't render layout if not logged in
+  }
 
   return (
     <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
