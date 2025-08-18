@@ -86,7 +86,10 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <Link href="/" className="block" onClick={() => handleViewChange('overview')}>
-            <h1 className="text-2xl font-bold text-primary">LingoAI</h1>
+             <h1 className="text-2xl font-bold text-primary">
+                <span className="group-data-[collapsible=icon]:hidden">Lingo</span>
+                <span>AI</span>
+            </h1>
           </Link>
         </SidebarHeader>
         <SidebarContent>
