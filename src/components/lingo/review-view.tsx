@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -250,7 +251,12 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
     }
     setIsLoading(true);
     try {
-      const result = await generateReviewExercises({ words });
+      const plainWords = words.map(word => ({
+        term: word.term,
+        definition: word.definition,
+        sentence: word.sentence,
+      }));
+      const result = await generateReviewExercises({ words: plainWords });
       // Shuffle options for matching questions
       const shuffledMatching = result.matchingQuestions.map(q => ({
         ...q,
