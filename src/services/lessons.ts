@@ -16,7 +16,6 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import type { LessonSuggestion, UserLevel } from "@/ai/flows/schemas";
-import type { Word } from "./vocabulary";
 
 const lessonsCollection = collection(db, "lessons");
 

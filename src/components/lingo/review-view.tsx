@@ -15,7 +15,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { UserVocabulary } from "@/services/vocabulary";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   generateReviewExercises,
@@ -297,6 +296,7 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
 
   useEffect(() => {
     fetchExercises();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words]);
 
   if (isLoading) {

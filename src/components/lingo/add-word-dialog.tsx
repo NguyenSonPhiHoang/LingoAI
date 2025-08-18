@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { Loader2, Sparkles, PlusCircle } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateWordDetails } from "@/ai/flows/generate-word-details";
 import type { GenerateWordDetailsOutput } from "@/ai/flows/schemas";
 import { addWordToVocabulary } from "@/services/vocabulary";
-import type { UserVocabulary, VocabularyEntry } from "@/services/vocabulary";
+import type { UserVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 
 interface AddWordDialogProps {
@@ -107,28 +107,26 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       return;
     }
     setIsSaving(true);
-    const newWordData: VocabularyEntry = {
-      term: term,
-      ...generatedDetails,
-    };
-
+    
     try {
-      const savedWord = await addWordToVocabulary(user.uid, newWordData);
+      const savedUserVocabulary = await addWordToVocabulary(user.uid, { term, ...generatedDetails });
       
       setWords((prevWords) => {
-        const existingWordIndex = prevWords.findIndex(w => w.id === savedWord.id);
+        // Check if the word already exists in the local state by its ID.
+        const existingWordIndex = prevWords.findIndex(w => w.id === savedUserVocabulary.id);
         if (existingWordIndex !== -1) {
-          // Update existing word
+          // If it exists, update it. This is crucial for UI consistency.
           const newWords = [...prevWords];
-          newWords[existingWordIndex] = savedWord;
+          newWords[existingWordIndex] = savedUserVocabulary;
           return newWords;
         } else {
-          // Add new word
-          return [savedWord, ...prevWords];
+          // If it's a new word for the user, add it to the top of the list.
+          return [savedUserVocabulary, ...prevWords];
         }
       });
+
       handleCloseDialog();
-      toast({ title: "Success", description: `"${savedWord.term}" saved to your list.` });
+      toast({ title: "Success", description: `"${savedUserVocabulary.term}" saved to your list.` });
     } catch (error) {
       console.error("Error adding word:", error);
       toast({

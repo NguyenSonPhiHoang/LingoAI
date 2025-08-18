@@ -74,8 +74,8 @@ const Home: FC = () => {
           console.error("Error fetching vocabulary:", error);
           toast({
             variant: "destructive",
-            title: "Error",
-            description: "Could not fetch vocabulary from Firebase.",
+            title: "Error Fetching Vocabulary",
+            description: "Could not fetch your vocabulary. Please check permissions or try again later.",
           });
         } finally {
           setIsLoading(false);

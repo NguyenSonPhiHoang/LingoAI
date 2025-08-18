@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, ChevronDown } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,14 +47,15 @@ import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { groupVocabularyByTopic } from "@/ai/flows/group-vocabulary";
-import type { VocabularyEntry, VocabularyTopic } from "@/ai/flows/schemas";
+import type { VocabularyEntry as VocabularyEntrySchema, VocabularyTopic } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import {
   addMultipleWordsToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
+  updateWord,
 } from "@/services/vocabulary";
-import type { UserVocabulary } from "@/services/vocabulary";
+import type { UserVocabulary, Word } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -100,9 +101,9 @@ const EditWordDialog: FC<{
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateUserVocabulary(word.id, values);
+      await updateWord(word.wordId, values);
       setWords(prev =>
-        prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
+        prev.map(w => (w.wordId === word.wordId ? { ...w, ...values } : w))
       );
       toast({ title: "Success", description: "Word updated successfully." });
       setIsOpen(false);
@@ -294,10 +295,10 @@ const VocabularyListInternal: FC<{
   const { toast } = useToast();
   const [isGeneratingAudio, setIsGeneratingAudio] = useState<Record<string, boolean>>({});
 
-  const handleDeleteWord = async (word: UserVocabulary) => {
+  const handleDeleteWord = async (wordToDelete: UserVocabulary) => {
     try {
-      await deleteUserVocabulary(word.id);
-      setWords(allWords.filter((w) => w.id !== word.id));
+      await deleteUserVocabulary(wordToDelete.id);
+      setWords(allWords.filter((w) => w.id !== wordToDelete.id));
       toast({ title: "Success", description: "Word deleted." });
     } catch (error) {
       console.error("Error deleting word:", error);
@@ -305,37 +306,38 @@ const VocabularyListInternal: FC<{
     }
   };
   
-  const toggleFavorite = async (word: UserVocabulary) => {
-    const newFavoriteState = !word.favorite;
+  const toggleFavorite = async (wordToUpdate: UserVocabulary) => {
+    const newFavoriteState = !wordToUpdate.favorite;
     setWords(allWords.map(w => 
-      w.id === word.id ? { ...w, favorite: newFavoriteState } : w
+      w.id === wordToUpdate.id ? { ...w, favorite: newFavoriteState } : w
     ));
     try {
-      await updateUserVocabulary(word.id, { favorite: newFavoriteState });
+      await updateUserVocabulary(wordToUpdate.id, { favorite: newFavoriteState });
     } catch (error) {
       console.error("Error updating favorite status:", error);
       setWords(allWords.map(w => 
-        w.id === word.id ? { ...w, favorite: !newFavoriteState } : w
+        w.id === wordToUpdate.id ? { ...w, favorite: !newFavoriteState } : w
       ));
       toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
     }
   };
   
-  const incrementViewCount = async (word: UserVocabulary) => {
-    const newViewCount = (word.viewCount || 0) + 1;
-    const updatedWords = allWords.map(w => w.id === word.id ? { ...w, viewCount: newViewCount } : w);
+  const incrementViewCount = async (wordToUpdate: UserVocabulary) => {
+    const newViewCount = (wordToUpdate.viewCount || 0) + 1;
+    const updatedWords = allWords.map(w => w.id === wordToUpdate.id ? { ...w, viewCount: newViewCount } : w);
     setWords(updatedWords);
     try {
-        await updateUserVocabulary(word.id, { viewCount: newViewCount });
+        await updateUserVocabulary(wordToUpdate.id, { viewCount: newViewCount });
     } catch (error) {
         console.error("Error updating view count:", error);
     }
   }
 
   const handlePlayAudio = async (word: UserVocabulary, type: 'term' | 'sentence') => {
-    const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
-    let audioUrl = word[audioUrlKey];
-    const audioGenKey = `${word.id}-${type}`;
+    const isTerm = type === 'term';
+    const audioUrl = isTerm ? word.audioUrl : word.sentenceAudioUrl;
+    const textToGenerate = isTerm ? word.term : word.sentence;
+    const audioGenKey = `${word.wordId}-${type}`;
 
     if (audioUrl) {
       if (audioRef.current) {
@@ -348,17 +350,19 @@ const VocabularyListInternal: FC<{
     setIsGeneratingAudio(prev => ({...prev, [audioGenKey]: true}));
 
     try {
-      const textToGenerate = type === 'term' ? word.term : word.sentence;
       const result = await generateAudio({text: textToGenerate});
-      audioUrl = result.audioUrl;
+      const newAudioUrl = result.audioUrl;
       
       if (audioRef.current) {
-        audioRef.current.src = audioUrl;
+        audioRef.current.src = newAudioUrl;
         audioRef.current.play().catch(e => console.error("Error playing audio:", e));
       }
       
-      await updateUserVocabulary(word.id, { [audioUrlKey]: audioUrl });
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: audioUrl } : w));
+      const updateData = isTerm ? { audioUrl: newAudioUrl } : { sentenceAudioUrl: newAudioUrl };
+      await updateWord(word.wordId, updateData);
+
+      setWords(prev => prev.map(w => w.wordId === word.wordId ? { ...w, ...updateData } : w));
+
     } catch (e: any) {
        toast({
           variant: "destructive",
@@ -375,6 +379,7 @@ const VocabularyListInternal: FC<{
     if (wordToUpdate) {
         incrementViewCount(wordToUpdate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accordionValue]);
 
   const toggleAccordionItem = (id: string) => {
@@ -399,10 +404,10 @@ const VocabularyListInternal: FC<{
                             variant="ghost"
                             size="icon"
                             onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                            disabled={isGeneratingAudio[`${word.id}-term`]}
+                            disabled={isGeneratingAudio[`${word.wordId}-term`]}
                             className="h-8 w-8 flex-shrink-0"
                           >
-                            {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            {isGeneratingAudio[`${word.wordId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                             <span className="sr-only">Play term audio</span>
                           </Button>
                           <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
@@ -428,10 +433,10 @@ const VocabularyListInternal: FC<{
                               variant="ghost"
                               size="icon"
                               onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                              disabled={isGeneratingAudio[`${word.id}-term`]}
+                              disabled={isGeneratingAudio[`${word.wordId}-term`]}
                               className="h-8 w-8 flex-shrink-0"
                             >
-                              {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              {isGeneratingAudio[`${word.wordId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                               <span className="sr-only">Play term audio</span>
                             </Button>
                             <div>
@@ -478,10 +483,10 @@ const VocabularyListInternal: FC<{
                               <Button
                                   variant="ghost" size="icon"
                                   onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                  disabled={isGeneratingAudio[`${word.id}-sentence`]}
+                                  disabled={isGeneratingAudio[`${word.wordId}-sentence`]}
                                   className="h-8 w-8 flex-shrink-0 -ml-2"
                               >
-                                  {isGeneratingAudio[`${word.id}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  {isGeneratingAudio[`${word.wordId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   <span className="sr-only">Play sentence audio</span>
                               </Button>
                               <p className="italic pt-1.5">"{word.sentence}"</p>
@@ -545,10 +550,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
 
       setWords(prevWords => {
-          const newWordsMap = new Map(newWords.map(w => [w.id, w]));
-          const updatedPrevWords = prevWords.map(pw => newWordsMap.get(pw.id) || pw);
-          const trulyNewWords = newWords.filter(nw => !prevWords.some(pw => pw.id === nw.id));
-          return [...trulyNewWords, ...updatedPrevWords];
+          const prevWordsMap = new Map(prevWords.map(w => [w.id, w]));
+          newWords.forEach(nw => prevWordsMap.set(nw.id, nw));
+          return Array.from(prevWordsMap.values());
       });
 
       toast({
@@ -572,6 +576,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   };
   
   const handleGroupByTopic = async () => {
+    if (!user) return;
     setIsGrouping(true);
     setViewMode('grouped');
     try {
@@ -580,19 +585,20 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       if (wordsToGroup.length > 0) {
         toast({ title: "AI is at work!", description: `Grouping ${wordsToGroup.length} new word(s) by topic.`});
         
-        const plainWordsToGroup = wordsToGroup.map(({ id, userId, favorite, viewCount, createdAt, audioUrl, sentenceAudioUrl, topic, ...rest }) => rest);
-        const result = await groupVocabularyByTopic({ vocabulary: plainWordsToGroup as VocabularyEntry[] });
+        // Pass only the word data, not the user-specific data
+        const plainWordsToGroup = wordsToGroup.map(({ term, definition }) => ({ term, definition })) as VocabularyEntrySchema[];
+        const result = await groupVocabularyByTopic({ vocabulary: plainWordsToGroup });
         
         const updatedWords = [...words];
         for (const topicGroup of result.topics) {
           for (const wordFromAI of topicGroup.words) {
             const originalWordIndex = updatedWords.findIndex(w => w.term === wordFromAI.term);
             if (originalWordIndex !== -1) {
-              const wordToUpdate = updatedWords[originalWordIndex];
+              const userWordToUpdate = updatedWords[originalWordIndex];
               const newTopic = topicGroup.topic;
-              updatedWords[originalWordIndex] = { ...wordToUpdate, topic: newTopic };
+              updatedWords[originalWordIndex] = { ...userWordToUpdate, topic: newTopic };
               // Update in Firestore without waiting
-              updateUserVocabulary(wordToUpdate.id, { topic: newTopic }).catch(console.error);
+              updateUserVocabulary(userWordToUpdate.id, { topic: newTopic }).catch(console.error);
             }
           }
         }
