@@ -208,9 +208,9 @@ const AddWordDialog: FC<{
                      <div><strong className="text-muted-foreground">Example (VI):</strong> "{generatedDetails.vietnameseSentence}"</div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <div className="text-sm text-muted-foreground text-center py-4">
                     AI-generated details will appear here.
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -412,26 +412,24 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
-  const handleAudioGeneration = async (wordsToProcess: Word[]) => {
-      for (const word of wordsToProcess) {
-          if (!word.audioUrl) {
-              try {
-                  const result = await generateAudio(word.term);
-                  await updateWordInFirestore(word.docId, { audioUrl: result.audioUrl });
-                  setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: result.audioUrl } : w));
-              } catch (e) {
-                  console.error(`Error generating audio for term "${word.term}"`, e);
-              }
-          }
-          if (!word.sentenceAudioUrl) {
-              try {
-                  const result = await generateAudio(word.sentence);
-                  await updateWordInFirestore(word.docId, { sentenceAudioUrl: result.sentenceAudioUrl });
-                  setWords(prev => prev.map(w => w.id === word.id ? { ...w, sentenceAudioUrl: result.audioUrl } : w));
-              } catch (e) {
-                  console.error(`Error generating audio for sentence "${word.sentence}"`, e);
-              }
-          }
+  const handleAudioGeneration = async (word: Word, type: 'term' | 'sentence') => {
+      const isTerm = type === 'term';
+      const audioUrlField = isTerm ? 'audioUrl' : 'sentenceAudioUrl';
+      const generatingField = isTerm ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
+      const textToGenerate = isTerm ? word.term : word.sentence;
+
+      // Don't regenerate if audio already exists
+      if (word[audioUrlField]) return;
+
+      try {
+        setWords(prev => prev.map(w => w.id === word.id ? { ...w, [generatingField]: true } : w));
+        const result = await generateAudio(textToGenerate);
+        await updateWordInFirestore(word.docId, { [audioUrlField]: result.audioUrl });
+        setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlField]: result.audioUrl } : w));
+      } catch (e) {
+          console.error(`Error generating audio for ${type} "${textToGenerate}"`, e);
+      } finally {
+        setWords(prev => prev.map(w => w.id === word.id ? { ...w, [generatingField]: false } : w));
       }
   };
 
@@ -492,7 +490,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported. Audio generation will continue in the background.`,
+        description: `${newWords.length} words were successfully imported. Audio will be generated on-demand.`,
       });
       
     } catch (error) {
@@ -619,30 +617,45 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
                   <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                     <div className="flex items-center hover:bg-muted/50 transition-colors pr-4">
-                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group px-4 py-2">
-                          <div className="flex items-center gap-4 flex-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                              disabled={word.isGeneratingAudio}
-                              className="h-8 w-8 flex-shrink-0"
-                            >
-                              {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                              <span className="sr-only">Play term audio</span>
-                            </Button>
-                            
-                            <div className="flex-1">
-                              <p className="font-semibold">{word.term} <span className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</span></p>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">{word.partOfSpeech}</Badge>
+                     <div className="flex items-center hover:bg-muted/50 transition-colors">
+                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group px-4 py-3">
+                          {/* Desktop View */}
+                          <div className="hidden md:grid grid-cols-[auto,1fr,auto] items-center gap-4 flex-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                                disabled={word.isGeneratingAudio}
+                                className="h-8 w-8 flex-shrink-0"
+                              >
+                                {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                <span className="sr-only">Play term audio</span>
+                              </Button>
+                              <div className="flex-1">
+                                <p className="font-semibold">{word.term} <span className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</span></p>
                                 <p className="text-sm text-muted-foreground truncate">{word.definition}</p>
                               </div>
-                            </div>
+                              <Badge variant="outline">{word.partOfSpeech}</Badge>
                           </div>
+                           {/* Mobile View */}
+                           <div className="md:hidden flex items-center gap-3 flex-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                                  disabled={word.isGeneratingAudio}
+                                  className="h-8 w-8 flex-shrink-0"
+                                >
+                                  {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  <span className="sr-only">Play term audio</span>
+                                </Button>
+                                <div>
+                                    <p className="font-semibold">{word.term}</p>
+                                    <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
+                                </div>
+                           </div>
                         </AccordionTrigger>
-                        <div className="flex justify-end items-center gap-1 pl-4">
+                        <div className="flex justify-end items-center gap-1 pl-2 pr-4">
                            <EditWordDialog word={word} setWords={setWords} />
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
                              <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
@@ -656,6 +669,10 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                      </div>
                      <AccordionContent className="px-4 pb-4 pt-0 bg-background">
                         <div className="pl-12 space-y-4 text-sm">
+                           <div className="md:hidden">
+                              <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
+                              <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
+                           </div>
                            <div>
                              <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
                              <p>{word.vietnameseDefinition}</p>
@@ -698,3 +715,5 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+
+    
