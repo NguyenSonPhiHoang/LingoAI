@@ -28,6 +28,8 @@ import {
   Bot,
   Volume2,
   PlusCircle,
+  BrainCircuit,
+  List,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +53,7 @@ import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-fl
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
 import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
+import { generateLessonContent } from "@/ai/flows/generate-lesson-content";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
 import { generateWritingFeedback } from "@/ai/flows/generate-writing-feedback-flow";
@@ -85,40 +88,6 @@ const skillIcons: Record<Skill, React.ElementType> = {
   Writing: FilePenLine,
 };
 
-type ToolType = "conversation" | "reading-passage" | "grammar-explanation";
-
-interface AiTool {
-  id: ToolType;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  supportedSkills: Skill[];
-}
-
-const aiTools: AiTool[] = [
-  {
-    id: "conversation",
-    title: "Generate Dialogue",
-    description: "Create a sample conversation about the lesson topic.",
-    icon: MessageSquareQuote,
-    supportedSkills: ["Listening", "Speaking"],
-  },
-  {
-    id: "reading-passage",
-    title: "Generate Reading Passage",
-    description: "Create a short article or story related to the topic.",
-    icon: FileText,
-    supportedSkills: ["Reading"],
-  },
-  {
-    id: "grammar-explanation",
-    title: "Explain Grammar Point",
-    description: "Generate a clear explanation for a related grammar rule.",
-    icon: GraduationCap,
-    supportedSkills: ["Reading", "Writing"],
-  },
-];
-
 const statusOptions: { value: LessonStatus; label: string; icon: React.ElementType }[] = [
     { value: 'not-started', label: 'Not Started', icon: Circle },
     { value: 'in-progress', label: 'In Progress', icon: CircleDashed },
@@ -128,7 +97,7 @@ const statusOptions: { value: LessonStatus; label: string; icon: React.ElementTy
 
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
-  const [isLoading, setIsLoading] = useState<ToolType | Skill | null>(null);
+  const [isLoading, setIsLoading] = useState<Skill | 'content' | null>(null);
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
@@ -172,34 +141,28 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   };
 
 
-  const handleToolClick = async (toolId: ToolType) => {
-    setIsLoading(toolId);
-    let contentText = "";
-    switch(toolId) {
-        case "conversation":
-            contentText = `Alex: Hey, have you ever thought about ${lesson.topic.toLowerCase()}?\n\nChris: All the time! It's such a fascinating subject.`;
-            break;
-        case "reading-passage":
-            contentText = `The concept of ${lesson.topic.toLowerCase()} has intrigued humanity for centuries. Early philosophers discussed it, and new discoveries are made every year which challenge our previous assumptions. The field is constantly evolving.`;
-            break;
-        case "grammar-explanation":
-            contentText = `When discussing ${lesson.topic.toLowerCase()}, it's common to use the present perfect tense (e.g., "has intrigued") to connect past events to the present. This tense is formed with 'has/have' + past participle.`;
-            break;
-    }
-
-    const newContentItem: LessonContent = {
-      type: toolId,
-      value: contentText,
-      id: `${toolId}-${Date.now()}`
-    };
-
-    const updatedContent = [...(currentLesson.content || []), newContentItem];
+  const handleGenerateContent = async () => {
+    setIsLoading('content');
     
     try {
-        await updateLessonContent(currentLesson.docId, updatedContent);
-        setCurrentLesson(prev => ({...prev, content: updatedContent}));
+        const result = await generateLessonContent({
+            topic: currentLesson.topic,
+            skill: currentLesson.skill as Skill,
+            level: currentLesson.level,
+        });
+
+        const newContent: LessonContent[] = [
+            { id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) },
+            { id: `grammar-${Date.now()}`, type: 'grammar', value: JSON.stringify(result.grammarFocus) },
+            { id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) },
+        ];
+        
+        await updateLessonContent(currentLesson.docId, newContent);
+        setCurrentLesson(prev => ({ ...prev, content: newContent }));
+
     } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not save the generated content." });
+        console.error("Error generating lesson content:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not generate lesson content." });
     }
     
     setIsLoading(null);
@@ -210,22 +173,42 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
     try {
         let newExercise: any;
         const basePayload = { focusPoints: focusPoints || undefined };
+        
+        const passageContent = currentLesson.content?.find(c => c.type === 'passage')?.value;
+        const passageObject = passageContent ? JSON.parse(passageContent) : null;
+        const passageText = passageObject?.body || '';
+
 
         switch(lesson.skill) {
             case "Reading":
-                const readingPassage = currentLesson.content?.find(c => c.type === 'reading-passage')?.value;
-                if (!readingPassage) {
-                    toast({ variant: "destructive", title: "No Reading Passage", description: "Please generate a reading passage first." });
+                if (!passageText) {
+                    toast({ variant: "destructive", title: "No Reading Passage", description: "Please generate learning content first." });
                     setIsLoading(null);
                     return;
                 }
-                newExercise = await generateReadingExercise({ ...basePayload, passage: readingPassage });
+                newExercise = await generateReadingExercise({ ...basePayload, passage: passageText });
                 break;
             case "Writing":
                 newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
                 break;
             case "Listening":
+                 if (!passageText) {
+                    toast({ variant: "destructive", title: "No Dialogue", description: "Please generate learning content first." });
+                    setIsLoading(null);
+                    return;
+                }
                 newExercise = await generateListeningExercise({ ...basePayload, topic: lesson.topic });
+                // We'll reuse the generated dialogue for the text part of the exercise, but generate new audio and questions.
+                const listeningPassage = newExercise.dialogue.map((d: any) => `${d.speaker}: ${d.line}`).join('\n');
+                setCurrentLesson(prev => {
+                    const existingPassageIndex = prev.content?.findIndex(c => c.type === 'passage') ?? -1;
+                    if (existingPassageIndex !== -1 && prev.content) {
+                       const newContent = [...prev.content];
+                       newContent[existingPassageIndex] = { ...newContent[existingPassageIndex], value: JSON.stringify({title: 'Dialogue', body: listeningPassage})};
+                       return { ...prev, content: newContent, exercises: { ...prev.exercises, listening: newExercise } };
+                    }
+                    return { ...prev, exercises: { ...prev.exercises, listening: newExercise } };
+                });
                 break;
             case "Speaking":
                 newExercise = await generateSpeakingExercise({ ...basePayload, topic: lesson.topic });
@@ -250,8 +233,75 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
     await handleStatusChange('completed');
   }
   
-  const availableTools = aiTools.filter(tool => tool.supportedSkills.includes(lesson.skill as Skill));
-  const hasContentForPractice = lesson.skill === 'Reading' ? currentLesson.content?.some(c => c.type === 'reading-passage') : true;
+  const hasContentForPractice = currentLesson.content && currentLesson.content.length > 0;
+  const currentStatusInfo = statusOptions.find(s => s.value === currentLesson.status) || statusOptions[0];
+
+  const renderContentItem = (item: LessonContent) => {
+    try {
+        const data = JSON.parse(item.value);
+        const translationKey = `content-${item.id}`;
+        const isBeingTranslated = isTranslating[translationKey];
+        const isBeingSpoken = isPlaying[translationKey];
+
+        const renderToolbar = (textToProcess: string) => (
+             <div className="flex items-center">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, textToProcess)} disabled={isBeingSpoken}>
+                    {isBeingSpoken ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, textToProcess)} disabled={isBeingTranslated}>
+                    {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                </Button>
+            </div>
+        );
+
+        return (
+            <Card key={item.id} className="mb-4 bg-background">
+                <CardHeader className="pb-2">
+                     <div className="flex justify-between items-start">
+                        <div className="text-base flex items-center gap-2 flex-1">
+                           {item.type === 'vocabulary' && <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>}
+                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />Grammar Focus</>}
+                           {item.type === 'passage' && <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>}
+                        </div>
+                        {item.type === 'passage' && renderToolbar(data.body)}
+                        {item.type === 'grammar' && renderToolbar(data.explanation + ' ' + data.example)}
+                     </div>
+                </CardHeader>
+                <CardContent>
+                    {item.type === 'vocabulary' && Array.isArray(data) && (
+                        <ul className="space-y-2 text-sm list-disc pl-5">
+                            {data.map((v: {word: string, definition: string}, index: number) => (
+                                <li key={index}>
+                                    <strong>{v.word}:</strong> <InteractiveText text={v.definition} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {item.type === 'grammar' && (
+                        <div className="space-y-2 text-sm">
+                            <p className="font-semibold">{data.title}</p>
+                            <p><InteractiveText text={data.explanation} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} /></p>
+                            <p className="italic bg-muted/50 p-2 rounded">e.g., "<InteractiveText text={data.example} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />"</p>
+                        </div>
+                    )}
+                    {item.type === 'passage' && (
+                        <div className="text-sm whitespace-pre-wrap">
+                            <InteractiveText text={data.body} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />
+                        </div>
+                    )}
+                    {translations[translationKey] && (
+                        <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                            <strong>Dịch:</strong> {translations[translationKey]}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    } catch (e) {
+        console.error("Failed to parse content item:", item.value, e);
+        return null;
+    }
+  }
 
   const renderPracticeZone = () => {
     const practiceType = lesson.skill.toLowerCase();
@@ -283,17 +333,19 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
              <div className="text-center p-4">No exercise available. Click "Start Practice" to generate one.</div>
          );
     }
+    
+    const passageContent = currentLesson.content?.find(c => c.type === 'passage')?.value;
+    const passageObject = passageContent ? JSON.parse(passageContent) : { body: '' };
+    const passageText = passageObject.body;
 
     switch(practiceType) {
-        case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={currentLesson.content?.find(c => c.type === 'reading-passage')?.value || ''} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
-        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
-        case 'listening': return <ListeningPractice exercise={currentExercise} passage={currentExercise.dialogue.map((d: any) => `${d.speaker}: ${d.line}`).join('\n')} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={passageText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />;
+        case 'listening': return <ListeningPractice exercise={currentExercise} passage={passageText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
         case 'speaking': return <SpeakingPractice exercise={currentExercise} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
         default: return null;
     }
   }
-
-  const currentStatusInfo = statusOptions.find(s => s.value === currentLesson.status) || statusOptions[0];
 
 
   return (
@@ -359,77 +411,33 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       {/* Section 1: Learning Content */}
         <Card>
             <CardHeader>
-                <CardTitle>1. Learning Content</CardTitle>
-                <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Left side: Tool buttons */}
-                <div className="space-y-3">
-                    {availableTools.map(tool => (
-                         <Button
-                            key={tool.id}
-                            className="w-full justify-start h-auto py-3 group"
-                            variant="outline"
-                            onClick={() => handleToolClick(tool.id)}
-                            disabled={!!isLoading}
-                        >
-                            {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
-                            <div className="text-left group-hover:text-accent-foreground">
-                                <div className="font-semibold text-sm">{tool.title}</div>
-                                <div className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
-                                    {tool.description}
-                                </div>
-                            </div>
-                         </Button>
-                    ))}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>1. Learning Content</CardTitle>
+                        <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+                    </div>
+                     <Button
+                        onClick={handleGenerateContent}
+                        disabled={!!isLoading}
+                    >
+                        {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+                        {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+                    </Button>
                 </div>
-
-                {/* Right side: Generated content */}
+            </CardHeader>
+            <CardContent>
                 <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
-                    <h3 className="font-semibold text-lg mb-3 text-center">Generated Content</h3>
-                    {currentLesson.content?.map((item) => {
-                      const translationKey = `content-${item.id}`;
-                      const isBeingTranslated = isTranslating[translationKey];
-                      const isBeingSpoken = isPlaying[translationKey];
-                      return (
-                        <Card key={item.id} className="mb-4 bg-background">
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div className="text-base flex items-center gap-2 flex-1">
-                                        {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
-                                        {aiTools.find(t => t.id === item.type)?.title}
-                                    </div>
-                                    <div className="flex items-center">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, item.value)} disabled={isBeingSpoken}>
-                                            {isBeingSpoken ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
-                                            {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-sm whitespace-pre-wrap">
-                                    <InteractiveText text={item.value} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />
-                                </div>
-                                {translations[translationKey] && (
-                                    <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                                        <strong>Dịch:</strong> {translations[translationKey]}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                      )
-                    })}
-                    {!isLoading && (!currentLesson.content || currentLesson.content.length === 0) && (
+                    {isLoading === 'content' ? (
+                        <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        </div>
+                    ) : hasContentForPractice ? (
+                        currentLesson.content?.map(renderContentItem)
+                    ) : (
                         <div className="text-sm text-muted-foreground text-center py-4">
                             Content you generate will appear here.
                         </div>
                     )}
-                     {isLoading && !Object.values(skillIcons).includes(isLoading as any) && (
-                        <Card><CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent></Card>
-                     )}
                 </ScrollArea>
             </CardContent>
         </Card>
@@ -1055,6 +1063,3 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
 
 
 export default LessonDetailView;
-
-
-    

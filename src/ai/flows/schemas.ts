@@ -324,4 +324,28 @@ export const GenerateWritingFeedbackOutputSchema = z.object({
 });
 export type GenerateWritingFeedbackOutput = z.infer<typeof GenerateWritingFeedbackOutputSchema>;
 
-    
+
+// Schemas for generate-lesson-content.ts
+export const GenerateLessonContentInputSchema = z.object({
+    topic: z.string().describe("The lesson's main topic."),
+    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing']).describe("The skill focus of the lesson."),
+    level: UserLevelSchema.describe("The user's proficiency level."),
+});
+export type GenerateLessonContentInput = z.infer<typeof GenerateLessonContentInputSchema>;
+
+export const GenerateLessonContentOutputSchema = z.object({
+    vocabularySuggestions: z.array(z.object({
+        word: z.string().describe("The vocabulary word or phrase."),
+        definition: z.string().describe("A simple English definition."),
+    })).describe("A list of suggested vocabulary relevant to the topic."),
+    grammarFocus: z.object({
+        title: z.string().describe("The name of the grammar point (e.g., 'Past Perfect Tense')."),
+        explanation: z.string().describe("A concise explanation of the grammar rule."),
+        example: z.string().describe("An example sentence demonstrating the rule."),
+    }).describe("An explanation of a relevant grammar point."),
+    passage: z.object({
+        title: z.string().describe("A title for the passage or dialogue."),
+        body: z.string().describe("The full text of the reading passage or dialogue script."),
+    }).describe("A reading passage or dialogue script related to the topic."),
+});
+export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;

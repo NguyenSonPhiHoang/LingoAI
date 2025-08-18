@@ -26,7 +26,7 @@ export type LessonStatus = 'not-started' | 'in-progress' | 'completed';
 
 export interface LessonContent {
     id: string;
-    type: 'conversation' | 'reading-passage' | 'grammar-explanation';
+    type: 'vocabulary' | 'grammar' | 'passage';
     value: string;
 }
 
