@@ -24,7 +24,6 @@ import * as z from 'zod';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import type { Word } from './vocabulary-list';
 
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
@@ -49,7 +48,6 @@ const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
 
 interface MyLessonsViewProps {
     setActiveViewState: Dispatch<SetStateAction<ViewState>>;
-    setWords: Dispatch<SetStateAction<Word[]>>;
 }
 
 const editLessonSchema = z.object({
@@ -70,8 +68,8 @@ const getStatusIcon = (status: LessonStatus) => {
 };
 
 const EditLessonDialog: FC<{
-    lesson: Lesson,
-    onLessonUpdate: (updatedLesson: Lesson) => void,
+    lesson: Lesson;
+    onLessonUpdate: (updatedLesson: Lesson) => void;
 }> = ({ lesson, onLessonUpdate }) => {
     const [isOpen, setIsOpen] = useState(false);
     const { toast } = useToast();
@@ -164,7 +162,7 @@ const EditLessonDialog: FC<{
     );
 };
 
-const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState, setWords }) => {
+const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [lessons, setLessons] = useState<Lesson[]>([]);

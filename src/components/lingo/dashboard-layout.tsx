@@ -14,6 +14,7 @@ import {
   Users,
   ClipboardCheck,
   BookMarked,
+  Plus,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -40,17 +41,26 @@ import {
 } from "@/components/ui/sidebar";
 import DashboardHeader from "./dashboard-header";
 import { useAuth } from "@/context/auth-context";
+import AddWordDialog from "./add-word-dialog";
+import type { Word } from "./vocabulary-list";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   activeView: View;
   setActiveView: Dispatch<SetStateAction<View>>;
+  setWords: Dispatch<SetStateAction<Word[]>>;
+  isAddWordDialogOpen: boolean;
+  setIsAddWordDialogOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   children,
   activeView,
   setActiveView,
+  setWords,
+  isAddWordDialogOpen,
+  setIsAddWordDialogOpen,
 }) => {
   const { setOpenMobile } = useSidebar();
   const { user, logout } = useAuth();
@@ -136,12 +146,38 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
           {children}
         </main>
+         {user?.status === 'approved' && (
+             <>
+                <AddWordDialog
+                    user={user}
+                    setWords={setWords}
+                    isDialogOpen={isAddWordDialogOpen}
+                    setIsDialogOpen={setIsAddWordDialogOpen}
+                />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+                                onClick={() => setIsAddWordDialogOpen(true)}
+                            >
+                                <Plus className="h-6 w-6" />
+                                <span className="sr-only">Add Word</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                            <p>Add new word to vocabulary</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+             </>
+         )}
       </SidebarInset>
     </>
   );
 };
 
-const DashboardLayout: FC<DashboardLayoutProps> = (props) => {
+const DashboardLayout: FC<Omit<DashboardLayoutProps, 'user'>> = (props) => {
   return (
     <SidebarProvider>
       <DashboardLayoutContent {...props} />

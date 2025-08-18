@@ -42,6 +42,7 @@ const Home: FC = () => {
   const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
   const [words, setWords] = useState<Word[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddWordDialogOpen, setIsAddWordDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -123,9 +124,9 @@ const Home: FC = () => {
         case "ai-suggester":
           return <AiSuggester setActiveView={(view) => setActiveViewState({view})} />;
         case "my-lessons":
-          return <MyLessonsView setActiveViewState={setActiveViewState} setWords={setWords} />;
+          return <MyLessonsView setActiveViewState={setActiveViewState} />;
         case "vocabulary":
-          return <VocabularyList words={words} setWords={setWords} />;
+          return <VocabularyList words={words} setWords={setWords} openAddWordDialog={() => setIsAddWordDialogOpen(true)} />;
         case "review":
           return <ReviewView words={favoriteWords} />;
         case "user-management":
@@ -140,7 +141,7 @@ const Home: FC = () => {
             />
           ) : (
             // Fallback if no lesson is provided
-            <MyLessonsView setActiveViewState={setActiveViewState} setWords={setWords} />
+            <MyLessonsView setActiveViewState={setActiveViewState} />
           );
         default:
           return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
@@ -161,6 +162,9 @@ const Home: FC = () => {
     <DashboardLayout
       activeView={activeViewState.view}
       setActiveView={(view) => setActiveViewState({ view })}
+      setWords={setWords}
+      isAddWordDialogOpen={isAddWordDialogOpen}
+      setIsAddWordDialogOpen={setIsAddWordDialogOpen}
     >
       {renderContent()}
     </DashboardLayout>
