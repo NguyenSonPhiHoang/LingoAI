@@ -69,6 +69,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'] },
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
+    { id: "profile", label: "My Profile", icon: User, role: ['user', 'admin'] },
     { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
     { id: "word-management", label: "Word Management", icon: Database, role: ['admin'] },
   ];
@@ -112,7 +113,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <DashboardHeader activeView={activeView} />
+        <DashboardHeader activeView={activeView} setActiveView={setActiveView} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
           {children}
         </main>

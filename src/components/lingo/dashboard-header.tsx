@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
   activeView: View;
+  setActiveView: (view: View) => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -32,17 +33,16 @@ const viewTitles: Record<View, string> = {
   "user-management": "User Management",
   "word-management": "Word Management",
   "lesson-detail": "Lesson Details",
+  "profile": "My Profile",
 };
 
-const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
+const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }) => {
   const { user, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
       await logout();
-      // Force immediate redirection to login page.
-      // This ensures the dashboard components unmount cleanly before auth state fully propagates.
       router.push('/login');
     } catch (error) {
       console.error("Logout failed:", error);
@@ -80,7 +80,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setActiveView('profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Hồ sơ</span>
               </DropdownMenuItem>

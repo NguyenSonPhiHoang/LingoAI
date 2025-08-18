@@ -15,6 +15,7 @@ import WordManagement from "@/components/lingo/word-management";
 import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import MyLessonsView from "@/components/lingo/my-lessons-view";
+import ProfileView from "@/components/lingo/profile-view";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -31,7 +32,8 @@ export type View =
   | "review"
   | "user-management"
   | "word-management"
-  | "lesson-detail";
+  | "lesson-detail"
+  | "profile";
 
 export type ViewState = {
   view: View;
@@ -117,6 +119,8 @@ const Home: FC = () => {
           return <UserManagement />;
         case "word-management":
             return <WordManagement />;
+        case "profile":
+            return <ProfileView />;
         case "lesson-detail":
            return activeViewState.lesson ? (
             <LessonDetailView
