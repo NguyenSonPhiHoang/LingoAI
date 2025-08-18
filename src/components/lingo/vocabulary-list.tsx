@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, ChevronDown } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -126,7 +126,7 @@ const AddWordDialog: FC<{
             return;
         }
 
-        const newWordData = {
+        const newWordData: Omit<Word, 'id' | 'docId' | 'createdAt'> = {
             term: term,
             pronunciation: generatedDetails.pronunciation,
             definition: generatedDetails.definition,
@@ -412,6 +412,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+  const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -544,6 +545,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     ? words.filter((word) => word.favorite)
     : words;
 
+  const toggleAccordionItem = (id: string) => {
+    setAccordionValue(prev => prev === id ? undefined : id);
+  }
 
   return (
     <Card>
@@ -593,13 +597,13 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg">
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
-                  <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                     <div className="flex items-center hover:bg-muted/50 transition-colors pr-4">
-                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group">
-                          {/* Desktop View */}
+                  <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0 hover:bg-muted/50 transition-colors">
+                     <div className="flex items-center pr-2">
+                        <div className="flex-1 cursor-pointer" onClick={() => toggleAccordionItem(word.id)}>
+                           {/* Desktop View */}
                           <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
                               <Button
                                 variant="ghost"
@@ -611,7 +615,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                 {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                 <span className="sr-only">Play term audio</span>
                               </Button>
-                              <div className="flex-1 grid grid-cols-[minmax(150px,1.5fr),2fr] gap-x-6 items-center">
+                              <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
                                 <div>
                                     <p className="font-semibold">{word.term}</p>
                                     <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
@@ -639,8 +643,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                     <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
                                 </div>
                            </div>
-                        </AccordionTrigger>
-                        <div className="flex justify-end items-center gap-1 pl-2">
+                        </div>
+
+                        <div className="flex items-center justify-end gap-1 pl-2">
                            <EditWordDialog word={word} setWords={setWords} />
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
                              <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
@@ -650,6 +655,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                              <span className="sr-only">Delete</span>
                            </Button>
+                           <AccordionTrigger className="p-2 hover:no-underline" />
                         </div>
                      </div>
                      <AccordionContent className="px-4 pb-4 pt-0 bg-background">
