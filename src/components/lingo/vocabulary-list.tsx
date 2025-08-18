@@ -36,9 +36,12 @@ import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
+import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, addMultipleWordsToFirestore } from "@/services/vocabulary";
+
 
 export interface Word extends VocabularyEntry {
-  id: number;
+  id: string; // This is now the Firestore document ID
+  docId: string;
   audioUrl?: string;
   isGeneratingAudio?: boolean;
   sentenceAudioUrl?: string;
@@ -60,11 +63,10 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
-  const handleAddWord = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddWord = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const newWord: Word = {
-      id: Date.now(),
+    const newWordData = {
       term: formData.get("term") as string,
       pronunciation: formData.get("pronunciation") as string,
       definition: formData.get("definition") as string,
@@ -72,20 +74,44 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       favorite: false,
       viewCount: 0,
     };
-    if (newWord.term && newWord.definition) {
-      setWords([newWord, ...words]);
-      setIsDialogOpen(false);
+    if (newWordData.term && newWordData.definition) {
+      try {
+        const savedWord = await addWordToFirestore(newWordData);
+        setWords(prevWords => [savedWord, ...prevWords]);
+        setIsDialogOpen(false);
+        toast({ title: "Success", description: "Word added to your list." });
+      } catch (error) {
+        console.error("Error adding word:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not save the word." });
+      }
     }
   };
 
-  const handleDeleteWord = (id: number) => {
-    setWords(words.filter((word) => word.id !== id));
+  const handleDeleteWord = async (word: Word) => {
+    try {
+      await deleteWordFromFirestore(word.docId);
+      setWords(words.filter((w) => w.id !== word.id));
+      toast({ title: "Success", description: "Word deleted." });
+    } catch (error) {
+      console.error("Error deleting word:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not delete the word." });
+    }
   };
   
-  const toggleFavorite = (id: number) => {
-    setWords(words.map(word => 
-      word.id === id ? { ...word, favorite: !word.favorite } : word
+  const toggleFavorite = async (word: Word) => {
+    const newFavoriteState = !word.favorite;
+    setWords(words.map(w => 
+      w.id === word.id ? { ...w, favorite: newFavoriteState } : w
     ));
+    try {
+      await updateWordInFirestore(word.docId, { favorite: newFavoriteState });
+    } catch (error) {
+      console.error("Error updating favorite status:", error);
+      setWords(words.map(w => 
+        w.id === word.id ? { ...w, favorite: !newFavoriteState } : w
+      ));
+      toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
+    }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +134,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       const result = await extractVocabularyFromFile({ documentContent: text });
       
-      const newWords: Word[] = result.vocabulary.map(v => ({...v, id: Date.now() + Math.random(), favorite: false, viewCount: 0}));
+      const newWords = await addMultipleWordsToFirestore(result.vocabulary);
       
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
@@ -135,17 +161,24 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     fileInputRef.current?.click();
   }
   
-  const incrementViewCount = (wordId: number) => {
-    setWords(prev => prev.map(w => w.id === wordId ? { ...w, viewCount: w.viewCount + 1 } : w));
+  const incrementViewCount = async (word: Word) => {
+    const newViewCount = word.viewCount + 1;
+    setWords(prev => prev.map(w => w.id === word.id ? { ...w, viewCount: newViewCount } : w));
+    try {
+        await updateWordInFirestore(word.docId, { viewCount: newViewCount });
+    } catch (error) {
+        console.error("Error updating view count:", error);
+        // Optionally revert state or show toast
+    }
   }
 
-  const handlePlayAudio = async (wordId: number, type: 'term' | 'sentence') => {
+  const handlePlayAudio = async (wordId: string, type: 'term' | 'sentence') => {
     const word = words.find(w => w.id === wordId);
     if (!word) return;
   
-    incrementViewCount(wordId);
+    incrementViewCount(word);
     const textToSpeak = type === 'term' ? word.term : word.sentence;
-    const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
+    let audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
     const isGenerating = type === 'term' ? word.isGeneratingAudio : word.isGeneratingSentenceAudio;
   
     if (audioUrl && audioRef.current) {
@@ -159,11 +192,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     try {
       setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, isGeneratingAudio: true } : { ...w, isGeneratingSentenceAudio: true }) : w));
       const result = await generateAudio(textToSpeak);
+      audioUrl = result.audioUrl;
       
-      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, audioUrl: result.audioUrl, isGeneratingAudio: false } : { ...w, sentenceAudioUrl: result.audioUrl, isGeneratingSentenceAudio: false }) : w));
-  
+      const updateData = type === 'term' ? { audioUrl: audioUrl, isGeneratingAudio: false } : { sentenceAudioUrl: audioUrl, isGeneratingSentenceAudio: false };
+      
+      setWords(prev => prev.map(w => w.id === wordId ? { ...w, ...updateData } : w));
+      await updateWordInFirestore(word.docId, type === 'term' ? { audioUrl } : { sentenceAudioUrl: audioUrl });
+
       if (audioRef.current) {
-        audioRef.current.src = result.audioUrl;
+        audioRef.current.src = audioUrl;
         audioRef.current.play();
       }
   
@@ -174,7 +211,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         title: "Lỗi",
         description: "Không thể tạo âm thanh. Vui lòng thử lại.",
       });
-      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, isGeneratingAudio: false } : { ...w, isGeneratingSentenceAudio: false }) : w));
+       const updateData = type === 'term' ? { isGeneratingAudio: false } : { isGeneratingSentenceAudio: false };
+       setWords(prev => prev.map(w => w.id === wordId ? { ...w, ...updateData } : w));
     }
   }
 
@@ -338,7 +376,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button variant="ghost" size="icon" onClick={() => toggleFavorite(word.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => toggleFavorite(word)}>
                       <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
                       <span className="sr-only">Yêu thích</span>
                     </Button>
@@ -348,7 +386,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteWord(word.id)}
+                      onClick={() => handleDeleteWord(word)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                       <span className="sr-only">Xóa</span>
