@@ -58,35 +58,41 @@ interface VocabularyListProps {
   setWords: Dispatch<SetStateAction<Word[]>>;
 }
 
-const generateAndSaveAudio = async (
+const generateAndPlayAudio = async (
   word: Word,
+  type: 'term' | 'sentence',
+  audioRef: React.RefObject<HTMLAudioElement>,
   setWords: Dispatch<SetStateAction<Word[]>>,
   updateInFirestore: typeof updateWordInFirestore
 ) => {
-  // Generate audio for the term
-  if (!word.audioUrl) {
-    try {
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingAudio: true } : w));
-      const termResult = await generateAudio(word.term);
-      await updateInFirestore(word.docId, { audioUrl: termResult.audioUrl });
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: termResult.audioUrl, isGeneratingAudio: false } : w));
-    } catch (e) {
-      console.error("Error generating term audio", e);
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingAudio: false } : w));
-    }
-  }
+  const textToGenerate = type === 'term' ? word.term : word.sentence;
+  const isGeneratingKey = type === 'term' ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
+  const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
 
-  // Generate audio for the sentence
-  if (!word.sentenceAudioUrl) {
-    try {
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingSentenceAudio: true } : w));
-      const sentenceResult = await generateAudio(word.sentence);
-      await updateInFirestore(word.docId, { sentenceAudioUrl: sentenceResult.audioUrl });
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, sentenceAudioUrl: sentenceResult.audioUrl, isGeneratingSentenceAudio: false } : w));
-    } catch (e) {
-      console.error("Error generating sentence audio", e);
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingSentenceAudio: false } : w));
+  // Set loading state
+  setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
+  
+  try {
+    const result = await generateAudio(textToGenerate);
+    const newAudioUrl = result.audioUrl;
+    
+    // Play the newly generated audio
+    if (audioRef.current) {
+      audioRef.current.src = newAudioUrl;
+      audioRef.current.play();
     }
+    
+    // Update Firestore in the background
+    await updateInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
+    
+    // Update local state with the new URL and stop loading
+    setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl, [isGeneratingKey]: false } : w));
+
+  } catch (e) {
+    console.error(`Error generating ${type} audio`, e);
+    // Stop loading state on error
+    setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
+    return Promise.reject(e); // Propagate error for toast message
   }
 };
 
@@ -161,8 +167,6 @@ const AddWordDialog: FC<{
             setWords(prevWords => [savedWord, ...prevWords]);
             handleCloseDialog();
             toast({ title: 'Success', description: 'Word added to your list.' });
-            // Pre-generate audio in the background
-            generateAndSaveAudio(savedWord, setWords, updateWordInFirestore);
         } catch (error) {
             console.error('Error adding word:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save the word.' });
@@ -306,12 +310,11 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       const result = await extractVocabularyFromFile({ documentContent: text });
       
       const newWords = await addMultipleWordsToFirestore(result.vocabulary, user.uid);
-       newWords.forEach(word => generateAndSaveAudio(word, setWords, updateWordInFirestore));
 
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported. Audio is generating in the background.`,
+        description: `${newWords.length} words were successfully imported.`,
       });
     } catch (error) {
       console.error("Error importing file:", error);
@@ -340,23 +343,28 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         await updateWordInFirestore(word.docId, { viewCount: newViewCount });
     } catch (error) {
         console.error("Error updating view count:", error);
-        // Optionally revert state or show toast
     }
   }
 
-  const handlePlayAudio = (word: Word, type: 'term' | 'sentence') => {
+  const handlePlayAudio = async (word: Word, type: 'term' | 'sentence') => {
     incrementViewCount(word);
     const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
-  
-    if (audioUrl && audioRef.current) {
-      audioRef.current.src = audioUrl;
-      audioRef.current.play();
+    
+    if (audioUrl) {
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
+      }
     } else {
-        toast({
+      try {
+        await generateAndPlayAudio(word, type, audioRef, setWords, updateWordInFirestore);
+      } catch (e: any) {
+         toast({
             variant: "destructive",
-            title: "Audio not ready",
-            description: "Audio is being generated in the background. Please try again in a moment."
+            title: "Audio Generation Failed",
+            description: e.message || "Please try again in a moment.",
         })
+      }
     }
   }
 
@@ -424,22 +432,22 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
               filteredWords.map((word) => (
                 <AccordionItem value={word.id} key={word.id} className="border-b group">
                    <div className="flex items-center w-full text-left py-0 px-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                            disabled={word.isGeneratingAudio || !word.audioUrl}
-                            className="h-8 w-8 flex-shrink-0 mr-2"
-                        >
-                            {word.isGeneratingAudio ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                            <Volume2 className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Play term audio</span>
-                        </Button>
-                        <AccordionTrigger className="flex-1 py-4 pr-4 hover:no-underline">
-                            <div className="flex items-center w-full text-left">
+                       <AccordionTrigger className="flex-1 py-4 pr-4 hover:no-underline">
+                           <div className="flex items-start w-full text-left">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                                    disabled={word.isGeneratingAudio}
+                                    className="h-8 w-8 flex-shrink-0 mr-2 mt-1"
+                                >
+                                    {word.isGeneratingAudio ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                    <Volume2 className="h-4 w-4" />
+                                    )}
+                                    <span className="sr-only">Play term audio</span>
+                                </Button>
                                 <div className="font-medium w-[calc(30%_/_0.85)] pr-4">
                                     <div>
                                         <p>{word.term}</p>
@@ -451,23 +459,23 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                     <p><strong>EN:</strong> {word.definition}</p>
                                     <p className="italic mt-2">"{word.sentence}"</p>
                                 </div>
-                            </div>
-                        </AccordionTrigger>
-                        <div className="w-[150px] flex justify-center items-center gap-2">
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
-                            <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
-                            <span className="sr-only">Favorite</span>
-                            </Button>
-                            <div className="text-center font-medium">{word.viewCount || 0} views</div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}
-                            >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Delete</span>
-                            </Button>
-                        </div>
+                           </div>
+                       </AccordionTrigger>
+                       <div className="w-[150px] flex justify-center items-center gap-2">
+                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
+                           <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
+                           <span className="sr-only">Favorite</span>
+                           </Button>
+                           <div className="text-center font-medium">{word.viewCount || 0} views</div>
+                           <Button
+                               variant="ghost"
+                               size="icon"
+                               onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}
+                           >
+                           <Trash2 className="h-4 w-4 text-destructive" />
+                           <span className="sr-only">Delete</span>
+                           </Button>
+                       </div>
                    </div>
                    <AccordionContent className="px-4 pb-4">
                       <div className="pl-12 space-y-2">
@@ -477,7 +485,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                disabled={word.isGeneratingSentenceAudio || !word.sentenceAudioUrl}
+                                disabled={word.isGeneratingSentenceAudio}
                                 className="h-8 w-8 flex-shrink-0"
                             >
                                 {word.isGeneratingSentenceAudio ? (
@@ -510,3 +518,4 @@ export default VocabularyList;
     
 
     
+
