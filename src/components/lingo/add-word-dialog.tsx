@@ -41,8 +41,21 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
+  const handleOpenChange = async (open: boolean) => {
+    if (open) {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          setTerm(text.trim());
+        }
+      } catch (error) {
+        // This can happen if the user hasn't granted permission to the clipboard API
+        // or if they are in an insecure context (not HTTPS). We can ignore this error
+        // and just open the dialog without pre-filling.
+        console.warn("Could not read from clipboard:", error);
+      }
+    } else {
+      // Reset state when closing
       handleCloseDialog();
     }
     setIsDialogOpen(open);
@@ -133,7 +146,8 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Word with AI</DialogTitle>
           <DialogDescription>
-            Enter a word, phrase or sentence, and AI will generate the rest.
+            Copy a word/phrase, then open this dialog. It will be pasted
+            automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
