@@ -24,14 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -423,53 +415,55 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
           </div>
           {filteredWords.length > 0 ? (
               filteredWords.map((word) => (
-                <AccordionItem value={word.id} key={word.id} className="border-b">
-                   <AccordionTrigger className="px-4 py-0 hover:no-underline">
-                        <div className="flex items-center w-full text-left py-4">
-                            <div className="font-medium w-[30%] pr-4">
-                                <div className="flex items-start gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={(e) => { e.stopPropagation(); handlePlayAudio(word.id, 'term'); }}
-                                        disabled={word.isGeneratingAudio}
-                                        className="h-8 w-8 flex-shrink-0"
-                                    >
-                                        {word.isGeneratingAudio ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                        <Volume2 className="h-4 w-4" />
-                                        )}
-                                        <span className="sr-only">Play term audio</span>
-                                    </Button>
-                                    <div>
-                                        <p>{word.term}</p>
-                                        <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
-                                        <Badge variant="outline" className="mt-1">{word.partOfSpeech}</Badge>
+                <AccordionItem value={word.id} key={word.id} className="border-b group">
+                   <div className="flex items-center w-full text-left py-0 px-4">
+                        <AccordionTrigger className="flex-1 py-4 pr-4 hover:no-underline">
+                            <div className="flex items-center w-full text-left">
+                                <div className="font-medium w-[calc(30%/0.85)] pr-4">
+                                    <div className="flex items-start gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word.id, 'term'); }}
+                                            disabled={word.isGeneratingAudio}
+                                            className="h-8 w-8 flex-shrink-0"
+                                        >
+                                            {word.isGeneratingAudio ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                            <Volume2 className="h-4 w-4" />
+                                            )}
+                                            <span className="sr-only">Play term audio</span>
+                                        </Button>
+                                        <div>
+                                            <p>{word.term}</p>
+                                            <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
+                                            <Badge variant="outline" className="mt-1">{word.partOfSpeech}</Badge>
+                                        </div>
                                     </div>
                                 </div>
+                                <div className="flex-1 pr-4">
+                                    <p><strong>EN:</strong> {word.definition}</p>
+                                    <p className="italic mt-2">"{word.sentence}"</p>
+                                </div>
                             </div>
-                            <div className="flex-1 pr-4">
-                                <p><strong>EN:</strong> {word.definition}</p>
-                                <p className="italic mt-2">"{word.sentence}"</p>
-                            </div>
-                            <div className="w-[150px] flex justify-center items-center gap-2">
-                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
-                                <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
-                                <span className="sr-only">Favorite</span>
-                                </Button>
-                                <div className="text-center font-medium">{word.viewCount} views</div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}
-                                >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                                <span className="sr-only">Delete</span>
-                                </Button>
-                            </div>
+                        </AccordionTrigger>
+                        <div className="w-[150px] flex justify-center items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
+                            <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
+                            <span className="sr-only">Favorite</span>
+                            </Button>
+                            <div className="text-center font-medium">{word.viewCount} views</div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}
+                            >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <span className="sr-only">Delete</span>
+                            </Button>
                         </div>
-                   </AccordionTrigger>
+                   </div>
                    <AccordionContent className="px-4 pb-4">
                       <div className="pl-12 space-y-2">
                          <p className="text-sm text-muted-foreground"><strong>VI:</strong> {word.vietnameseDefinition}</p>
@@ -508,5 +502,4 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
     
