@@ -65,6 +65,7 @@ export interface Word extends VocabularyEntry {
   favorite: boolean;
   viewCount: number;
   userId: string;
+  createdAt: any;
 }
 
 interface VocabularyListProps {
@@ -125,7 +126,7 @@ const AddWordDialog: FC<{
             return;
         }
 
-        const newWordData: Omit<VocabularyEntry, 'term'> & { term: string; favorite: boolean; viewCount: number; userId: string; } = {
+        const newWordData = {
             term: term,
             pronunciation: generatedDetails.pronunciation,
             definition: generatedDetails.definition,
@@ -139,7 +140,7 @@ const AddWordDialog: FC<{
         };
 
         try {
-            const savedWord = await addWordToFirestore(newWordData as any);
+            const savedWord = await addWordToFirestore(newWordData);
             setWords(prevWords => [savedWord, ...prevWords]);
             handleCloseDialog();
             toast({ title: 'Success', description: 'Word added to your list.' });
@@ -412,33 +413,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
-  const handleDeleteWord = async (word: Word) => {
-    try {
-      await deleteWordFromFirestore(word.docId);
-      setWords(words.filter((w) => w.id !== word.id));
-      toast({ title: "Success", description: "Word deleted." });
-    } catch (error) {
-      console.error("Error deleting word:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not delete the word." });
-    }
-  };
-  
-  const toggleFavorite = async (word: Word) => {
-    const newFavoriteState = !word.favorite;
-    setWords(words.map(w => 
-      w.id === word.id ? { ...w, favorite: newFavoriteState } : w
-    ));
-    try {
-      await updateWordInFirestore(word.docId, { favorite: newFavoriteState });
-    } catch (error) {
-      console.error("Error updating favorite status:", error);
-      setWords(words.map(w => 
-        w.id === word.id ? { ...w, favorite: !newFavoriteState } : w
-      ));
-      toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
-    }
-  };
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -469,7 +443,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported. Audio will be generated on-demand.`,
+        description: `${newWords.length} words were successfully imported.`,
       });
       
     } catch (error) {
@@ -484,6 +458,34 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       if(fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+
+  const handleDeleteWord = async (word: Word) => {
+    try {
+      await deleteWordFromFirestore(word.docId);
+      setWords(words.filter((w) => w.id !== word.id));
+      toast({ title: "Success", description: "Word deleted." });
+    } catch (error) {
+      console.error("Error deleting word:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not delete the word." });
+    }
+  };
+  
+  const toggleFavorite = async (word: Word) => {
+    const newFavoriteState = !word.favorite;
+    setWords(words.map(w => 
+      w.id === word.id ? { ...w, favorite: newFavoriteState } : w
+    ));
+    try {
+      await updateWordInFirestore(word.docId, { favorite: newFavoriteState });
+    } catch (error) {
+      console.error("Error updating favorite status:", error);
+      setWords(words.map(w => 
+        w.id === word.id ? { ...w, favorite: !newFavoriteState } : w
+      ));
+      toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
     }
   };
 
@@ -503,39 +505,38 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 
   const handlePlayAudio = async (word: Word, type: 'term' | 'sentence') => {
     incrementViewCount(word);
-    const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
+    const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
+    const audioUrl = word[audioUrlKey];
     const isGeneratingKey = type === 'term' ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
-    
+
     if (audioUrl) {
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
         audioRef.current.play().catch(e => console.error("Error playing audio:", e));
       }
-    } else {
-       setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
-       try {
-         const textToGenerate = type === 'term' ? word.term : word.sentence;
-         const result = await generateAudio(textToGenerate);
-         const newAudioUrl = result.audioUrl;
-         
-         if (audioRef.current) {
-           audioRef.current.src = newAudioUrl;
-           audioRef.current.play().catch(e => console.error("Error playing audio:", e));
-         }
-         
-         const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
-         await updateWordInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
-         
-         setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl } : w));
-       } catch (e: any) {
-          toast({
-             variant: "destructive",
-             title: "Audio Generation Failed",
-             description: e.message || "Please try again in a moment.",
-         })
-       } finally {
-         setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
-       }
+      return;
+    }
+
+    setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
+    try {
+      const textToGenerate = type === 'term' ? word.term : word.sentence;
+      const result = await generateAudio(textToGenerate);
+      const newAudioUrl = result.audioUrl;
+      
+      if (audioRef.current) {
+        audioRef.current.src = newAudioUrl;
+        audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+      }
+      
+      await updateWordInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl, [isGeneratingKey]: false } : w));
+    } catch (e: any) {
+       toast({
+          variant: "destructive",
+          title: "Audio Generation Failed",
+          description: e.message || "Please try again in a moment.",
+      });
+       setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
     }
   }
 
@@ -596,7 +597,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
                   <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                     <div className="flex items-center hover:bg-muted/50 transition-colors">
+                     <div className="flex items-center hover:bg-muted/50 transition-colors pr-4">
                         <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group">
                           {/* Desktop View */}
                           <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
@@ -610,7 +611,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                 {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                 <span className="sr-only">Play term audio</span>
                               </Button>
-                              <div className="flex-1 grid grid-cols-[1fr,2fr] gap-4 items-center">
+                              <div className="flex-1 grid grid-cols-[minmax(150px,1.5fr),2fr] gap-x-6 items-center">
                                 <div>
                                     <p className="font-semibold">{word.term}</p>
                                     <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
@@ -639,7 +640,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                 </div>
                            </div>
                         </AccordionTrigger>
-                        <div className="flex justify-end items-center gap-1 pl-2 pr-4">
+                        <div className="flex justify-end items-center gap-1 pl-2">
                            <EditWordDialog word={word} setWords={setWords} />
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
                              <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
@@ -699,3 +700,5 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+
+    
