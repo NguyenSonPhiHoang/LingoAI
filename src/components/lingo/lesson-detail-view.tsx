@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Bot,
   Volume2,
+  PlusCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ import { Label } from "../ui/label";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "../ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import AddWordDialog from "./add-word-dialog";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
@@ -301,6 +303,15 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         <Button variant="ghost" onClick={onBack} className="mb-4 -ml-4">
           <ArrowLeft className="mr-2" /> Back to My Lessons
         </Button>
+        <div className="flex items-center gap-2">
+            <AddWordDialog
+                setWords={setWords}
+                trigger={
+                    <Button variant="outline">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                    </Button>
+                }
+            />
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -324,6 +335,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                 ))}
             </DropdownMenuContent>
          </DropdownMenu>
+         </div>
       </div>
 
       <div>
