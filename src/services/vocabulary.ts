@@ -31,7 +31,7 @@ export const addWordToFirestore = async (word: Omit<Word, 'id' | 'docId'>) => {
         ...word,
         createdAt: new Date(),
     });
-    return { ...word, id: docRef.id, docId: docRef.id };
+    return { ...word, id: docRef.id, docId: docRef.id, createdAt: new Date() } as Word;
 };
 
 export const addMultipleWordsToFirestore = async (words: VocabularyEntry[]) => {
