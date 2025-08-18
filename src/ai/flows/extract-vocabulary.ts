@@ -4,35 +4,15 @@
  * @fileOverview A flow for extracting vocabulary from a document.
  *
  * - extractVocabularyFromFile - A function that extracts vocabulary.
- * - ExtractVocabularyInput - The input type for the extractVocabularyFromFile function.
- * - ExtractVocabularyOutput - The return type for the extractVocabularyFromFile function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const ExtractVocabularyInputSchema = z.object({
-  documentContent: z
-    .string()
-    .describe('The text content of the document to extract vocabulary from.'),
-});
-export type ExtractVocabularyInput = z.infer<typeof ExtractVocabularyInputSchema>;
-
-export const VocabularyEntrySchema = z.object({
-    term: z.string().describe('The vocabulary word or term.'),
-    definition: z.string().describe('A clear and concise definition of the term.'),
-    sentence: z.string().describe('An example sentence using the term in context.'),
-});
-export type VocabularyEntry = z.infer<typeof VocabularyEntrySchema>;
-
-const ExtractVocabularyOutputSchema = z.object({
-  vocabulary: z
-    .array(VocabularyEntrySchema)
-    .describe('A list of vocabulary entries extracted from the document.'),
-});
-export type ExtractVocabularyOutput = z.infer<
-  typeof ExtractVocabularyOutputSchema
->;
+import {
+  ExtractVocabularyInputSchema,
+  ExtractVocabularyOutputSchema,
+  type ExtractVocabularyInput,
+  type ExtractVocabularyOutput,
+} from './schemas';
 
 export async function extractVocabularyFromFile(
   input: ExtractVocabularyInput

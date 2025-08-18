@@ -32,7 +32,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { extractVocabularyFromFile, type VocabularyEntry } from "@/ai/flows/extract-vocabulary";
+import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
+import type { VocabularyEntry } from "@/ai/flows/schemas";
 
 interface Word extends VocabularyEntry {
   id: number;
