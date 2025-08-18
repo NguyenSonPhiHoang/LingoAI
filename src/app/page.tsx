@@ -77,7 +77,7 @@ const Home: FC = () => {
           toast({
             variant: "destructive",
             title: "Error Fetching Vocabulary",
-            description: "Could not fetch your vocabulary. Please check permissions or try again later.",
+            description: "Could not fetch your vocabulary. Please try again later.",
           });
         } finally {
           setIsLoading(false);
@@ -161,14 +161,38 @@ const Home: FC = () => {
     return null;
   }
 
+  // Also, don't render the layout if the user data is available but they are not approved yet,
+  // as the WaitingForApproval component doesn't need the full dashboard layout.
+  if (user && user.status !== 'approved') {
+      return (
+        <DashboardLayout
+          activeView={activeViewState.view}
+          setActiveView={(view) => setActiveViewState({ view })}
+          setWords={setWords}
+        >
+          {renderContent()}
+        </DashboardLayout>
+      );
+  }
+
+  // Render full layout for approved users
+  if (user && user.status === 'approved') {
+      return (
+        <DashboardLayout
+          activeView={activeViewState.view}
+          setActiveView={(view) => setActiveViewState({ view })}
+          setWords={setWords}
+        >
+          {renderContent()}
+        </DashboardLayout>
+      );
+  }
+  
+  // Fallback loader during initial state transitions
   return (
-    <DashboardLayout
-      activeView={activeViewState.view}
-      setActiveView={(view) => setActiveViewState({ view })}
-      setWords={setWords}
-    >
-      {renderContent()}
-    </DashboardLayout>
+    <div className="flex h-screen w-full items-center justify-center">
+      <Loader2 className="h-16 w-16 animate-spin text-primary" />
+    </div>
   );
 };
 
