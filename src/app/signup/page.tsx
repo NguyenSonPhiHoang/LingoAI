@@ -51,8 +51,9 @@ export default function SignupPage() {
     },
   });
   
+  // This effect handles the case where a user who is ALREADY logged in
+  // tries to access the signup page.
   useEffect(() => {
-    // Redirect only when auth state is fully resolved and a user exists.
     if (!loading && user) {
       router.push("/");
     }
@@ -62,7 +63,8 @@ export default function SignupPage() {
     setIsSubmitting(true);
     try {
       await signup(values.email, values.password, values.displayName);
-      // Let the useEffect handle the redirect
+      // Manual and explicit redirection after successful signup.
+      router.push("/");
     } catch (error: any) {
       console.error("Signup failed:", error);
       toast({
@@ -70,12 +72,11 @@ export default function SignupPage() {
         title: "Signup Failed",
         description: error.message || "An unknown error occurred.",
       });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only stop submitting on error
     }
   };
   
-  // Show a loader while auth state is resolving or if a user is found (and redirect is imminent).
+  // Show a loader while auth state is being checked, or if a user is found and redirect is imminent.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

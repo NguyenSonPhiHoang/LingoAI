@@ -47,43 +47,35 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Wait for auth context to be fully resolved
-    if (authLoading) {
-      return;
+    // This effect now only handles data fetching for an authenticated user.
+    // The redirection logic is handled by the main return block.
+    if (!authLoading && user) {
+      // If we have a user and they are approved, fetch their vocabulary data.
+      if (user.status === 'approved') {
+        const fetchWords = async () => {
+          setIsLoading(true);
+          try {
+            const fetchedWords = await getVocabulary(user.uid);
+            setWords(fetchedWords);
+          } catch (error) {
+            console.error("Error fetching vocabulary:", error);
+            toast({
+              variant: "destructive",
+              title: "Error Fetching Vocabulary",
+              description: "Could not fetch your vocabulary. Please try again later.",
+            });
+          } finally {
+              setIsLoading(false);
+          }
+        };
+        fetchWords();
+      } else {
+        // For 'pending' or 'rejected' users, no vocabulary data is needed.
+        setIsLoading(false);
+      }
     }
-    // If auth is resolved and there's no user, redirect to login
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    
-    // If we have a user and they are approved, fetch their vocabulary data.
-    if (user.status === 'approved') {
-      const fetchWords = async () => {
-        setIsLoading(true);
-        try {
-          // Ensure user.uid is available before fetching
-          const fetchedWords = await getVocabulary(user.uid);
-          setWords(fetchedWords);
-        } catch (error) {
-          console.error("Error fetching vocabulary:", error);
-          toast({
-            variant: "destructive",
-            title: "Error Fetching Vocabulary",
-            description: "Could not fetch your vocabulary. Please try again later.",
-          });
-        } finally {
-            // Vocabulary data loading is complete
-            setIsLoading(false);
-        }
-      };
-      fetchWords();
-    } else {
-      // For 'pending' or 'rejected' users, no vocabulary data is needed.
-      setIsLoading(false);
-    }
-  }, [user, authLoading, router, toast]);
-
+  }, [user, authLoading, toast]);
+  
   // This is the primary loading screen. It shows until the auth state is definitively known.
   if (authLoading) {
     return (
@@ -93,10 +85,10 @@ const Home: FC = () => {
     );
   }
   
-  // If, after auth resolution, there's no user, we return null to prevent rendering anything
-  // while the useEffect redirect is in progress.
+  // If, after auth resolution, there's no user, redirect to login.
   if (!user) {
-    return null;
+    router.push("/login");
+    return null; // Return null to prevent rendering anything while redirecting.
   }
   
   const favoriteWords = words.filter((word) => word.favorite);

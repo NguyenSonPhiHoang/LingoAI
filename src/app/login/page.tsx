@@ -49,8 +49,9 @@ export default function LoginPage() {
     },
   });
   
+  // This effect handles the case where a user who is ALREADY logged in
+  // tries to access the login page.
   useEffect(() => {
-    // Redirect only when auth state is fully resolved and a user exists.
     if (!loading && user) {
       router.push("/");
     }
@@ -60,7 +61,8 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      // Let the useEffect handle the redirect
+      // Manual and explicit redirection after successful login.
+      router.push("/");
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
@@ -68,12 +70,11 @@ export default function LoginPage() {
         title: "Login Failed",
         description: error.message || "An unknown error occurred.",
       });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only stop submitting on error
     }
   };
   
-  // Show a loader while auth state is resolving or if a user is found (and redirect is imminent).
+  // Show a loader while auth state is being checked, or if a user is found and redirect is imminent.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
