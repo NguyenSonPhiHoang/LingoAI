@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useRef, useState, useEffect } from "react";
@@ -53,7 +54,8 @@ import {
   addWordToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
-  updateWord
+  updateWord,
+  addMultipleWordsToVocabulary
 } from "@/services/vocabulary";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
@@ -533,6 +535,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 
   const { toast } = useToast();
   
+  const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  }
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -541,22 +552,26 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in to import words." });
       return;
     }
-
-    if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please upload only .docx files.",
-      });
-      return;
-    }
-
+    
     setIsImporting(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-      
-      const result = await extractVocabularyFromFile({ documentContent: text });
+        let result;
+        if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+             const arrayBuffer = await file.arrayBuffer();
+             const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+             result = await extractVocabularyFromFile({ documentContent: text });
+        } else if (file.type.startsWith('image/')) {
+            const imageDataUri = await fileToDataUri(file);
+            result = await extractVocabularyFromFile({ imageDataUri });
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Unsupported File",
+                description: "Please upload a .docx or an image file.",
+            });
+            setIsImporting(false);
+            return;
+        }
       
       const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
 
@@ -718,7 +733,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   className="hidden"
-                  accept=".docx"
+                  accept=".docx,image/*"
                 />
                 <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
                   {isImporting ? (
@@ -752,3 +767,4 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+

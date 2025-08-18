@@ -1,4 +1,5 @@
 
+
 /**
  * @fileOverview Shared schemas for Genkit flows.
  * This file does not have a 'use server' directive,
@@ -11,8 +12,16 @@ import {z} from 'genkit';
 export const ExtractVocabularyInputSchema = z.object({
   documentContent: z
     .string()
+    .optional()
     .describe('The text content of the document to extract vocabulary from.'),
+  imageDataUri: z
+    .string()
+    .optional()
+    .describe("An image of vocabulary, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+}).refine(data => data.documentContent || data.imageDataUri, {
+    message: 'Either documentContent or imageDataUri must be provided.',
 });
+
 export type ExtractVocabularyInput = z.infer<
   typeof ExtractVocabularyInputSchema
 >;

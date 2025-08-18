@@ -1,7 +1,8 @@
+
 'use server';
 
 /**
- * @fileOverview A flow for extracting vocabulary from a document.
+ * @fileOverview A flow for extracting vocabulary from a document or an image.
  *
  * - extractVocabularyFromFile - A function that extracts vocabulary.
  */
@@ -24,7 +25,7 @@ const prompt = ai.definePrompt({
   name: 'extractVocabularyPrompt',
   input: {schema: ExtractVocabularyInputSchema},
   output: {schema: ExtractVocabularyOutputSchema},
-  prompt: `You are an English language expert. Your task is to extract a list of vocabulary words, phrases, or sentences from the provided text. For each item, you must provide:
+  prompt: `You are an English language expert. Your task is to extract a list of vocabulary words, phrases, or sentences from the provided text content or image. For each item, you must provide:
 1. A clear English definition.
 2. Its part of speech (e.g., Noun, Verb, Adjective, Phrase, Sentence).
 3. Its International Phonetic Alphabet (IPA) pronunciation. If it's a phrase or sentence, provide pronunciation for the key words.
@@ -34,8 +35,15 @@ const prompt = ai.definePrompt({
 
 Ignore common words and focus on items that are likely to be new to an English learner.
 
+{{#if documentContent}}
 Document Content:
 {{{documentContent}}}
+{{/if}}
+
+{{#if imageDataUri}}
+Image Content:
+{{media url=imageDataUri}}
+{{/if}}
 `,
 });
 
@@ -50,3 +58,4 @@ const extractVocabularyFromFileFlow = ai.defineFlow(
     return output!;
   }
 );
+
