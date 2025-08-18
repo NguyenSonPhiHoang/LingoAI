@@ -21,6 +21,7 @@ import {
   X,
   Clipboard,
   CheckCircle,
+  Languages,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-fl
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
 import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
+import { translateText } from "@/ai/flows/translate-text-flow";
 import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
@@ -395,11 +397,37 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   );
 };
 
+// --- Translation Helper ---
+
+const useTranslation = () => {
+    const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
+    const { toast } = useToast();
+
+    const getTranslation = async (key: string, text: string) => {
+        if (translations[key]) return;
+        setIsTranslating(prev => ({ ...prev, [key]: true }));
+        try {
+            const result = await translateText({ text });
+            setTranslations(prev => ({ ...prev, [key]: result.translation }));
+        } catch (error) {
+            console.error("Translation failed:", error);
+            toast({ variant: "destructive", title: "Translation Failed" });
+        } finally {
+            setIsTranslating(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
+    return { translations, isTranslating, getTranslation };
+};
+
+
 // --- Practice Components ---
 
 const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ questions }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [showResults, setShowResults] = useState(false);
+    const { translations, isTranslating, getTranslation } = useTranslation();
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
 
@@ -412,9 +440,20 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
         <div className="p-4 space-y-6">
             {questions.map((q, qIndex) => {
                 const selectedAnswer = answers[qIndex];
+                const translationKey = `q-${qIndex}`;
                 return (
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
-                        <p className="font-semibold mb-3">{qIndex + 1}. {q.question}</p>
+                        <div className="flex justify-between items-start">
+                            <p className="font-semibold mb-3 flex-1">{qIndex + 1}. {q.question}</p>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => getTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
+                                {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        {translations[translationKey] && (
+                            <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mb-3 rounded-r-md">
+                                <strong>Dịch:</strong> {translations[translationKey]}
+                            </div>
+                        )}
                         <div className="space-y-2">
                             {q.options.map((opt, oIndex) => {
                                 const isCorrect = q.correctOption === opt;
@@ -453,27 +492,42 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
 
 
 const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
+    const { translations, isTranslating, getTranslation } = useTranslation();
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
        <div className="p-4 space-y-6">
-            {prompts.map((p, pIndex) => (
-                <Card key={pIndex} className="bg-background">
-                    <CardHeader>
-                        <p className="text-muted-foreground">Prompt {pIndex + 1}:</p>
-                        <p className="font-semibold">"{p.vietnamesePrompt}"</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
-                           <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                           <span><strong>Hint:</strong> Try to use the word/phrase: <strong className="italic">"{p.englishHint}"</strong></span>
-                        </div>
-                        <Textarea placeholder="Write your English sentence here..." rows={3} />
-                    </CardContent>
-                    <CardFooter>
-                         <p className="text-xs text-muted-foreground">Example answer: "{p.exampleAnswer}"</p>
-                    </CardFooter>
-                </Card>
-            ))}
+            {prompts.map((p, pIndex) => {
+                const hintKey = `hint-${pIndex}`;
+                const answerKey = `answer-${pIndex}`;
+                return (
+                    <Card key={pIndex} className="bg-background">
+                        <CardHeader>
+                            <p className="text-muted-foreground">Prompt {pIndex + 1}:</p>
+                            <p className="font-semibold">"{p.vietnamesePrompt}"</p>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
+                               <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                               <span><strong>Hint:</strong> Try to use the word/phrase: <strong className="italic">"{p.englishHint}"</strong></span>
+                            </div>
+                             <Textarea placeholder="Write your English sentence here..." rows={3} />
+                        </CardContent>
+                        <CardFooter className="flex-col items-start gap-2">
+                            <div className="flex justify-between w-full">
+                                <p className="text-xs text-muted-foreground flex-1">Example answer: "{p.exampleAnswer}"</p>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => getTranslation(answerKey, p.exampleAnswer)} disabled={isTranslating[answerKey]}>
+                                    {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            {translations[answerKey] && (
+                                <div className="text-xs w-full text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 rounded-r-md">
+                                    <strong>Dịch:</strong> {translations[answerKey]}
+                                </div>
+                            )}
+                        </CardFooter>
+                    </Card>
+                )
+            })}
        </div>
     );
 };
@@ -505,6 +559,8 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ 
 
 const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ exercise }) => {
     const { toast } = useToast();
+    const { translations, isTranslating, getTranslation } = useTranslation();
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: "Copied!", description: "Line copied to clipboard." });
@@ -517,19 +573,36 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
                 <p className="text-sm text-blue-800">{exercise.scenario}</p>
             </div>
             <div className="space-y-4">
-            {exercise.dialogue.map((line, index) => (
-                <div key={index} className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
-                    {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
-                    <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
-                       <p><strong className="font-semibold">{line.role}:</strong> {line.line}</p>
-                       {line.role === 'You' && (
-                           <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7" onClick={() => copyToClipboard(line.line)}>
-                               <Clipboard className="h-4 w-4" />
-                           </Button>
-                       )}
+            {exercise.dialogue.map((line, index) => {
+                const translationKey = `line-${index}`;
+                return (
+                    <div key={index}>
+                        <div className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
+                            {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
+                            <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
+                               <div className="flex justify-between items-start gap-2">
+                                  <p className="flex-1"><strong className="font-semibold">{line.role}:</strong> {line.line}</p>
+                                  <div className="flex">
+                                      {line.role === 'You' && (
+                                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(line.line)}>
+                                               <Clipboard className="h-4 w-4" />
+                                           </Button>
+                                       )}
+                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => getTranslation(translationKey, line.line)} disabled={isTranslating[translationKey]}>
+                                            {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                       </Button>
+                                  </div>
+                               </div>
+                            </div>
+                        </div>
+                        {translations[translationKey] && (
+                            <div className={`text-sm text-blue-600 p-2 mt-1 max-w-sm ${line.role === 'You' ? 'ml-auto' : 'ml-11'}`}>
+                                <strong>Dịch:</strong> {translations[translationKey]}
+                            </div>
+                        )}
                     </div>
-                </div>
-            ))}
+                )
+            })}
             </div>
         </div>
     );

@@ -263,3 +263,14 @@ export const GenerateSpeakingExerciseOutputSchema = z.object({
     dialogue: z.array(SpeakingRolePlayLineSchema).describe('The role-play dialogue script.'),
 });
 export type GenerateSpeakingExerciseOutput = z.infer<typeof GenerateSpeakingExerciseOutputSchema>;
+
+// Schemas for translate-text-flow.ts
+export const TranslateTextInputSchema = z.object({
+  text: z.string().describe('The text to be translated.'),
+});
+export type TranslateTextInput = z.infer<typeof TranslateTextInputSchema>;
+
+export const TranslateTextOutputSchema = z.object({
+  translation: z.string().describe('The Vietnamese translation of the text.'),
+});
+export type TranslateTextOutput = z.infer<typeof TranslateTextOutputSchema>;
