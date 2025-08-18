@@ -19,19 +19,20 @@ const usersCollection = collection(db, "users");
 export const getAllUsers = async (): Promise<User[]> => {
   const q = query(
     usersCollection,
-    where("status", "==", "pending"),
     orderBy("createdAt", "desc")
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
     const data = doc.data();
+    // Handle both serverTimestamp and already converted Timestamps
+    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date();
     return {
       uid: data.uid,
       displayName: data.displayName,
       email: data.email,
       role: data.role,
       status: data.status,
-      createdAt: (data.createdAt as Timestamp).toDate(),
+      createdAt,
     } as User
   })
 };
