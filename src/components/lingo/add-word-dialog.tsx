@@ -198,6 +198,10 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       const savedCombinedVocabulary = await addWordToVocabulary(user.uid, fullWordData);
       
       setWords((prevWords) => {
+        if (!prevWords || prevWords.length === 0) {
+            return [savedCombinedVocabulary];
+        }
+        
         // Check if the word already exists in the local state by its user-specific ID.
         const existingWordIndex = prevWords.findIndex(w => w.userVocabularyId === savedCombinedVocabulary.userVocabularyId);
         if (existingWordIndex !== -1) {
