@@ -73,7 +73,7 @@ const Home: FC = () => {
       };
       fetchWords();
     } else {
-      // For 'pending' or other statuses, we don't need to fetch words,
+      // For 'pending' or 'rejected' statuses, we don't need to fetch words,
       // so we can stop loading. The UI will show the correct component.
       setIsLoading(false);
     }
