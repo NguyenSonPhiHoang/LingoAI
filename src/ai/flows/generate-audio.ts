@@ -56,7 +56,7 @@ const generateAudioFlow = ai.defineFlow(
     outputSchema: GenerateAudioOutputSchema,
   },
   async query => {
-    const {media} = await ai.generate({
+    const {media, text} = await ai.generate({
       model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
         responseModalities: ['AUDIO'],
@@ -66,10 +66,12 @@ const generateAudioFlow = ai.defineFlow(
           },
         },
       },
-      prompt: query,
+      prompt: {text: query},
     });
     if (!media) {
-      throw new Error('no media returned');
+      throw new Error(
+        `Audio generation failed. No media was returned. Response text: ${text}`
+      );
     }
     const audioBuffer = Buffer.from(
       media.url.substring(media.url.indexOf(',') + 1),
