@@ -131,6 +131,7 @@ export type GenerateWordDetailsOutput = z.infer<
 
 
 // Schemas for group-vocabulary.ts
+// The input for grouping now only needs the minimal schema, not the full user-specific data.
 export const GroupVocabularyInputSchema = z.object({
   vocabulary: z.array(VocabularyEntrySchema),
 });
@@ -313,3 +314,5 @@ export const GenerateWritingFeedbackOutputSchema = z.object({
   correctedText: z.string().describe('A corrected version of the user\'s text.'),
 });
 export type GenerateWritingFeedbackOutput = z.infer<typeof GenerateWritingFeedbackOutputSchema>;
+
+    

@@ -14,7 +14,7 @@ import UserManagement from "@/components/lingo/user-management";
 import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import MyLessonsView from "@/components/lingo/my-lessons-view";
-import type { UserVocabulary } from "@/services/vocabulary";
+import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +40,7 @@ const Home: FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
-  const [words, setWords] = useState<UserVocabulary[]>([]);
+  const [words, setWords] = useState<CombinedVocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -169,3 +169,5 @@ const Home: FC = () => {
 };
 
 export default Home;
+
+    

@@ -109,7 +109,8 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
     setIsSaving(true);
     
     try {
-      const savedCombinedVocabulary = await addWordToVocabulary(user.uid, { term, ...generatedDetails });
+      const fullWordData = { term, ...generatedDetails };
+      const savedCombinedVocabulary = await addWordToVocabulary(user.uid, fullWordData);
       
       setWords((prevWords) => {
         // Check if the word already exists in the local state by its user-specific ID.
@@ -242,3 +243,5 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
 };
 
 export default AddWordDialog;
+
+    

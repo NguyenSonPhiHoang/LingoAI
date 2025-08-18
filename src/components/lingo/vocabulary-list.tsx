@@ -47,28 +47,26 @@ import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { groupVocabularyByTopic } from "@/ai/flows/group-vocabulary";
-import type { VocabularyEntry as VocabularyEntrySchema, VocabularyTopic } from "@/ai/flows/schemas";
+import type { VocabularyTopic } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import {
   addMultipleWordsToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
 } from "@/services/vocabulary";
-import type { UserVocabulary } from "@/services/vocabulary";
+import type { CombinedVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import AddWordDialog from "./add-word-dialog";
 
 interface VocabularyListProps {
-  words: UserVocabulary[];
-  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
+  words: CombinedVocabulary[];
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
 
 const editWordSchema = z.object({
-  term: z.string().min(1, "Term cannot be empty."),
-  pronunciation: z.string(),
   partOfSpeech: z.string(),
   definition: z.string().min(1, "Definition cannot be empty."),
   vietnameseDefinition: z.string(),
@@ -77,8 +75,8 @@ const editWordSchema = z.object({
 });
 
 const EditWordDialog: FC<{
-  word: UserVocabulary;
-  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
+  word: CombinedVocabulary;
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }> = ({ word, setWords }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,8 +85,6 @@ const EditWordDialog: FC<{
   const form = useForm<z.infer<typeof editWordSchema>>({
     resolver: zodResolver(editWordSchema),
     defaultValues: {
-      term: word.term,
-      pronunciation: word.pronunciation,
       partOfSpeech: word.partOfSpeech,
       definition: word.definition,
       vietnameseDefinition: word.vietnameseDefinition,
@@ -100,9 +96,9 @@ const EditWordDialog: FC<{
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateUserVocabulary(word.id, values);
+      await updateUserVocabulary(word.userVocabularyId, values);
       setWords(prev =>
-        prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
+        prev.map(w => (w.userVocabularyId === word.userVocabularyId ? { ...w, ...values } : w))
       );
       toast({ title: "Success", description: "Word updated successfully." });
       setIsOpen(false);
@@ -128,40 +124,26 @@ const EditWordDialog: FC<{
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Word</DialogTitle>
+          <DialogTitle>Edit: {word.term}</DialogTitle>
           <DialogDescription>
-            Make changes to your vocabulary word here. Click save when you're done.
+            Make changes to your personalized word details here. Click save when you're done. The term and pronunciation are shared and cannot be edited here.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[60vh] overflow-y-auto p-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="term"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Term</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="pronunciation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pronunciation (IPA)</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+               <FormItem>
+                  <FormLabel>Term</FormLabel>
+                  <FormControl>
+                    <Input value={word.term} disabled className="font-semibold" />
+                  </FormControl>
+                </FormItem>
+                <FormItem>
+                  <FormLabel>Pronunciation (IPA)</FormLabel>
+                  <FormControl>
+                     <Input value={word.pronunciation} disabled />
+                  </FormControl>
+                </FormItem>
             </div>
             <FormField
               control={form.control}
@@ -245,8 +227,8 @@ const EditWordDialog: FC<{
 };
 
 const GroupedView: FC<{
-  words: UserVocabulary[];
-  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
+  words: CombinedVocabulary[];
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }> = ({ words, setWords }) => {
 
   const grouped = words.reduce((acc, word) => {
@@ -256,7 +238,7 @@ const GroupedView: FC<{
     }
     acc[topic].push(word);
     return acc;
-  }, {} as Record<string, UserVocabulary[]>);
+  }, {} as Record<string, CombinedVocabulary[]>);
 
   const topics = Object.keys(grouped).sort();
   
@@ -285,19 +267,19 @@ const GroupedView: FC<{
 }
 
 const VocabularyListInternal: FC<{ 
-  words: UserVocabulary[];
-  allWords: UserVocabulary[]; 
-  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
+  words: CombinedVocabulary[];
+  allWords: CombinedVocabulary[]; 
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }> = ({ words, allWords, setWords }) => {
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
   const [isGeneratingAudio, setIsGeneratingAudio] = useState<Record<string, boolean>>({});
 
-  const handleDeleteWord = async (wordToDelete: UserVocabulary) => {
+  const handleDeleteWord = async (wordToDelete: CombinedVocabulary) => {
     try {
-      await deleteUserVocabulary(wordToDelete.id);
-      setWords(allWords.filter((w) => w.id !== wordToDelete.id));
+      await deleteUserVocabulary(wordToDelete.userVocabularyId);
+      setWords(allWords.filter((w) => w.userVocabularyId !== wordToDelete.userVocabularyId));
       toast({ title: "Success", description: "Word deleted." });
     } catch (error) {
       console.error("Error deleting word:", error);
@@ -305,38 +287,38 @@ const VocabularyListInternal: FC<{
     }
   };
   
-  const toggleFavorite = async (wordToUpdate: UserVocabulary) => {
+  const toggleFavorite = async (wordToUpdate: CombinedVocabulary) => {
     const newFavoriteState = !wordToUpdate.favorite;
     setWords(allWords.map(w => 
-      w.id === wordToUpdate.id ? { ...w, favorite: newFavoriteState } : w
+      w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, favorite: newFavoriteState } : w
     ));
     try {
-      await updateUserVocabulary(wordToUpdate.id, { favorite: newFavoriteState });
+      await updateUserVocabulary(wordToUpdate.userVocabularyId, { favorite: newFavoriteState });
     } catch (error) {
       console.error("Error updating favorite status:", error);
       setWords(allWords.map(w => 
-        w.id === wordToUpdate.id ? { ...w, favorite: !newFavoriteState } : w
+        w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, favorite: !newFavoriteState } : w
       ));
       toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
     }
   };
   
-  const incrementViewCount = async (wordToUpdate: UserVocabulary) => {
+  const incrementViewCount = async (wordToUpdate: CombinedVocabulary) => {
     const newViewCount = (wordToUpdate.viewCount || 0) + 1;
-    const updatedWords = allWords.map(w => w.id === wordToUpdate.id ? { ...w, viewCount: newViewCount } : w);
+    const updatedWords = allWords.map(w => w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, viewCount: newViewCount } : w);
     setWords(updatedWords);
     try {
-        await updateUserVocabulary(wordToUpdate.id, { viewCount: newViewCount });
+        await updateUserVocabulary(wordToUpdate.userVocabularyId, { viewCount: newViewCount });
     } catch (error) {
         console.error("Error updating view count:", error);
     }
   }
 
-  const handlePlayAudio = async (word: UserVocabulary, type: 'term' | 'sentence') => {
+  const handlePlayAudio = async (word: CombinedVocabulary, type: 'term' | 'sentence') => {
     const isTerm = type === 'term';
     const audioUrl = isTerm ? word.audioUrl : word.sentenceAudioUrl;
     const textToGenerate = isTerm ? word.term : word.sentence;
-    const audioGenKey = `${word.id}-${type}`;
+    const audioGenKey = `${word.userVocabularyId}-${type}`;
 
     if (audioUrl) {
       if (audioRef.current) {
@@ -358,9 +340,9 @@ const VocabularyListInternal: FC<{
       }
       
       const updateData = isTerm ? { audioUrl: newAudioUrl } : { sentenceAudioUrl: newAudioUrl };
-      await updateUserVocabulary(word.id, updateData);
+      await updateUserVocabulary(word.userVocabularyId, updateData);
 
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, ...updateData } : w));
+      setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, ...updateData } : w));
 
     } catch (e: any) {
        toast({
@@ -374,7 +356,7 @@ const VocabularyListInternal: FC<{
   }
   
   useEffect(() => {
-    const wordToUpdate = allWords.find(word => word.id === accordionValue);
+    const wordToUpdate = allWords.find(word => word.userVocabularyId === accordionValue);
     if (wordToUpdate) {
         incrementViewCount(wordToUpdate);
     }
@@ -391,11 +373,11 @@ const VocabularyListInternal: FC<{
        <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
         {words.length > 0 ? (
             words.map((word) => (
-              <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
+              <AccordionItem value={word.userVocabularyId} key={word.userVocabularyId} className="border-b last:border-b-0">
                   <div className="flex items-center">
                     <div 
                       className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50 p-4" 
-                      onClick={() => toggleAccordionItem(word.id)}
+                      onClick={() => toggleAccordionItem(word.userVocabularyId)}
                     >
                       {/* Desktop View */}
                       <div className="hidden md:flex flex-1 items-center gap-4">
@@ -403,10 +385,10 @@ const VocabularyListInternal: FC<{
                             variant="ghost"
                             size="icon"
                             onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                            disabled={isGeneratingAudio[`${word.id}-term`]}
+                            disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
                             className="h-8 w-8 flex-shrink-0"
                           >
-                            {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                             <span className="sr-only">Play term audio</span>
                           </Button>
                           <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
@@ -432,10 +414,10 @@ const VocabularyListInternal: FC<{
                               variant="ghost"
                               size="icon"
                               onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                              disabled={isGeneratingAudio[`${word.id}-term`]}
+                              disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
                               className="h-8 w-8 flex-shrink-0"
                             >
-                              {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                               <span className="sr-only">Play term audio</span>
                             </Button>
                             <div>
@@ -482,10 +464,10 @@ const VocabularyListInternal: FC<{
                               <Button
                                   variant="ghost" size="icon"
                                   onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                  disabled={isGeneratingAudio[`${word.id}-sentence`]}
+                                  disabled={isGeneratingAudio[`${word.userVocabularyId}-sentence`]}
                                   className="h-8 w-8 flex-shrink-0 -ml-2"
                               >
-                                  {isGeneratingAudio[`${word.id}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  {isGeneratingAudio[`${word.userVocabularyId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   <span className="sr-only">Play sentence audio</span>
                               </Button>
                               <p className="italic pt-1.5">"{word.sentence}"</p>
@@ -549,8 +531,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
 
       setWords(prevWords => {
-          const prevWordsMap = new Map(prevWords.map(w => [w.id, w]));
-          newWords.forEach(nw => prevWordsMap.set(nw.id, nw));
+          const prevWordsMap = new Map(prevWords.map(w => [w.userVocabularyId, w]));
+          newWords.forEach(nw => prevWordsMap.set(nw.userVocabularyId, nw));
           // Sort by creation date after merging
           return Array.from(prevWordsMap.values()).sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       });
@@ -585,7 +567,18 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       if (wordsToGroup.length > 0) {
         toast({ title: "AI is at work!", description: `Grouping ${wordsToGroup.length} new word(s) by topic.`});
         
-        const result = await groupVocabularyByTopic({ vocabulary: wordsToGroup });
+        // We need to construct the VocabularyEntrySchema for the AI flow
+        const vocabularyForAI = wordsToGroup.map(w => ({
+            term: w.term,
+            pronunciation: w.pronunciation,
+            partOfSpeech: w.partOfSpeech,
+            definition: w.definition,
+            vietnameseDefinition: w.vietnameseDefinition,
+            sentence: w.sentence,
+            vietnameseSentence: w.vietnameseSentence,
+        }));
+        
+        const result = await groupVocabularyByTopic({ vocabulary: vocabularyForAI });
         
         const updatedWords = [...words];
         for (const topicGroup of result.topics) {
@@ -596,7 +589,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
               const newTopic = topicGroup.topic;
               updatedWords[originalWordIndex] = { ...userWordToUpdate, topic: newTopic };
               // Update in Firestore without waiting
-              updateUserVocabulary(userWordToUpdate.id, { topic: newTopic }).catch(console.error);
+              updateUserVocabulary(userWordToUpdate.userVocabularyId, { topic: newTopic }).catch(console.error);
             }
           }
         }
@@ -723,3 +716,4 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 
 export default VocabularyList;
 
+    
