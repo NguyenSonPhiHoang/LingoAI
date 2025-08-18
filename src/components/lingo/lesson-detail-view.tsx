@@ -327,6 +327,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                 ))}
             </DropdownMenuContent>
          </DropdownMenu>
+         <AddWordDialog
+            setWords={setWords}
+            trigger={
+                <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                </Button>
+            }
+        />
          </div>
       </div>
 
