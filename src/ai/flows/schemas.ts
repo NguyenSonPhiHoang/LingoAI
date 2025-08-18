@@ -124,3 +124,22 @@ export const GenerateWordDetailsOutputSchema = z.object({
 export type GenerateWordDetailsOutput = z.infer<
   typeof GenerateWordDetailsOutputSchema
 >;
+
+
+// Schemas for group-vocabulary.ts
+export const GroupVocabularyInputSchema = z.object({
+  vocabulary: z.array(VocabularyEntrySchema),
+});
+export type GroupVocabularyInput = z.infer<typeof GroupVocabularyInputSchema>;
+
+export const VocabularyTopicSchema = z.object({
+  topic: z.string().describe('The name of the vocabulary topic.'),
+  words: z.array(VocabularyEntrySchema).describe('A list of vocabulary entries belonging to this topic.'),
+});
+export type VocabularyTopic = z.infer<typeof VocabularyTopicSchema>;
+
+
+export const GroupVocabularyOutputSchema = z.object({
+  topics: z.array(VocabularyTopicSchema).describe('A list of topics, each containing a list of related vocabulary words.'),
+});
+export type GroupVocabularyOutput = z.infer<typeof GroupVocabularyOutputSchema>;

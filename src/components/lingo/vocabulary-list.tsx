@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown, FolderKanban } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,7 +47,8 @@ import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { generateWordDetails } from "@/ai/flows/generate-word-details";
-import type { VocabularyEntry, GenerateWordDetailsOutput } from "@/ai/flows/schemas";
+import { groupVocabularyByTopic } from "@/ai/flows/group-vocabulary";
+import type { VocabularyEntry, GenerateWordDetailsOutput, VocabularyTopic } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, addMultipleWordsToFirestore } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
@@ -259,7 +260,14 @@ const EditWordDialog: FC<{
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateWordInFirestore(word.docId, values);
+      const plainWord = { ...word };
+      // This is a plain JS object, so we don't need to check for complex types
+      // before sending to firestore.
+      const wordToUpdate = {
+        ...plainWord,
+        ...values,
+      };
+      await updateWordInFirestore(word.docId, wordToUpdate);
       setWords(prev =>
         prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
       );
@@ -403,70 +411,40 @@ const EditWordDialog: FC<{
   );
 };
 
+const GroupedView: FC<{
+  groupedWords: { topic: string; words: Word[] }[];
+  words: Word[];
+  setWords: Dispatch<SetStateAction<Word[]>>;
+}> = ({ groupedWords, words, setWords }) => {
+  return (
+    <div className="space-y-6">
+      {groupedWords.map(group => (
+        <Card key={group.topic}>
+          <CardHeader>
+            <CardTitle>{group.topic}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <VocabularyListInternal words={group.words} allWords={words} setWords={setWords} />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
-const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
-  const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const VocabularyListInternal: FC<{ 
+  words: Word[];
+  allWords: Word[]; // The full unsorted list
+  setWords: Dispatch<SetStateAction<Word[]>>;
+}> = ({ words, allWords, setWords }) => {
+  const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
-  const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!user) {
-      toast({ variant: "destructive", title: "Error", description: "You must be logged in to import words." });
-      return;
-    }
-
-    if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please upload only .docx files.",
-      });
-      return;
-    }
-
-    setIsImporting(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-      
-      const result = await extractVocabularyFromFile({ documentContent: text });
-      
-      const newWords = await addMultipleWordsToFirestore(result.vocabulary, user.uid);
-
-      setWords(prevWords => [...newWords, ...prevWords]);
-      toast({
-        title: "Success",
-        description: `${newWords.length} words were successfully imported.`,
-      });
-      
-    } catch (error) {
-      console.error("Error importing file:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to import from file. Please try again.",
-      });
-    } finally {
-      setIsImporting(false);
-      if(fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
 
   const handleDeleteWord = async (word: Word) => {
     try {
       await deleteWordFromFirestore(word.docId);
-      setWords(words.filter((w) => w.id !== word.id));
+      setWords(allWords.filter((w) => w.id !== word.id));
       toast({ title: "Success", description: "Word deleted." });
     } catch (error) {
       console.error("Error deleting word:", error);
@@ -476,23 +454,19 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   
   const toggleFavorite = async (word: Word) => {
     const newFavoriteState = !word.favorite;
-    setWords(words.map(w => 
+    setWords(allWords.map(w => 
       w.id === word.id ? { ...w, favorite: newFavoriteState } : w
     ));
     try {
       await updateWordInFirestore(word.docId, { favorite: newFavoriteState });
     } catch (error) {
       console.error("Error updating favorite status:", error);
-      setWords(words.map(w => 
+      setWords(allWords.map(w => 
         w.id === word.id ? { ...w, favorite: !newFavoriteState } : w
       ));
       toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
     }
   };
-
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
-  }
   
   const incrementViewCount = async (word: Word) => {
     const newViewCount = (word.viewCount || 0) + 1;
@@ -541,23 +515,254 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   }
   
   useEffect(() => {
-    const wordToUpdate = words.find(word => word.id === accordionValue);
+    const wordToUpdate = allWords.find(word => word.id === accordionValue);
     if (wordToUpdate) {
         incrementViewCount(wordToUpdate);
     }
   }, [accordionValue]);
-
-  const filteredWords = showOnlyFavorites
-    ? words.filter((word) => word.favorite)
-    : words;
 
   const toggleAccordionItem = (id: string) => {
     setAccordionValue(prev => prev === id ? undefined : id);
   }
 
   return (
-    <Card>
+    <div className="border rounded-lg">
       <audio ref={audioRef} className="hidden" />
+       <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
+        {words.length > 0 ? (
+            words.map((word) => (
+              <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
+                  <div className="flex items-center pr-4">
+                    <div 
+                      className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50" 
+                      onClick={() => toggleAccordionItem(word.id)}
+                    >
+                        {/* Desktop View */}
+                      <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                            disabled={word.isGeneratingAudio}
+                            className="h-8 w-8 flex-shrink-0"
+                          >
+                            {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            <span className="sr-only">Play term audio</span>
+                          </Button>
+                          <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
+                            <div>
+                                <p className="font-semibold">{word.term}</p>
+                                <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                                <p>{word.definition}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <Badge variant="secondary" className="flex items-center gap-1.5">
+                                <Eye className="h-3 w-3" />
+                                {word.viewCount || 0}
+                             </Badge>
+                            <Badge variant="outline">{word.partOfSpeech}</Badge>
+                          </div>
+                      </div>
+                        {/* Mobile View */}
+                        <div className="md:hidden flex items-center gap-3 flex-1 px-4 py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                              disabled={word.isGeneratingAudio}
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              <span className="sr-only">Play term audio</span>
+                            </Button>
+                            <div>
+                                <p className="font-semibold">{word.term}</p>
+                                <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-1 pl-2">
+                        <EditWordDialog word={word} setWords={setWords} />
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
+                          <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
+                          <span className="sr-only">Favorite</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}>
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                        <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
+                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                        </AccordionTrigger>
+                    </div>
+                  </div>
+                  <AccordionContent className="px-4 pb-4 pt-0 bg-background">
+                    <div className="pl-12 space-y-4 text-sm">
+                        <div className="md:hidden">
+                          <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
+                          <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
+                           <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="secondary" className="flex items-center gap-1.5">
+                                  <Eye className="h-3 w-3" />
+                                  {word.viewCount || 0}
+                                </Badge>
+                              </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
+                          <p>{word.vietnameseDefinition}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-muted-foreground">Example (EN):</p>
+                          <div className="flex items-start gap-2">
+                              <Button
+                                  variant="ghost" size="icon"
+                                  onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
+                                  disabled={word.isGeneratingSentenceAudio}
+                                  className="h-8 w-8 flex-shrink-0"
+                              >
+                                  {word.isGeneratingSentenceAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  <span className="sr-only">Play sentence audio</span>
+                              </Button>
+                              <p className="italic pt-1.5">"{word.sentence}"</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-muted-foreground">Example (VI):</p>
+                          <p className="italic ml-12">"{word.vietnameseSentence}"</p>
+                        </div>
+                    </div>
+                  </AccordionContent>
+              </AccordionItem>
+            ))
+          ) : (
+            <div className="h-24 text-center flex items-center justify-center text-sm text-muted-foreground">
+                Your vocabulary list is empty. Add a new word to get started!
+            </div>
+          )}
+      </Accordion>
+    </div>
+  );
+}
+
+
+const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
+  const { user } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isGrouping, setIsGrouping] = useState(false);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
+  const [groupedWords, setGroupedWords] = useState<{ topic: string; words: Word[] }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { toast } = useToast();
+  
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to import words." });
+      return;
+    }
+
+    if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please upload only .docx files.",
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      
+      const result = await extractVocabularyFromFile({ documentContent: text });
+      
+      const newWords = await addMultipleWordsToFirestore(result.vocabulary, user.uid);
+
+      setWords(prevWords => [...newWords, ...prevWords]);
+      toast({
+        title: "Success",
+        description: `${newWords.length} words were successfully imported.`,
+      });
+      
+    } catch (error) {
+      console.error("Error importing file:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to import from file. Please try again.",
+      });
+    } finally {
+      setIsImporting(false);
+      if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+  
+  const handleGroupByTopic = async () => {
+    setIsGrouping(true);
+    setViewMode('grouped');
+    try {
+        const plainWords = words.map(({ id, docId, createdAt, ...rest }) => rest);
+        const result = await groupVocabularyByTopic({ vocabulary: plainWords });
+        
+        // Now, map the results back, but find the original word object
+        // to preserve IDs, view counts, favorite status, etc.
+        const originalWordsMap = new Map(words.map(w => [w.term, w]));
+        
+        const richGroupedWords = result.topics.map(topic => ({
+            ...topic,
+            words: topic.words.map(word => originalWordsMap.get(word.term)).filter(Boolean) as Word[]
+        }));
+        
+        setGroupedWords(richGroupedWords);
+
+    } catch (error) {
+        console.error("Error grouping by topic:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not group words by topic." });
+        setViewMode('list'); // Revert view mode on error
+    } finally {
+        setIsGrouping(false);
+    }
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  }
+
+  const filteredWords = showOnlyFavorites
+    ? words.filter((word) => word.favorite)
+    : words;
+
+  const renderContent = () => {
+    if (viewMode === 'grouped') {
+        if (isGrouping) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[300px]">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                    <p className="text-muted-foreground">AI is grouping your vocabulary...</p>
+                </div>
+            )
+        }
+        return <GroupedView groupedWords={groupedWords} words={words} setWords={setWords} />;
+    }
+
+    return <VocabularyListInternal words={filteredWords} allWords={words} setWords={setWords} />;
+  }
+
+  return (
+    <Card>
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -567,13 +772,28 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
+             <div className="flex items-center space-x-2">
+                <Switch
+                    id="view-mode"
+                    checked={viewMode === 'grouped'}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        handleGroupByTopic();
+                      } else {
+                        setViewMode('list');
+                        setGroupedWords([]);
+                      }
+                    }}
+                />
+                <Label htmlFor="view-mode">Group by Topic</Label>
+            </div>
             <div className="flex items-center space-x-2">
               <Switch
                 id="favorites-only"
                 checked={showOnlyFavorites}
                 onCheckedChange={setShowOnlyFavorites}
               />
-              <Label htmlFor="favorites-only">Show favorites only</Label>
+              <Label htmlFor="favorites-only">Favorites Only</Label>
             </div>
             <div className="flex gap-2">
               <Input
@@ -602,121 +822,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg">
-          <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
-            {filteredWords.length > 0 ? (
-                filteredWords.map((word) => (
-                  <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                     <div className="flex items-center pr-4">
-                        <div 
-                          className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50" 
-                          onClick={() => toggleAccordionItem(word.id)}
-                        >
-                           {/* Desktop View */}
-                          <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                                disabled={word.isGeneratingAudio}
-                                className="h-8 w-8 flex-shrink-0"
-                              >
-                                {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                                <span className="sr-only">Play term audio</span>
-                              </Button>
-                              <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
-                                <div>
-                                    <p className="font-semibold">{word.term}</p>
-                                    <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                    <p>{word.definition}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className="flex items-center gap-1.5">
-                                  <Eye className="h-3 w-3" />
-                                  {word.viewCount || 0}
-                                </Badge>
-                                <Badge variant="outline">{word.partOfSpeech}</Badge>
-                              </div>
-                          </div>
-                           {/* Mobile View */}
-                           <div className="md:hidden flex items-center gap-3 flex-1 px-4 py-3">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                                  disabled={word.isGeneratingAudio}
-                                  className="h-8 w-8 flex-shrink-0"
-                                >
-                                  {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                                  <span className="sr-only">Play term audio</span>
-                                </Button>
-                                <div>
-                                    <p className="font-semibold">{word.term}</p>
-                                    <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
-                                </div>
-                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-1 pl-2">
-                           <EditWordDialog word={word} setWords={setWords} />
-                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
-                             <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
-                             <span className="sr-only">Favorite</span>
-                           </Button>
-                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}>
-                             <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                             <span className="sr-only">Delete</span>
-                           </Button>
-                           <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
-                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                           </AccordionTrigger>
-                        </div>
-                     </div>
-                     <AccordionContent className="px-4 pb-4 pt-0 bg-background">
-                        <div className="pl-12 space-y-4 text-sm">
-                           <div className="md:hidden">
-                              <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
-                              <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
-                           </div>
-                           <div>
-                             <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
-                             <p>{word.vietnameseDefinition}</p>
-                           </div>
-                           <div className="space-y-1">
-                              <p className="font-semibold text-muted-foreground">Example (EN):</p>
-                              <div className="flex items-start gap-2">
-                                  <Button
-                                      variant="ghost" size="icon"
-                                      onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                      disabled={word.isGeneratingSentenceAudio}
-                                      className="h-8 w-8 flex-shrink-0"
-                                  >
-                                      {word.isGeneratingSentenceAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                                      <span className="sr-only">Play sentence audio</span>
-                                  </Button>
-                                  <p className="italic pt-1.5">"{word.sentence}"</p>
-                              </div>
-                           </div>
-                           <div>
-                              <p className="font-semibold text-muted-foreground">Example (VI):</p>
-                              <p className="italic ml-12">"{word.vietnameseSentence}"</p>
-                           </div>
-                        </div>
-                     </AccordionContent>
-                  </AccordionItem>
-                ))
-              ) : (
-               <div className="h-24 text-center flex items-center justify-center text-sm text-muted-foreground">
-                   {showOnlyFavorites
-                      ? "You don't have any favorite words yet. Go ahead and star a few!"
-                      : "Your vocabulary list is empty. Add a new word to get started!"}
-               </div>
-              )}
-          </Accordion>
-        </div>
+        {renderContent()}
       </CardContent>
     </Card>
   );
