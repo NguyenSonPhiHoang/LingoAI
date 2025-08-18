@@ -353,6 +353,20 @@ const VocabularyListInternal: FC<{
     }
   }
 
+  const playWithBrowserTTS = (text: string) => {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Browser Not Supported",
+            description: "Your browser does not support text-to-speech.",
+        });
+    }
+  };
+  
   const handlePlayAudio = async (word: CombinedVocabulary, type: 'term' | 'sentence') => {
     const isTerm = type === 'term';
     const audioUrl = isTerm ? word.audioUrl : word.sentenceAudioUrl;
@@ -391,9 +405,10 @@ const VocabularyListInternal: FC<{
     } catch (e: any) {
        toast({
           variant: "destructive",
-          title: "Audio Generation Failed",
-          description: e.message || "Please try again in a moment.",
+          title: "AI Audio Failed",
+          description: "Using standard browser voice as a fallback.",
       });
+      playWithBrowserTTS(textToGenerate);
     } finally {
       setIsGeneratingAudio(prev => ({...prev, [audioGenKey]: false}));
     }
@@ -685,73 +700,75 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>My Vocabulary</CardTitle>
-          <CardDescription>
-            A personalized list of words, phrases, and sentences you are learning.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex-1">
-              <Input
-                  placeholder="Search by word or topic..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full md:max-w-sm"
-                />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>My Vocabulary</CardTitle>
+              <CardDescription>
+                A personalized list of words, phrases, and sentences you are learning.
+              </CardDescription>
             </div>
-            <div className="flex items-center justify-end gap-2 flex-wrap">
-              <div className="flex items-center space-x-2">
-                  <Switch
-                      id="view-mode"
-                      checked={viewMode === 'grouped'}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          handleGroupByTopic();
-                        } else {
-                          setViewMode('list');
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1">
+                  <Input
+                      placeholder="Search by word or topic..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full"
+                    />
+                </div>
+                <div className="flex items-center justify-end gap-2 flex-wrap">
+                  <div className="flex items-center space-x-2">
+                      <Switch
+                          id="view-mode"
+                          checked={viewMode === 'grouped'}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              handleGroupByTopic();
+                            } else {
+                              setViewMode('list');
+                            }
+                          }}
+                          disabled={isGrouping}
+                      />
+                      <Label htmlFor="view-mode">Group by Topic</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="favorites-only"
+                      checked={showOnlyFavorites}
+                      onCheckedChange={setShowOnlyFavorites}
+                    />
+                    <Label htmlFor="favorites-only">Favorites</Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept=".docx"
+                    />
+                    <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
+                      {isImporting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-2 h-4 w-4" />
+                      )}
+                      Import
+                    </Button>
+                     <AddWordDialog
+                        setWords={setWords}
+                        trigger={
+                            <Button>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                            </Button>
                         }
-                      }}
-                      disabled={isGrouping}
-                  />
-                  <Label htmlFor="view-mode">Group by Topic</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="favorites-only"
-                  checked={showOnlyFavorites}
-                  onCheckedChange={setShowOnlyFavorites}
-                />
-                <Label htmlFor="favorites-only">Favorites</Label>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept=".docx"
-                />
-                <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
-                  {isImporting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="mr-2 h-4 w-4" />
-                  )}
-                  Import
-                </Button>
-                <AddWordDialog
-                    setWords={setWords}
-                    trigger={
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-                        </Button>
-                    }
-                />
-              </div>
+                    />
+                  </div>
+                </div>
             </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
       
       <Card>
@@ -765,5 +782,3 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
-    

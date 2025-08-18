@@ -144,28 +144,6 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
           {children}
         </main>
-         {user?.status === 'approved' && (
-             <AddWordDialog
-                setWords={setWords}
-                trigger={
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
-                                >
-                                    <Plus className="h-6 w-6" />
-                                    <span className="sr-only">Add Word</span>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                                <p>Add new word to vocabulary</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                }
-             />
-         )}
       </SidebarInset>
     </>
   );
