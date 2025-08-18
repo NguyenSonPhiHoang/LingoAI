@@ -560,9 +560,21 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                         </div>
                         {showResults && selectedAnswer && !isCorrectSelection && (
                              <div className="mt-4 p-3 rounded-md bg-red-50 border-l-4 border-red-400 text-red-900">
-                                <h4 className="font-bold mb-1">Explanation</h4>
+                                <div className="flex justify-between items-start">
+                                    <h4 className="font-bold mb-1 flex-1">Explanation</h4>
+                                    {feedback[qIndex] && (
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex])} disabled={isTranslating[`feedback-${qIndex}`]}>
+                                            {isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                        </Button>
+                                    )}
+                                </div>
                                 {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
                                 <p className="text-sm">{feedback[qIndex]}</p>
+                                {translations[`feedback-${qIndex}`] && (
+                                    <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                                        <strong>Dịch:</strong> {translations[`feedback-${qIndex}`]}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
