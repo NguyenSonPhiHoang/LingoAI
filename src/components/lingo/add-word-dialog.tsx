@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, PlusCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,41 +26,43 @@ import type { Word } from "./vocabulary-list";
 interface AddWordDialogProps {
   user: any;
   setWords: Dispatch<SetStateAction<Word[]>>;
-  isDialogOpen: boolean;
-  setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
+  trigger: React.ReactNode;
 }
 
 const AddWordDialog: FC<AddWordDialogProps> = ({
   user,
   setWords,
-  isDialogOpen,
-  setIsDialogOpen,
+  trigger,
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [term, setTerm] = useState("");
   const [generatedDetails, setGeneratedDetails] =
     useState<GenerateWordDetailsOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
-  const handleOpenChange = async (open: boolean) => {
-    if (open) {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          setTerm(text.trim());
-        }
-      } catch (error) {
-        // This can happen if the user hasn't granted permission to the clipboard API
-        // or if they are in an insecure context (not HTTPS). We can ignore this error
-        // and just open the dialog without pre-filling.
-        console.warn("Could not read from clipboard:", error);
+  const handleDialogOpen = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setTerm(text.trim());
       }
-    } else {
-      // Reset state when closing
-      handleCloseDialog();
+    } catch (error) {
+      // This can happen if the user hasn't granted permission to the clipboard API
+      // or if they are in an insecure context (not HTTPS). We can ignore this error
+      // and just open the dialog without pre-filling.
+      console.warn("Could not read from clipboard:", error);
     }
-    setIsDialogOpen(open);
+    setIsOpen(true);
   };
+  
+  const handleCloseDialog = () => {
+    setTerm("");
+    setGeneratedDetails(null);
+    setIsGenerating(false);
+    setIsOpen(false);
+  };
+
 
   const handleGenerateDetails = async () => {
     if (!term) {
@@ -133,15 +136,11 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
     }
   };
 
-  const handleCloseDialog = () => {
-    setTerm("");
-    setGeneratedDetails(null);
-    setIsGenerating(false);
-    setIsDialogOpen(false);
-  };
-
   return (
-    <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
+      <div onClick={handleDialogOpen}>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      </div>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Word with AI</DialogTitle>
@@ -192,7 +191,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
                 </div>
                 <div>
                   <strong className="text-muted-foreground">Pronunciation:</strong>{" "}
-                  {generatedDetails.pronunciation}
+                  <span className="font-sans">{generatedDetails.pronunciation}</span>
                 </div>
                 <div>
                   <strong className="text-muted-foreground">Definition (EN):</strong>{" "}
@@ -240,3 +239,5 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
 };
 
 export default AddWordDialog;
+
+    

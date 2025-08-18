@@ -54,11 +54,7 @@ import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, add
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import AddWordDialog from "./add-word-dialog";
 
 
 export interface Word extends VocabularyEntry {
@@ -78,7 +74,6 @@ export interface Word extends VocabularyEntry {
 interface VocabularyListProps {
   words: Word[];
   setWords: Dispatch<SetStateAction<Word[]>>;
-  openAddWordDialog: () => void;
 }
 
 
@@ -429,7 +424,7 @@ const VocabularyListInternal: FC<{
                                 <div className="text-sm text-muted-foreground font-sans">{word.pronunciation}</div>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                                <p>{word.definition}</p>
+                              <p>{word.definition}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -524,7 +519,7 @@ const VocabularyListInternal: FC<{
 }
 
 
-const VocabularyList: FC<VocabularyListProps> = ({ words, setWords, openAddWordDialog }) => {
+const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const { user } = useAuth();
   const [isImporting, setIsImporting] = useState(false);
   const [isGrouping, setIsGrouping] = useState(false);
@@ -709,9 +704,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords, openAddWordD
                 )}
                 Import
               </Button>
-               <Button onClick={openAddWordDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-              </Button>
+               <AddWordDialog
+                  user={user}
+                  setWords={setWords}
+                  trigger={
+                      <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                      </Button>
+                  }
+               />
             </div>
           </div>
         </div>
@@ -724,3 +725,5 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords, openAddWordD
 };
 
 export default VocabularyList;
+
+    

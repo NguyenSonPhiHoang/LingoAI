@@ -50,8 +50,6 @@ interface DashboardLayoutProps {
   activeView: View;
   setActiveView: Dispatch<SetStateAction<View>>;
   setWords: Dispatch<SetStateAction<Word[]>>;
-  isAddWordDialogOpen: boolean;
-  setIsAddWordDialogOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
@@ -59,8 +57,6 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   activeView,
   setActiveView,
   setWords,
-  isAddWordDialogOpen,
-  setIsAddWordDialogOpen,
 }) => {
   const { setOpenMobile } = useSidebar();
   const { user, logout } = useAuth();
@@ -147,30 +143,27 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           {children}
         </main>
          {user?.status === 'approved' && (
-             <>
-                <AddWordDialog
-                    user={user}
-                    setWords={setWords}
-                    isDialogOpen={isAddWordDialogOpen}
-                    setIsDialogOpen={setIsAddWordDialogOpen}
-                />
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button 
-                                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
-                                onClick={() => setIsAddWordDialogOpen(true)}
-                            >
-                                <Plus className="h-6 w-6" />
-                                <span className="sr-only">Add Word</span>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                            <p>Add new word to vocabulary</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-             </>
+             <AddWordDialog
+                user={user}
+                setWords={setWords}
+                trigger={
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+                                >
+                                    <Plus className="h-6 w-6" />
+                                    <span className="sr-only">Add Word</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                                <p>Add new word to vocabulary</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                }
+             />
          )}
       </SidebarInset>
     </>
@@ -186,3 +179,5 @@ const DashboardLayout: FC<Omit<DashboardLayoutProps, 'user'>> = (props) => {
 };
 
 export default DashboardLayout;
+
+    

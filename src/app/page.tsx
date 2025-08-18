@@ -42,7 +42,6 @@ const Home: FC = () => {
   const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
   const [words, setWords] = useState<Word[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddWordDialogOpen, setIsAddWordDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -126,7 +125,7 @@ const Home: FC = () => {
         case "my-lessons":
           return <MyLessonsView setActiveViewState={setActiveViewState} />;
         case "vocabulary":
-          return <VocabularyList words={words} setWords={setWords} openAddWordDialog={() => setIsAddWordDialogOpen(true)} />;
+          return <VocabularyList words={words} setWords={setWords} />;
         case "review":
           return <ReviewView words={favoriteWords} />;
         case "user-management":
@@ -163,8 +162,6 @@ const Home: FC = () => {
       activeView={activeViewState.view}
       setActiveView={(view) => setActiveViewState({ view })}
       setWords={setWords}
-      isAddWordDialogOpen={isAddWordDialogOpen}
-      setIsAddWordDialogOpen={setIsAddWordDialogOpen}
     >
       {renderContent()}
     </DashboardLayout>
@@ -172,3 +169,5 @@ const Home: FC = () => {
 };
 
 export default Home;
+
+    
