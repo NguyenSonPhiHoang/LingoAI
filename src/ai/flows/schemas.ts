@@ -187,6 +187,7 @@ export type SuggestPersonalizedLessonsOutput = z.infer<
 // Schemas for generate-reading-exercise-flow.ts
 export const GenerateReadingExerciseInputSchema = z.object({
     passage: z.string().describe('The reading passage to base the exercise on.'),
+    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to focus on in the questions.'),
 });
 export type GenerateReadingExerciseInput = z.infer<typeof GenerateReadingExerciseInputSchema>;
 
@@ -207,6 +208,7 @@ export type GenerateReadingExerciseOutput = z.infer<typeof GenerateReadingExerci
 export const GenerateWritingExerciseInputSchema = z.object({
     topic: z.string().describe('The lesson topic.'),
     userLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe('The user\'s proficiency level.'),
+    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense the user should practice.'),
 });
 export type GenerateWritingExerciseInput = z.infer<typeof GenerateWritingExerciseInputSchema>;
 
@@ -226,6 +228,7 @@ export type GenerateWritingExerciseOutput = z.infer<typeof GenerateWritingExerci
 // Schemas for generate-listening-exercise-flow.ts
 export const GenerateListeningExerciseInputSchema = z.object({
     topic: z.string().describe('The lesson topic.'),
+    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to include in the dialogue.'),
 });
 export type GenerateListeningExerciseInput = z.infer<typeof GenerateListeningExerciseInputSchema>;
 
@@ -243,6 +246,7 @@ export type GenerateListeningExerciseOutput = z.infer<typeof GenerateListeningEx
 // Schemas for generate-speaking-exercise-flow.ts
 export const GenerateSpeakingExerciseInputSchema = z.object({
     topic: z.string().describe('The lesson topic.'),
+    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to include in the role-play.'),
 });
 export type GenerateSpeakingExerciseInput = z.infer<typeof GenerateSpeakingExerciseInputSchema>;
 

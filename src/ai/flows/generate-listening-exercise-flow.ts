@@ -57,15 +57,19 @@ const generateListeningExerciseFlow = ai.defineFlow(
     inputSchema: GenerateListeningExerciseInputSchema,
     outputSchema: GenerateListeningExerciseOutputSchema,
   },
-  async ({ topic }) => {
+  async ({ topic, focusPoints }) => {
     // 1. Generate Dialogue Script
     const dialoguePrompt = ai.definePrompt({
         name: 'generateDialogueScript',
-        input: { schema: z.object({ topic: z.string() }) },
+        input: { schema: GenerateListeningExerciseInputSchema },
         output: { schema: DialogueSchema },
-        prompt: `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.`,
+        prompt: `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
+        {{#if focusPoints}}
+        Please make sure the dialogue incorporates the following focus points: {{{focusPoints}}}.
+        {{/if}}
+        `,
     });
-    const { output: dialogueOutput } = await dialoguePrompt({ topic });
+    const { output: dialogueOutput } = await dialoguePrompt({ topic, focusPoints });
     if (!dialogueOutput) throw new Error('Failed to generate dialogue script.');
 
     const dialogueText = dialogueOutput.dialogue.map(d => `${d.speaker}: ${d.line}`).join('\n');

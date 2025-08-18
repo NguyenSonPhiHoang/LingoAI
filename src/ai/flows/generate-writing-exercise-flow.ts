@@ -31,6 +31,12 @@ Each prompt must consist of:
 2.  An English hint, such as a key vocabulary word or a grammar structure they should use.
 3.  An example of a good English answer.
 
+{{#if focusPoints}}
+The prompts and hints should be designed to help the student practice the following: {{{focusPoints}}}.
+{{else}}
+The English hint should be a key vocabulary word or a grammar structure relevant to the topic and user level.
+{{/if}}
+
 Topic: {{{topic}}}
 Student Level: {{{userLevel}}}
 `,

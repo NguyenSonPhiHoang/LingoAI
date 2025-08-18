@@ -30,6 +30,10 @@ Create a scenario and a short dialogue script for two roles: "You" (the student)
 
 The script should have 4-6 turns. For the "You" role, provide a clear instruction or prompt for what the student should say. For the other role, provide a specific line.
 
+{{#if focusPoints}}
+Please make sure the dialogue incorporates the following focus points: {{{focusPoints}}}.
+{{/if}}
+
 Topic: {{{topic}}}
 `,
 });

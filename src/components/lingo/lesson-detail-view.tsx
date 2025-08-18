@@ -49,6 +49,7 @@ import {
   type GenerateSpeakingExerciseOutput,
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
+import { Label } from "../ui/label";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
@@ -101,6 +102,7 @@ const aiTools: AiTool[] = [
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
   const [isLoading, setIsLoading] = useState<ToolType | Skill | null>(null);
+  const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(null);
@@ -147,6 +149,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
     setIsLoading(lesson.skill);
     try {
         let newExercise: any;
+        const basePayload = { focusPoints: focusPoints || undefined };
+
         switch(lesson.skill) {
             case "Reading":
                 const readingPassage = currentLesson.content?.find(c => c.type === 'reading-passage')?.value;
@@ -155,16 +159,16 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                     setIsLoading(null);
                     return;
                 }
-                newExercise = await generateReadingExercise({ passage: readingPassage });
+                newExercise = await generateReadingExercise({ ...basePayload, passage: readingPassage });
                 break;
             case "Writing":
-                newExercise = await generateWritingExercise({ topic: lesson.topic, userLevel: user?.status === 'approved' ? 'intermediate' : 'beginner' });
+                newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: user?.status === 'approved' ? 'intermediate' : 'beginner' });
                 break;
             case "Listening":
-                newExercise = await generateListeningExercise({ topic: lesson.topic });
+                newExercise = await generateListeningExercise({ ...basePayload, topic: lesson.topic });
                 break;
             case "Speaking":
-                newExercise = await generateSpeakingExercise({ topic: lesson.topic });
+                newExercise = await generateSpeakingExercise({ ...basePayload, topic: lesson.topic });
                 break;
         }
         
@@ -194,7 +198,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
                 <Sparkles className="h-12 w-12 mb-4" />
                 <h3 className="font-semibold">Ready to practice?</h3>
-                <p>Click the "Start Practice" button to generate an interactive exercise.</p>
+                <p>Optionally add focus points, then click "Start Practice" to generate an exercise.</p>
             </div>
         );
     }
@@ -307,9 +311,26 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                     <CardTitle>2. Practice Zone</CardTitle>
                     <CardDescription>Test your knowledge with an AI-powered exercise.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-grow">
-                   <div className="rounded-lg border bg-muted/50 h-full">
-                       {renderPracticeZone()}
+                <CardContent className="flex-grow flex flex-col gap-4">
+                   <div className="space-y-2">
+                     <Label htmlFor="focus-points">Focus Points (Optional)</Label>
+                     <Textarea
+                       id="focus-points"
+                       placeholder="e.g., 'use past perfect tense', 'vocabulary about technology'"
+                       value={focusPoints}
+                       onChange={(e) => setFocusPoints(e.target.value)}
+                       disabled={!!isLoading}
+                     />
+                     <p className="text-xs text-muted-foreground">
+                       Guide the AI on what to include in the exercise.
+                     </p>
+                   </div>
+                   <div className="rounded-lg border bg-muted/50 flex-grow relative">
+                       <div className="absolute inset-0">
+                         <ScrollArea className="h-full w-full">
+                           {renderPracticeZone()}
+                         </ScrollArea>
+                       </div>
                    </div>
                 </CardContent>
                 <CardFooter className="border-t pt-4">
@@ -320,7 +341,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                         disabled={!!isLoading || !hasContentForPractice}
                     >
                         {isLoading === lesson.skill ? <Loader2 className="mr-2 animate-spin"/> : <PlayCircle className="mr-2"/>}
-                        Start Practice
+                        {currentLesson.exercises?.[lesson.skill.toLowerCase() as keyof typeof currentLesson.exercises] ? 'Regenerate Practice' : 'Start Practice'}
                     </Button>
                 </CardFooter>
             </Card>
@@ -344,47 +365,45 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
     };
 
     return (
-        <ScrollArea className="h-full max-h-[600px] p-4">
-            <div className="space-y-6">
-                {questions.map((q, qIndex) => {
-                    const selectedAnswer = answers[qIndex];
-                    return (
-                        <div key={qIndex} className="bg-background p-4 rounded-lg border">
-                            <p className="font-semibold mb-3">{qIndex + 1}. {q.question}</p>
-                            <div className="space-y-2">
-                                {q.options.map((opt, oIndex) => {
-                                    const isCorrect = q.correctOption === opt;
-                                    const isSelected = selectedAnswer === opt;
-                                    
-                                    const getVariant = () => {
-                                        if (!showResults) return isSelected ? "default" : "outline";
-                                        if (isCorrect) return "default";
-                                        if (isSelected) return "destructive";
-                                        return "outline";
-                                    };
+        <div className="p-4 space-y-6">
+            {questions.map((q, qIndex) => {
+                const selectedAnswer = answers[qIndex];
+                return (
+                    <div key={qIndex} className="bg-background p-4 rounded-lg border">
+                        <p className="font-semibold mb-3">{qIndex + 1}. {q.question}</p>
+                        <div className="space-y-2">
+                            {q.options.map((opt, oIndex) => {
+                                const isCorrect = q.correctOption === opt;
+                                const isSelected = selectedAnswer === opt;
+                                
+                                const getVariant = () => {
+                                    if (!showResults) return isSelected ? "default" : "outline";
+                                    if (isCorrect) return "default";
+                                    if (isSelected) return "destructive";
+                                    return "outline";
+                                };
 
-                                    return (
-                                        <Button
-                                            key={oIndex}
-                                            variant={getVariant()}
-                                            className="w-full justify-start text-left h-auto py-2"
-                                            onClick={() => handleSelect(qIndex, opt)}
-                                        >
-                                           {showResults && isCorrect && <Check className="mr-2 flex-shrink-0" />}
-                                           {showResults && isSelected && !isCorrect && <X className="mr-2 flex-shrink-0" />}
-                                           {opt}
-                                        </Button>
-                                    );
-                                })}
-                            </div>
+                                return (
+                                    <Button
+                                        key={oIndex}
+                                        variant={getVariant()}
+                                        className="w-full justify-start text-left h-auto py-2"
+                                        onClick={() => handleSelect(qIndex, opt)}
+                                    >
+                                       {showResults && isCorrect && <Check className="mr-2 flex-shrink-0" />}
+                                       {showResults && isSelected && !isCorrect && <X className="mr-2 flex-shrink-0" />}
+                                       {opt}
+                                    </Button>
+                                );
+                            })}
                         </div>
-                    );
-                })}
-                <div className="text-center pt-4">
-                    <Button onClick={() => setShowResults(true)} disabled={showResults}>Check Answers</Button>
-                </div>
+                    </div>
+                );
+            })}
+            <div className="text-center pt-4">
+                <Button onClick={() => setShowResults(true)} disabled={showResults}>Check Answers</Button>
             </div>
-        </ScrollArea>
+        </div>
     );
 };
 
@@ -392,8 +411,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
 const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
-       <ScrollArea className="h-full max-h-[600px] p-4">
-            <div className="space-y-6">
+       <div className="p-4 space-y-6">
             {prompts.map((p, pIndex) => (
                 <Card key={pIndex} className="bg-background">
                     <CardHeader>
@@ -412,8 +430,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
                     </CardFooter>
                 </Card>
             ))}
-            </div>
-       </ScrollArea>
+       </div>
     );
 };
 
@@ -432,7 +449,9 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ 
             </Card>
             <div className="flex-grow relative">
                 <div className="absolute inset-0">
-                    <ReadingPractice questions={exercise.questions} />
+                    <ScrollArea className="h-full w-full">
+                      <ReadingPractice questions={exercise.questions} />
+                    </ScrollArea>
                 </div>
             </div>
         </div>
@@ -448,33 +467,29 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
     }
     
     return (
-        <ScrollArea className="h-full max-h-[600px] p-4">
-            <div className="space-y-6">
-                <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
-                    <h4 className="font-semibold">Role-Play Scenario</h4>
-                    <p className="text-sm text-blue-800">{exercise.scenario}</p>
-                </div>
-                <div className="space-y-4">
-                {exercise.dialogue.map((line, index) => (
-                    <div key={index} className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
-                        {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
-                        <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
-                           <p><strong className="font-semibold">{line.role}:</strong> {line.line}</p>
-                           {line.role === 'You' && (
-                               <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7" onClick={() => copyToClipboard(line.line)}>
-                                   <Clipboard className="h-4 w-4" />
-                               </Button>
-                           )}
-                        </div>
-                    </div>
-                ))}
-                </div>
+        <div className="p-4 space-y-6">
+            <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
+                <h4 className="font-semibold">Role-Play Scenario</h4>
+                <p className="text-sm text-blue-800">{exercise.scenario}</p>
             </div>
-        </ScrollArea>
+            <div className="space-y-4">
+            {exercise.dialogue.map((line, index) => (
+                <div key={index} className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
+                    {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
+                    <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
+                       <p><strong className="font-semibold">{line.role}:</strong> {line.line}</p>
+                       {line.role === 'You' && (
+                           <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7" onClick={() => copyToClipboard(line.line)}>
+                               <Clipboard className="h-4 w-4" />
+                           </Button>
+                       )}
+                    </div>
+                </div>
+            ))}
+            </div>
+        </div>
     );
 };
 
 
 export default LessonDetailView;
-
-    
