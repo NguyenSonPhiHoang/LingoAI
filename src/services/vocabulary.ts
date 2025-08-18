@@ -38,7 +38,6 @@ export interface UserVocabulary extends Word {
   userId: string;
   favorite: boolean;
   viewCount: number;
-  createdAt: any;
   topic?: string;
 }
 
