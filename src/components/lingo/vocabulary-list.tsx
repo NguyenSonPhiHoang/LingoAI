@@ -53,10 +53,8 @@ import {
   addMultipleWordsToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
-  updateWord,
-  updateWordAudioUrl
 } from "@/services/vocabulary";
-import type { UserVocabulary, Word } from "@/services/vocabulary";
+import type { UserVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +100,7 @@ const EditWordDialog: FC<{
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateWord(word.wordId, values);
+      await updateUserVocabulary(word.id, values);
       setWords(prev =>
         prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
       );
@@ -359,7 +357,7 @@ const VocabularyListInternal: FC<{
         audioRef.current.play().catch(e => console.error("Error playing audio:", e));
       }
       
-      await updateWordAudioUrl(word.wordId, audioUrl, type);
+      await updateUserVocabulary(word.id, { [audioUrlKey]: audioUrl });
       setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: audioUrl } : w));
     } catch (e: any) {
        toast({
@@ -576,7 +574,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       if (wordsToGroup.length > 0) {
         toast({ title: "AI is at work!", description: `Grouping ${wordsToGroup.length} new word(s) by topic.`});
         
-        const plainWordsToGroup = wordsToGroup.map(({ id, userId, wordId, favorite, viewCount, createdAt, audioUrl, sentenceAudioUrl, topic, ...rest }) => rest);
+        const plainWordsToGroup = wordsToGroup.map(({ id, userId, favorite, viewCount, createdAt, audioUrl, sentenceAudioUrl, topic, ...rest }) => rest);
         const result = await groupVocabularyByTopic({ vocabulary: plainWordsToGroup as VocabularyEntry[] });
         
         const updatedWords = [...words];
@@ -715,3 +713,5 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+
+    
