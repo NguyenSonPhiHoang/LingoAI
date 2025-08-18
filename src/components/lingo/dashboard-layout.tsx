@@ -36,6 +36,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import DashboardHeader from "./dashboard-header";
+import { useAuth } from "@/context/auth-context";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -49,6 +50,8 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   setActiveView,
 }) => {
   const { setOpenMobile } = useSidebar();
+  const { user, logout } = useAuth();
+
   const menuItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "levels", label: "All Levels", icon: GraduationCap },
@@ -91,12 +94,12 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-start gap-2 p-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="https://placehold.co/100x100.png" data-ai-hint="person" />
-                  <AvatarFallback>U</AvatarFallback>
+                  <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} data-ai-hint="person" />
+                  <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="text-left group-data-[collapsible=icon]:hidden">
-                  <p className="font-semibold text-sm">User</p>
-                  <p className="text-xs text-muted-foreground">user@email.com</p>
+                  <p className="font-semibold text-sm truncate">{user?.displayName || "User"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -112,7 +115,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

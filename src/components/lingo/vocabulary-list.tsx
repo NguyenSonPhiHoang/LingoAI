@@ -37,6 +37,7 @@ import { generateAudio } from "@/ai/flows/generate-audio";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, addMultipleWordsToFirestore } from "@/services/vocabulary";
+import { useAuth } from "@/context/auth-context";
 
 
 export interface Word extends VocabularyEntry {
@@ -48,6 +49,7 @@ export interface Word extends VocabularyEntry {
   isGeneratingSentenceAudio?: boolean;
   favorite: boolean;
   viewCount: number;
+  userId: string;
 }
 
 interface VocabularyListProps {
@@ -56,6 +58,7 @@ interface VocabularyListProps {
 }
 
 const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
+  const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -65,6 +68,10 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 
   const handleAddWord = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to add a word." });
+      return;
+    }
     const formData = new FormData(event.currentTarget);
     const newWordData = {
       term: formData.get("term") as string,
@@ -73,6 +80,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       sentence: formData.get("sentence") as string,
       favorite: false,
       viewCount: 0,
+      userId: user.uid,
     };
     if (newWordData.term && newWordData.definition) {
       try {
@@ -118,6 +126,11 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!user) {
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to import words." });
+      return;
+    }
+
     if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       toast({
         variant: "destructive",
@@ -134,7 +147,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       const result = await extractVocabularyFromFile({ documentContent: text });
       
-      const newWords = await addMultipleWordsToFirestore(result.vocabulary);
+      const newWords = await addMultipleWordsToFirestore(result.vocabulary, user.uid);
       
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
