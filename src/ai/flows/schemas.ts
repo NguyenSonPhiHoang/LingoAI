@@ -18,6 +18,9 @@ export type ExtractVocabularyInput = z.infer<
 
 export const VocabularyEntrySchema = z.object({
   term: z.string().describe('The vocabulary word or term.'),
+  pronunciation: z
+    .string()
+    .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
   definition: z.string().describe('A clear and concise definition of the term.'),
   sentence: z.string().describe('An example sentence using the term in context.'),
 });

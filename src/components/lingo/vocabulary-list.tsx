@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { PlusCircle, Trash2, Upload, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, PlayCircle } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,28 +33,34 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
+import { generateAudio } from "@/ai/flows/generate-audio";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
 
 interface Word extends VocabularyEntry {
   id: number;
+  audioUrl?: string;
+  isGeneratingAudio?: boolean;
 }
 
 const initialWords: Word[] = [
   {
     id: 1,
     term: "Ubiquitous",
+    pronunciation: "/juːˈbɪkwɪtəs/",
     definition: "Present, appearing, or found everywhere.",
     sentence: "Smartphones have become ubiquitous in modern society.",
   },
   {
     id: 2,
     term: "Ephemeral",
+    pronunciation: "/ɪˈfemərəl/",
     definition: "Lasting for a very short time.",
     sentence: "The beauty of the cherry blossoms is ephemeral.",
   },
   {
     id: 3,
     term: "Mellifluous",
+    pronunciation: "/məˈlɪfluəs/",
     definition: "(of a voice or words) Sweet or musical; pleasant to hear.",
     sentence: "Her mellifluous voice captivated the audience.",
   },
@@ -65,6 +71,7 @@ const VocabularyList: FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
 
@@ -74,6 +81,7 @@ const VocabularyList: FC = () => {
     const newWord: Word = {
       id: Date.now(),
       term: formData.get("term") as string,
+      pronunciation: formData.get("pronunciation") as string,
       definition: formData.get("definition") as string,
       sentence: formData.get("sentence") as string,
     };
@@ -133,9 +141,45 @@ const VocabularyList: FC = () => {
   const triggerFileSelect = () => {
     fileInputRef.current?.click();
   }
+  
+  const handlePlayAudio = async (wordId: number) => {
+    const word = words.find(w => w.id === wordId);
+    if (!word) return;
+
+    if (word.audioUrl && audioRef.current) {
+      audioRef.current.src = word.audioUrl;
+      audioRef.current.play();
+      return;
+    }
+
+    if (word.isGeneratingAudio) return;
+
+    try {
+      setWords(prev => prev.map(w => w.id === wordId ? { ...w, isGeneratingAudio: true } : w));
+      const result = await generateAudio(word.term);
+      
+      setWords(prev => prev.map(w => w.id === wordId ? { ...w, audioUrl: result.audioUrl, isGeneratingAudio: false } : w));
+
+      if (audioRef.current) {
+        audioRef.current.src = result.audioUrl;
+        audioRef.current.play();
+      }
+
+    } catch (error) {
+       console.error("Error generating audio:", error);
+       toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không thể tạo âm thanh. Vui lòng thử lại.",
+      });
+      setWords(prev => prev.map(w => w.id === wordId ? { ...w, isGeneratingAudio: false } : w));
+    }
+  }
+
 
   return (
     <Card>
+      <audio ref={audioRef} className="hidden" />
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Từ vựng của tôi</CardTitle>
@@ -181,6 +225,12 @@ const VocabularyList: FC = () => {
                     <Input id="term" name="term" className="col-span-3" required />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="pronunciation" className="text-right">
+                      Phiên âm
+                    </Label>
+                    <Input id="pronunciation" name="pronunciation" className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="definition" className="text-right">
                       Định nghĩa
                     </Label>
@@ -214,7 +264,7 @@ const VocabularyList: FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/4">Từ</TableHead>
+              <TableHead className="w-1/4">Từ & Âm thanh</TableHead>
               <TableHead className="w-2/4">Định nghĩa & Ví dụ</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
@@ -223,7 +273,28 @@ const VocabularyList: FC = () => {
             {words.length > 0 ? (
               words.map((word) => (
                 <TableRow key={word.id}>
-                  <TableCell className="font-medium">{word.term}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePlayAudio(word.id)}
+                        disabled={word.isGeneratingAudio}
+                        className="h-8 w-8"
+                      >
+                        {word.isGeneratingAudio ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">Phát âm</span>
+                      </Button>
+                      <div>
+                        <p>{word.term}</p>
+                        <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <p>{word.definition}</p>
                     <p className="text-sm text-muted-foreground italic">
@@ -244,7 +315,7 @@ const VocabularyList: FC = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   Danh sách từ vựng của bạn trống. Thêm một từ mới để bắt đầu!
                 </TableCell>
               </TableRow>
