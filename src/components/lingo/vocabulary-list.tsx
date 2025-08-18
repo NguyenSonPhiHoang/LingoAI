@@ -558,7 +558,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       const result = await extractVocabularyFromFile({ documentContent: text });
       
-      const newWords = await addWordToVocabulary(user.uid, result.vocabulary);
+      const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
 
       setWords(prevWords => {
           const prevWordsMap = new Map(prevWords.map(w => [w.userVocabularyId, w]));

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import {
   collection,
   getDocs,
@@ -108,6 +108,7 @@ export const addLesson = async (userId: string, lessonSuggestion: LessonSuggesti
 };
 
 export const updateLessonContent = async (docId: string, content: LessonContent[], exercises?: Lesson['exercises']) => {
+    if (!auth.currentUser) return;
     const lessonDoc = doc(db, "lessons", docId);
     const updates: Partial<Lesson> = { content };
     if (exercises) {
@@ -117,11 +118,13 @@ export const updateLessonContent = async (docId: string, content: LessonContent[
 }
 
 export const updateLesson = async (docId: string, updates: Partial<Pick<Lesson, 'topic' | 'level' | 'status'>>) => {
+    if (!auth.currentUser) return;
     const lessonDoc = doc(db, "lessons", docId);
     await updateDoc(lessonDoc, updates);
 };
 
 export const deleteLesson = async (docId: string) => {
+    if (!auth.currentUser) return;
     const lessonDoc = doc(db, "lessons", docId);
     await deleteDoc(lessonDoc);
 };

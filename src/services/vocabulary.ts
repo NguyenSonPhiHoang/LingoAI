@@ -47,7 +47,6 @@ export interface UserVocabulary {
   
   // User-specific metadata
   favorite: boolean;
-  viewCount: number;
   topic?: string;
   createdAt: Timestamp;
 }
@@ -165,7 +164,6 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
         sentence: fullWordData.sentence,
         vietnameseSentence: fullWordData.vietnameseSentence,
         favorite: false,
-        viewCount: 0,
         createdAt: Timestamp.now(),
     };
 
@@ -176,8 +174,8 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     } else {
         // If user already has it, update it with the new AI-generated details
         const userVocabDocToUpdateRef = userVocabSnap.docs[0].ref;
-        // Don't overwrite favorite status, view count, or topic when re-adding
-        const { favorite, viewCount, topic, ...restOfPayload } = userSpecificPayload;
+        // Don't overwrite favorite status or topic when re-adding
+        const { favorite, topic, ...restOfPayload } = userSpecificPayload;
         await updateDoc(userVocabDocToUpdateRef, restOfPayload);
         userVocabDocRefId = userVocabDocToUpdateRef.id;
     }
@@ -225,6 +223,10 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
 
 // Updates fields in the global `words` collection (for Admin).
 export const updateWord = async (wordId: string, updates: Partial<Pick<Word, 'term' | 'pronunciation'>>) => {
+    // Also check for auth here to be safe.
+    if (!auth.currentUser) {
+        return;
+    }
     const wordDoc = doc(db, "words", wordId);
     const cleanUpdates = cleanObject({
         ...updates,
