@@ -41,6 +41,24 @@ export interface Lesson extends LessonSuggestion {
   };
 }
 
+// Helper function to recursively remove undefined properties from an object
+const deepClean = (obj: any): any => {
+    if (obj === null || obj === undefined) {
+        return undefined;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(v => deepClean(v)).filter(v => v !== undefined);
+    }
+    if (typeof obj === 'object' && obj.constructor === Object) {
+        return Object.fromEntries(
+            Object.entries(obj)
+                .map(([k, v]) => [k, deepClean(v)])
+                .filter(([_, v]) => v !== undefined)
+        );
+    }
+    return obj;
+};
+
 export const getLessons = async (userId: string): Promise<Lesson[]> => {
   const q = query(
     lessonsCollection,
@@ -85,7 +103,7 @@ export const updateLessonContent = async (docId: string, content: LessonContent[
     const lessonDoc = doc(db, "lessons", docId);
     const updates: Partial<Lesson> = { content };
     if (exercises) {
-        updates.exercises = exercises;
+        updates.exercises = deepClean(exercises);
     }
     await updateDoc(lessonDoc, updates);
 }
