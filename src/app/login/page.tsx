@@ -49,8 +49,6 @@ export default function LoginPage() {
     },
   });
   
-  // This effect handles the case where a user who is ALREADY logged in
-  // tries to access the login page.
   useEffect(() => {
     if (!loading && user) {
       router.push("/");
@@ -61,7 +59,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      // Manual and explicit redirection after successful login.
       router.push("/");
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -70,11 +67,11 @@ export default function LoginPage() {
         title: "Login Failed",
         description: error.message || "An unknown error occurred.",
       });
-      setIsSubmitting(false); // Only stop submitting on error
+    } finally {
+        setIsSubmitting(false);
     }
   };
   
-  // Show a loader while auth state is being checked, or if a user is found and redirect is imminent.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -83,7 +80,6 @@ export default function LoginPage() {
     );
   }
 
-  // Only show the form when loading is complete and there's no user.
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">

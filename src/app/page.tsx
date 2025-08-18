@@ -47,10 +47,8 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect handles both data fetching and redirection logic.
     if (!authLoading) {
       if (user) {
-        // If we have a user and they are approved, fetch their vocabulary data.
         if (user.status === 'approved') {
           const fetchWords = async () => {
             setIsLoading(true);
@@ -70,17 +68,14 @@ const Home: FC = () => {
           };
           fetchWords();
         } else {
-          // For 'pending' or 'rejected' users, no vocabulary data is needed.
           setIsLoading(false);
         }
       } else {
-        // If there's no user after auth has resolved, redirect to login.
         router.push("/login");
       }
     }
   }, [user, authLoading, router, toast]);
-  
-  // This is the primary loading screen. It shows until the auth state is definitively known.
+
   if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -88,11 +83,10 @@ const Home: FC = () => {
       </div>
     );
   }
-  
+
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
-    // Show a loader for vocabulary fetching for an approved user
     if (user.status === 'approved' && isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -101,12 +95,10 @@ const Home: FC = () => {
         );
     }
     
-    // Show the waiting/rejected screen
     if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
     }
     
-    // Only render the main dashboard if the user is approved and data is loaded.
     if (user.status === 'approved') {
       switch (activeViewState.view) {
         case "overview":
@@ -141,7 +133,6 @@ const Home: FC = () => {
       }
     }
 
-    // Fallback for any other state.
     return null;
   };
   
