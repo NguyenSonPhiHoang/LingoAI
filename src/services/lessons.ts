@@ -22,6 +22,8 @@ const lessonsCollection = collection(db, "lessons");
 // Can be extended with more specific exercise types
 export type Exercise = any;
 
+export type LessonStatus = 'not-started' | 'in-progress' | 'completed';
+
 export interface LessonContent {
     id: string;
     type: 'conversation' | 'reading-passage' | 'grammar-explanation';
@@ -34,6 +36,7 @@ export interface Lesson extends LessonSuggestion {
   userId: string;
   createdAt: any;
   level: UserLevel;
+  status: LessonStatus;
   content?: LessonContent[];
   exercises?: {
       reading?: Exercise;
@@ -77,6 +80,7 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
       skill: data.skill,
       userId: data.userId,
       level: data.level,
+      status: data.status || 'not-started',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
       content: data.content || [],
       exercises: data.exercises || {},
@@ -89,6 +93,7 @@ export const addLesson = async (userId: string, lessonSuggestion: LessonSuggesti
         ...lessonSuggestion,
         userId,
         createdAt: Timestamp.now(),
+        status: 'not-started' as LessonStatus,
         content: [],
         exercises: {},
     };
@@ -111,7 +116,7 @@ export const updateLessonContent = async (docId: string, content: LessonContent[
     await updateDoc(lessonDoc, updates);
 }
 
-export const updateLesson = async (docId: string, updates: Partial<Pick<Lesson, 'topic' | 'level'>>) => {
+export const updateLesson = async (docId: string, updates: Partial<Pick<Lesson, 'topic' | 'level' | 'status'>>) => {
     const lessonDoc = doc(db, "lessons", docId);
     await updateDoc(lessonDoc, updates);
 };

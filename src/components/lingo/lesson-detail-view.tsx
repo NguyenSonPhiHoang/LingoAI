@@ -20,6 +20,7 @@ import {
   Check,
   X,
   Clipboard,
+  CheckCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,12 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Lesson, LessonContent } from "@/services/lessons";
+import type { Lesson, LessonContent, LessonStatus } from "@/services/lessons";
 import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { updateLessonContent } from "@/services/lessons";
+import { updateLessonContent, updateLesson } from "@/services/lessons";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -116,8 +117,21 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 
   const Icon = skillIcons[lesson.skill as Skill] || Sparkles;
 
+  const updateStatusIfNeeded = async (newStatus: LessonStatus) => {
+    if (currentLesson.status !== newStatus && currentLesson.status !== 'completed') {
+        try {
+            await updateLesson(currentLesson.docId, { status: newStatus });
+            setCurrentLesson(prev => ({ ...prev, status: newStatus }));
+        } catch (error) {
+            console.error("Failed to update lesson status:", error);
+            // Don't toast here as it might be annoying for the user.
+        }
+    }
+  };
+
   const handleToolClick = async (toolId: ToolType) => {
     setIsLoading(toolId);
+    await updateStatusIfNeeded('in-progress');
     // This is a mock implementation. In a real app, you'd call different flows.
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -154,6 +168,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   
   const handleStartPractice = async () => {
     setIsLoading(lesson.skill);
+    await updateStatusIfNeeded('in-progress');
     try {
         let newExercise: any;
         const basePayload = { focusPoints: focusPoints || undefined };
@@ -192,6 +207,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
     } finally {
         setIsLoading(null);
     }
+  }
+
+  const handleMarkAsComplete = async () => {
+    await updateStatusIfNeeded('completed');
+    toast({
+        title: "Lesson Complete!",
+        description: "Great job! This lesson has been marked as complete.",
+    });
   }
   
   const availableTools = aiTools.filter(tool => tool.supportedSkills.includes(lesson.skill as Skill));
@@ -240,10 +263,21 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Button variant="ghost" onClick={onBack} className="mb-4">
+      <div className="flex justify-between items-start">
+        <Button variant="ghost" onClick={onBack} className="mb-4 -ml-4">
           <ArrowLeft className="mr-2" /> Back to My Lessons
         </Button>
+         <Button 
+            variant="outline"
+            onClick={handleMarkAsComplete}
+            disabled={currentLesson.status === 'completed'}
+         >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            {currentLesson.status === 'completed' ? 'Completed!' : 'Mark as Complete'}
+         </Button>
+      </div>
+
+      <div>
         <div className="flex items-start gap-4">
           <div className="bg-primary/10 p-3 rounded-lg">
             <Icon className="h-8 w-8 text-primary" />
