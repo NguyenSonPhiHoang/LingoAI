@@ -47,36 +47,41 @@ const Home: FC = () => {
   const [words, setWords] = useState<CombinedVocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  
+  const userId = user?.uid;
+  const userStatus = user?.status;
 
   useEffect(() => {
-    if (!authLoading) {
-      if (user) {
-        if (user.status === 'approved') {
-          const fetchWords = async () => {
-            setIsLoading(true);
-            try {
-              const fetchedWords = await getVocabulary(user.uid);
-              setWords(fetchedWords);
-            } catch (error) {
-              console.error("Error fetching vocabulary:", error);
-              toast({
-                variant: "destructive",
-                title: "Error Fetching Vocabulary",
-                description: "Could not fetch your vocabulary. Please try again later.",
-              });
-            } finally {
-                setIsLoading(false);
-            }
-          };
-          fetchWords();
-        } else {
-          setIsLoading(false);
-        }
-      } else {
-        router.push("/login");
-      }
+    if (authLoading) return;
+
+    if (!userId) {
+      router.push("/login");
+      return;
     }
-  }, [user, authLoading, router, toast]);
+
+    if (userStatus === 'approved') {
+      const fetchWords = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedWords = await getVocabulary(userId);
+          setWords(fetchedWords);
+        } catch (error) {
+          console.error("Error fetching vocabulary:", error);
+          toast({
+            variant: "destructive",
+            title: "Error Fetching Vocabulary",
+            description: "Could not fetch your vocabulary. Please try again later.",
+          });
+        } finally {
+            setIsLoading(false);
+        }
+      };
+      fetchWords();
+    } else {
+      setIsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, userStatus, authLoading, router]);
 
   if (authLoading || !user) {
     return (
