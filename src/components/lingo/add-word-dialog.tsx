@@ -198,21 +198,13 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       const savedCombinedVocabulary = await addWordToVocabulary(user.uid, fullWordData);
       
       setWords((prevWords) => {
-        if (!prevWords || prevWords.length === 0) {
-            return [savedCombinedVocabulary];
-        }
+        // Use a Map to handle adding or updating the word efficiently.
+        // This prevents duplicates and works correctly for empty or existing lists.
+        const wordsMap = new Map(prevWords.map(w => [w.userVocabularyId, w]));
+        wordsMap.set(savedCombinedVocabulary.userVocabularyId, savedCombinedVocabulary);
         
-        // Check if the word already exists in the local state by its user-specific ID.
-        const existingWordIndex = prevWords.findIndex(w => w.userVocabularyId === savedCombinedVocabulary.userVocabularyId);
-        if (existingWordIndex !== -1) {
-          // If it exists, update it. This is crucial for UI consistency.
-          const newWords = [...prevWords];
-          newWords[existingWordIndex] = savedCombinedVocabulary;
-          return newWords;
-        } else {
-          // If it's a new word for the user, add it to the top of the list.
-          return [savedCombinedVocabulary, ...prevWords];
-        }
+        // Convert back to an array and sort by creation date to keep the list consistent.
+        return Array.from(wordsMap.values()).sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       });
 
       handleCloseDialog();
@@ -369,3 +361,5 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
 };
 
 export default AddWordDialog;
+
+    
