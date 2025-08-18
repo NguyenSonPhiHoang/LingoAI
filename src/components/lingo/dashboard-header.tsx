@@ -82,7 +82,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setActiveView('profile')}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Hồ sơ</span>
+                <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
