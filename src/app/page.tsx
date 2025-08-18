@@ -47,19 +47,22 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Wait for auth context to be fully resolved
     if (authLoading) {
-      return; // Wait for auth context to resolve
+      return;
     }
+    // If auth is resolved and there's no user, redirect to login
     if (!user) {
       router.push("/login");
       return;
     }
     
-    // If we have a user and they are approved, fetch their data.
+    // If we have a user and they are approved, fetch their vocabulary data.
     if (user.status === 'approved') {
       const fetchWords = async () => {
         setIsLoading(true);
         try {
+          // Ensure user.uid is available before fetching
           const fetchedWords = await getVocabulary(user.uid);
           setWords(fetchedWords);
         } catch (error) {
@@ -70,16 +73,18 @@ const Home: FC = () => {
             description: "Could not fetch your vocabulary. Please try again later.",
           });
         } finally {
-            setIsLoading(false); // Data loading is complete
+            // Vocabulary data loading is complete
+            setIsLoading(false);
         }
       };
       fetchWords();
     } else {
-      // For 'pending' or 'rejected' users, we don't need to fetch words.
+      // For 'pending' or 'rejected' users, no vocabulary data is needed.
       setIsLoading(false);
     }
   }, [user, authLoading, router, toast]);
 
+  // This is the primary loading screen. It shows until the auth state is definitively known.
   if (authLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -88,16 +93,16 @@ const Home: FC = () => {
     );
   }
   
+  // If, after auth resolution, there's no user, we return null to prevent rendering anything
+  // while the useEffect redirect is in progress.
   if (!user) {
-    // This state should not be reachable if useEffect is working correctly,
-    // but as a safeguard, we return null to prevent rendering children that might cause errors.
     return null;
   }
   
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
-    // Show a loader while words are being fetched for an approved user
+    // Show a loader for vocabulary fetching for an approved user
     if (user.status === 'approved' && isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -106,12 +111,12 @@ const Home: FC = () => {
         );
     }
     
-    // Show the waiting for approval screen if the user is not approved.
+    // Show the waiting/rejected screen
     if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
     }
     
-    // Only render the main dashboard if the user is approved.
+    // Only render the main dashboard if the user is approved and data is loaded.
     if (user.status === 'approved') {
       switch (activeViewState.view) {
         case "overview":
@@ -139,7 +144,6 @@ const Home: FC = () => {
               setWords={setWords}
             />
           ) : (
-            // Fallback if no lesson is provided
             <MyLessonsView setActiveViewState={setActiveViewState} />
           );
         default:
