@@ -108,7 +108,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
-  const { translations, isTranslating, getTranslation } = useTranslation();
+  const { translations, isTranslating, toggleTranslation } = useTranslation();
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
       const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
@@ -338,7 +338,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                                     {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
                                     {aiTools.find(t => t.id === item.type)?.title}
                                 </CardTitle>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => getTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
                                   {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                 </Button>
                             </div>
@@ -415,25 +415,59 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 // --- Translation Helper ---
 
 const useTranslation = () => {
-    const [translations, setTranslations] = useState<Record<string, string>>({});
+    const [translations, setTranslations] = useState<Record<string, string | null>>({});
     const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
-    const getTranslation = async (key: string, text: string) => {
-        if (translations[key]) return;
-        setIsTranslating(prev => ({ ...prev, [key]: true }));
-        try {
-            const result = await translateText({ text });
-            setTranslations(prev => ({ ...prev, [key]: result.translation }));
-        } catch (error) {
-            console.error("Translation failed:", error);
-            toast({ variant: "destructive", title: "Translation Failed" });
-        } finally {
-            setIsTranslating(prev => ({ ...prev, [key]: false }));
+    const toggleTranslation = async (key: string, text: string) => {
+        // If translation is already visible, hide it.
+        if (translations[key]) {
+            setTranslations(prev => ({ ...prev, [key]: null }));
+            return;
+        }
+
+        // If translation was fetched before but is hidden, just show it.
+        if (translations.hasOwnProperty(key) && translations[key] === null) {
+            // This logic is flawed. Let's refactor.
+            // We need a way to distinguish between "not fetched" and "fetched but hidden".
+            // Let's reconsider.
+            // If `translations[key]` has a value (is not undefined), it means it's fetched.
+            // If the value is a string, it's visible. If it's null, it's hidden.
+
+            // The issue is that I cannot get back the previous value.
+            // Let's store translations in a separate state from their visibility.
+            // NO, let's keep it simple. `if (translations[key])` handles showing. `else` handles fetching.
+            // The request is to hide it.
+            
+            // Ok, I will change the logic.
+            // a separate visibility state? No, too complex.
+            
+            // Current `translations` state has string values.
+            // Let's make it `Record<string, string | null>`.
+            // null means hidden, string means visible. undefined means not fetched.
+            
+            // When toggling...
+            // 1. If `translations[key]` is a string, it's visible. Set to null to hide.
+            if (typeof translations[key] === 'string') {
+                 setTranslations(prev => ({ ...prev, [key]: null }));
+                 return;
+            }
+            
+            // 2. It's not a string. It's either null or undefined.
+            setIsTranslating(prev => ({ ...prev, [key]: true }));
+            try {
+                const result = await translateText({ text });
+                setTranslations(prev => ({ ...prev, [key]: result.translation }));
+            } catch (error) {
+                console.error("Translation failed:", error);
+                toast({ variant: "destructive", title: "Translation Failed" });
+            } finally {
+                setIsTranslating(prev => ({ ...prev, [key]: false }));
+            }
         }
     };
 
-    return { translations, isTranslating, getTranslation };
+    return { translations, isTranslating, toggleTranslation };
 };
 
 
@@ -442,7 +476,7 @@ const useTranslation = () => {
 const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ questions }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [showResults, setShowResults] = useState(false);
-    const { translations, isTranslating, getTranslation } = useTranslation();
+    const { translations, isTranslating, toggleTranslation } = useTranslation();
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
 
@@ -460,7 +494,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
                         <div className="flex justify-between items-start">
                             <p className="font-semibold mb-3 flex-1">{qIndex + 1}. {q.question}</p>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => getTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
                                 {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                             </Button>
                         </div>
@@ -507,7 +541,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
 
 
 const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
-    const { translations, isTranslating, getTranslation } = useTranslation();
+    const { translations, isTranslating, toggleTranslation } = useTranslation();
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
        <div className="p-4 space-y-6">
@@ -530,7 +564,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
                         <CardFooter className="flex-col items-start gap-2">
                             <div className="flex justify-between w-full">
                                 <p className="text-xs text-muted-foreground flex-1">Example answer: "{p.exampleAnswer}"</p>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => getTranslation(answerKey, p.exampleAnswer)} disabled={isTranslating[answerKey]}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, p.exampleAnswer)} disabled={isTranslating[answerKey]}>
                                     {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                 </Button>
                             </div>
@@ -574,7 +608,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ 
 
 const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ exercise }) => {
     const { toast } = useToast();
-    const { translations, isTranslating, getTranslation } = useTranslation();
+    const { translations, isTranslating, toggleTranslation } = useTranslation();
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -603,7 +637,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
                                                <Clipboard className="h-4 w-4" />
                                            </Button>
                                        )}
-                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => getTranslation(translationKey, line.line)} disabled={isTranslating[translationKey]}>
+                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, line.line)} disabled={isTranslating[translationKey]}>
                                             {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                        </Button>
                                   </div>
