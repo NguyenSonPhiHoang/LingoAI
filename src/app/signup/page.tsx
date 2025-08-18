@@ -52,10 +52,11 @@ export default function SignupPage() {
   });
   
   useEffect(() => {
-    if (user) {
+    // Only redirect if auth is not loading and user is logged in.
+    if (!loading && user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
@@ -78,7 +79,7 @@ export default function SignupPage() {
     }
   };
   
-  if (loading || user) {
+  if (loading || (!loading && user)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
