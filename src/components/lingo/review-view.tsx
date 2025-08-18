@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import type { FC } from "react";
-import { AlertTriangle, Lightbulb, Repeat, Loader2 } from "lucide-react";
+import { AlertTriangle, Lightbulb, Repeat, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,21 +73,24 @@ const MatchingGame: FC<{
               const isSelected = selections[qIndex] === opt;
               
               const getVariant = () => {
-                if (showResults) {
-                  if (isCorrect) return "default"; // Always show correct answer in green
-                  if (isSelected) return "destructive"; // If selected and not correct, show in red
-                  return "outline"; // Otherwise, stay neutral
+                if (!showResults) {
+                    return isSelected ? "default" : "outline";
                 }
-                return isSelected ? "default" : "outline";
+                // When showing results
+                if (isCorrect) return "default";
+                if (isSelected) return "destructive"; // isSelected but not correct
+                return "outline";
               };
 
               return (
                 <Button
                   key={oIndex}
                   variant={getVariant()}
-                  className="h-auto min-h-[4rem] whitespace-normal text-left"
+                  className="h-auto min-h-[4rem] whitespace-normal text-left justify-start"
                   onClick={() => handleSelect(qIndex, opt)}
                 >
+                  {showResults && isCorrect && <Check className="mr-2 flex-shrink-0" />}
+                  {showResults && isSelected && !isCorrect && <X className="mr-2 flex-shrink-0" />}
                   {opt}
                 </Button>
               );
