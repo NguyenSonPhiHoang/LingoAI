@@ -1,46 +1,54 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    function isAuth() {
+      return request.auth != null;
     }
 
-    // Helper function to check if the user is an admin
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Ensure the user is authenticated before trying to access their role.
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for the 'vocabulary' collection
-    match /vocabulary/{docId} {
-      // Any authenticated user can create their own vocabulary entry.
-      allow create: if request.auth != null && isOwner(request.resource.data.userId);
-      // Only the owner can read, update, or delete their own vocabulary entry.
-      allow read, update, delete: if request.auth != null && isOwner(resource.data.userId);
+    function isOwner(userId) {
+      // Ensure the user is authenticated before comparing UIDs.
+      return isAuth() && request.auth.uid == userId;
     }
 
-    // Rules for the 'lessons' collection
-    match /lessons/{docId} {
-      // Any authenticated user can create their own lesson.
-      allow create: if request.auth != null && isOwner(request.resource.data.userId);
-      // Only the owner can read, update, or delete their own lesson.
-      allow read, update, delete: if request.auth != null && isOwner(resource.data.userId);
+    match /words/{wordId} {
+      // Any authenticated user can read (get, list) and create words.
+      allow get, list, create: if isAuth();
+      // Only admins can update or delete global words.
+      allow update, delete: if isAdmin();
     }
 
-    // Rules for the 'users' collection
+    match /userVocabulary/{docId} {
+      // Allow creation if the user is the owner of the new data.
+      allow create: if isOwner(request.resource.data.userId);
+      // Allow reading and deleting only if the user is the owner of the existing data.
+      allow read, delete: if isOwner(resource.data.userId);
+      // Allow updating only if the user is the owner, preventing writes on logout.
+      allow update: if isOwner(resource.data.userId);
+    }
+    
+    match /lessons/{lessonId} {
+       // Allow creation if the user is the owner of the new data.
+      allow create: if isOwner(request.resource.data.userId);
+       // Allow reading, updating, and deleting only if the user is the owner of the existing data.
+      allow read, update, delete: if isOwner(resource.data.userId);
+    }
+    
     match /users/{userId} {
-      // A user can read their own document. Admins can read any user document.
-      allow read: if request.auth != null && (isOwner(userId) || isAdmin());
-      
-      // A new user can create their own user document upon signup.
-      allow create: if request.auth != null && isOwner(userId);
-
-      // Only an admin can update a user's status.
-      // A user cannot change their own role or status.
-      allow update: if request.auth != null && isAdmin() && !('role' in request.resource.data);
+      // Allow a user to create their own document.
+      allow create: if isOwner(userId);
+      // Allow a user to read their own document, or an admin to read any user document.
+      allow read: if isOwner(userId) || isAdmin();
+      // Allow only admins to update user documents (e.g., status, role).
+      allow update: if isAdmin();
+       // Allow only admins to delete users.
+      allow delete: if isAdmin();
     }
   }
 }
