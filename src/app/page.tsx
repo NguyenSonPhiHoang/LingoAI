@@ -80,8 +80,7 @@ const Home: FC = () => {
     } else {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, userStatus, authLoading, router]);
+  }, [userId, userStatus, authLoading, router, toast]);
 
   if (authLoading || !user) {
     return (
