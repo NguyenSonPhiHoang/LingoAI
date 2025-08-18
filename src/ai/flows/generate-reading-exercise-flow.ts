@@ -1,0 +1,44 @@
+
+'use server';
+
+/**
+ * @fileOverview A flow for generating a reading comprehension exercise.
+ * - generateReadingExercise - A function that creates questions for a passage.
+ */
+
+import {ai} from '@/ai/genkit';
+import {
+  GenerateReadingExerciseInputSchema,
+  GenerateReadingExerciseOutputSchema,
+  type GenerateReadingExerciseInput,
+  type GenerateReadingExerciseOutput,
+} from './schemas';
+
+export async function generateReadingExercise(
+  input: GenerateReadingExerciseInput
+): Promise<GenerateReadingExerciseOutput> {
+  return generateReadingExerciseFlow(input);
+}
+
+const prompt = ai.definePrompt({
+  name: 'generateReadingExercisePrompt',
+  input: {schema: GenerateReadingExerciseInputSchema},
+  output: {schema: GenerateReadingExerciseOutputSchema},
+  prompt: `You are an English teacher. Based on the following reading passage, create 5 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
+
+Reading Passage:
+{{{passage}}}
+`,
+});
+
+const generateReadingExerciseFlow = ai.defineFlow(
+  {
+    name: 'generateReadingExerciseFlow',
+    inputSchema: GenerateReadingExerciseInputSchema,
+    outputSchema: GenerateReadingExerciseOutputSchema,
+  },
+  async input => {
+    const {output} = await prompt(input);
+    return output!;
+  }
+);

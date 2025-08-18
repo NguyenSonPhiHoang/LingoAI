@@ -182,3 +182,78 @@ export const SuggestPersonalizedLessonsOutputSchema = z.object({
 export type SuggestPersonalizedLessonsOutput = z.infer<
   typeof SuggestPersonalizedLessonsOutputSchema
 >;
+
+
+// Schemas for generate-reading-exercise-flow.ts
+export const GenerateReadingExerciseInputSchema = z.object({
+    passage: z.string().describe('The reading passage to base the exercise on.'),
+});
+export type GenerateReadingExerciseInput = z.infer<typeof GenerateReadingExerciseInputSchema>;
+
+export const ReadingComprehensionQuestionSchema = z.object({
+    question: z.string().describe('The comprehension question.'),
+    options: z.array(z.string()).length(4).describe('Four possible answers.'),
+    correctOption: z.string().describe('The correct answer from the options.'),
+});
+export type ReadingComprehensionQuestion = z.infer<typeof ReadingComprehensionQuestionSchema>;
+
+export const GenerateReadingExerciseOutputSchema = z.object({
+    questions: z.array(ReadingComprehensionQuestionSchema).describe('A list of comprehension questions.'),
+});
+export type GenerateReadingExerciseOutput = z.infer<typeof GenerateReadingExerciseOutputSchema>;
+
+
+// Schemas for generate-writing-exercise-flow.ts
+export const GenerateWritingExerciseInputSchema = z.object({
+    topic: z.string().describe('The lesson topic.'),
+    userLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe('The user\'s proficiency level.'),
+});
+export type GenerateWritingExerciseInput = z.infer<typeof GenerateWritingExerciseInputSchema>;
+
+export const WritingPromptSchema = z.object({
+    vietnamesePrompt: z.string().describe('The sentence prompt in Vietnamese.'),
+    englishHint: z.string().describe('A hint, which could be a key vocabulary word or a grammar structure to use.'),
+    exampleAnswer: z.string().describe('An example of a good answer in English.'),
+});
+export type WritingPrompt = z.infer<typeof WritingPromptSchema>;
+
+export const GenerateWritingExerciseOutputSchema = z.object({
+    prompts: z.array(WritingPromptSchema).describe('A list of writing prompts.'),
+});
+export type GenerateWritingExerciseOutput = z.infer<typeof GenerateWritingExerciseOutputSchema>;
+
+
+// Schemas for generate-listening-exercise-flow.ts
+export const GenerateListeningExerciseInputSchema = z.object({
+    topic: z.string().describe('The lesson topic.'),
+});
+export type GenerateListeningExerciseInput = z.infer<typeof GenerateListeningExerciseInputSchema>;
+
+export const GenerateListeningExerciseOutputSchema = z.object({
+    dialogue: z.array(z.object({
+        speaker: z.string().describe('The name of the speaker (e.g., Speaker 1, Alex).'),
+        line: z.string().describe('The line spoken by the speaker.'),
+    })).describe('The dialogue script.'),
+    audioUrl: z.string().describe('The base64 encoded data URI of the dialogue audio.'),
+    questions: z.array(ReadingComprehensionQuestionSchema).describe('A list of comprehension questions based on the dialogue.'),
+});
+export type GenerateListeningExerciseOutput = z.infer<typeof GenerateListeningExerciseOutputSchema>;
+
+
+// Schemas for generate-speaking-exercise-flow.ts
+export const GenerateSpeakingExerciseInputSchema = z.object({
+    topic: z.string().describe('The lesson topic.'),
+});
+export type GenerateSpeakingExerciseInput = z.infer<typeof GenerateSpeakingExerciseInputSchema>;
+
+export const SpeakingRolePlayLineSchema = z.object({
+    role: z.string().describe('The role to be played (e.g., "You", "Interviewer").'),
+    line: z.string().describe('The line or instruction for that role.'),
+});
+export type SpeakingRolePlayLine = z.infer<typeof SpeakingRolePlayLineSchema>;
+
+export const GenerateSpeakingExerciseOutputSchema = z.object({
+    scenario: z.string().describe('A brief description of the role-play scenario.'),
+    dialogue: z.array(SpeakingRolePlayLineSchema).describe('The role-play dialogue script.'),
+});
+export type GenerateSpeakingExerciseOutput = z.infer<typeof GenerateSpeakingExerciseOutputSchema>;

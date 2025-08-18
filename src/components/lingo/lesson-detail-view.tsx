@@ -13,7 +13,12 @@ import {
   Loader2,
   MessageSquareQuote,
   FileText,
-  GraduationCap
+  GraduationCap,
+  PlayCircle,
+  Lightbulb,
+  Check,
+  X,
+  Clipboard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +28,26 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Lesson } from "@/services/lessons";
+import type { Lesson, LessonContent } from "@/services/lessons";
 import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { updateLessonContent } from "@/services/lessons";
+import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
+import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
+import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
+import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
+import {
+  type ReadingComprehensionQuestion,
+  type WritingPrompt,
+  type GenerateListeningExerciseOutput,
+  type GenerateSpeakingExerciseOutput,
+} from "@/ai/flows/schemas";
+import { useAuth } from "@/context/auth-context";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
@@ -78,44 +97,129 @@ const aiTools: AiTool[] = [
   },
 ];
 
-
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
-  const [generatedContent, setGeneratedContent] = useState<Record<ToolType, string[]>>({
-      conversation: [],
-      'reading-passage': [],
-      'grammar-explanation': [],
-  });
-  const [isLoading, setIsLoading] = useState<ToolType | null>(null);
+  const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
+  const [isLoading, setIsLoading] = useState<ToolType | Skill | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(null);
 
   const Icon = skillIcons[lesson.skill as Skill] || Sparkles;
 
   const handleToolClick = async (toolId: ToolType) => {
     setIsLoading(toolId);
-    // In a real app, you would call a specific AI flow for each tool.
-    // For this prototype, we'll simulate it with a delay and placeholder text.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // This is a mock implementation. In a real app, you'd call different flows.
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    let content = "";
+    let contentText = "";
     switch(toolId) {
         case "conversation":
-            content = `Alex: Hey, have you ever thought about ${lesson.topic.toLowerCase()}?\n\nChris: All the time! It's such a fascinating subject.`;
+            contentText = `Alex: Hey, have you ever thought about ${lesson.topic.toLowerCase()}?\n\nChris: All the time! It's such a fascinating subject.`;
             break;
         case "reading-passage":
-            content = `The concept of ${lesson.topic.toLowerCase()} has intrigued humanity for centuries. Early philosophers discussed it, and modern scientists continue to explore its complexities.`;
+            contentText = `The concept of ${lesson.topic.toLowerCase()} has intrigued humanity for centuries. Early philosophers discussed it, and new discoveries are made every year which challenge our previous assumptions. The field is constantly evolving.`;
             break;
         case "grammar-explanation":
-            content = `When discussing ${lesson.topic.toLowerCase()}, it's common to use the present perfect tense (e.g., "has intrigued") to connect past events to the present.`;
+            contentText = `When discussing ${lesson.topic.toLowerCase()}, it's common to use the present perfect tense (e.g., "has intrigued") to connect past events to the present. This tense is formed with 'has/have' + past participle.`;
             break;
     }
 
-    setGeneratedContent(prev => ({
-        ...prev,
-        [toolId]: [...prev[toolId], content]
-    }));
+    const newContentItem: LessonContent = {
+      type: toolId,
+      value: contentText,
+      id: `${toolId}-${Date.now()}`
+    };
+
+    const updatedContent = [...(currentLesson.content || []), newContentItem];
+    
+    try {
+        await updateLessonContent(currentLesson.docId, updatedContent);
+        setCurrentLesson(prev => ({...prev, content: updatedContent}));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not save the generated content." });
+    }
+    
     setIsLoading(null);
   };
   
+  const handleStartPractice = async () => {
+    setIsLoading(lesson.skill);
+    try {
+        let newExercise: any;
+        switch(lesson.skill) {
+            case "Reading":
+                const readingPassage = currentLesson.content?.find(c => c.type === 'reading-passage')?.value;
+                if (!readingPassage) {
+                    toast({ variant: "destructive", title: "No Reading Passage", description: "Please generate a reading passage first." });
+                    return;
+                }
+                newExercise = await generateReadingExercise({ passage: readingPassage });
+                break;
+            case "Writing":
+                newExercise = await generateWritingExercise({ topic: lesson.topic, userLevel: user?.status === 'approved' ? 'intermediate' : 'beginner' });
+                break;
+            case "Listening":
+                newExercise = await generateListeningExercise({ topic: lesson.topic });
+                break;
+            case "Speaking":
+                newExercise = await generateSpeakingExercise({ topic: lesson.topic });
+                break;
+        }
+        const updatedExercises = { ...currentLesson.exercises, [lesson.skill.toLowerCase()]: newExercise };
+        await updateLessonContent(currentLesson.docId, currentLesson.content || [], updatedExercises);
+        setCurrentLesson(prev => ({...prev, exercises: updatedExercises }));
+        setActivePracticeTab(lesson.skill.toLowerCase() as any);
+    } catch (error: any) {
+        console.error("Error generating practice:", error);
+        toast({ variant: "destructive", title: "Practice Generation Failed", description: error.message || "Could not generate practice exercise." });
+    } finally {
+        setIsLoading(null);
+    }
+  }
+  
   const availableTools = aiTools.filter(tool => tool.supportedSkills.includes(lesson.skill as Skill));
+  const hasContentForPractice = lesson.skill === 'Reading' ? currentLesson.content?.some(c => c.type === 'reading-passage') : true;
+
+  const renderPracticeZone = () => {
+    const practiceType = lesson.skill.toLowerCase();
+
+    if (!activePracticeTab) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
+                <Sparkles className="h-12 w-12 mb-4" />
+                <h3 className="font-semibold">Ready to practice?</h3>
+                <p>Click the "Start Practice" button to generate an interactive exercise.</p>
+            </div>
+        );
+    }
+
+    if (isLoading === lesson.skill) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">AI is building your exercise...</p>
+            </div>
+        );
+    }
+
+    const exercises = currentLesson.exercises || {};
+    const currentExercise = exercises[practiceType as keyof typeof exercises];
+
+    if (!currentExercise) {
+         return (
+             <div className="text-center p-4">No exercise available. Click "Start Practice" to generate one.</div>
+         );
+    }
+
+    switch(practiceType) {
+        case 'reading': return <ReadingPractice questions={currentExercise.questions} />;
+        case 'writing': return <WritingPractice prompts={currentExercise.prompts} />;
+        case 'listening': return <ListeningPractice exercise={currentExercise} />;
+        case 'speaking': return <SpeakingPractice exercise={currentExercise} />;
+        default: return null;
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -131,18 +235,19 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
             <Badge variant="secondary" className="mb-1">{lesson.skill}</Badge>
             <h1 className="text-3xl font-bold tracking-tight">{lesson.topic}</h1>
             <p className="text-muted-foreground">
-              Use the tools below to generate learning materials for this topic.
+              First, generate learning content. Then, start an interactive practice session.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Content Generation */}
+        <div className="lg:col-span-1 space-y-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>AI Content Tools</CardTitle>
-                    <CardDescription>Select a tool to generate content.</CardDescription>
+                    <CardTitle>1. Learning Content</CardTitle>
+                    <CardDescription>Generate content with these AI tools.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {availableTools.map(tool => (
@@ -162,64 +267,206 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                     ))}
                 </CardContent>
             </Card>
-        </div>
-        <div className="md:col-span-2">
-            <Card className="h-full">
-                <CardHeader>
-                    <CardTitle>Generated Content</CardTitle>
-                    <CardDescription>Content you generate will appear here.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[500px] p-4 rounded-lg border bg-muted/50">
-                        {Object.entries(generatedContent).flatMap(([toolId, contents]) => 
-                            contents.map((content, index) => (
-                                <Card key={`${toolId}-${index}`} className="mb-4">
-                                    <CardHeader>
-                                        <CardTitle className="text-lg flex items-center gap-2">
-                                            <Sparkles className="h-5 w-5 text-primary" />
-                                            {aiTools.find(t => t.id === toolId)?.title}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Textarea
-                                            readOnly
-                                            value={content}
-                                            className="h-auto bg-background"
-                                            rows={Math.max(5, content.split('\n').length)}
-                                        />
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
-                        
-                        {!isLoading && Object.values(generatedContent).every(arr => arr.length === 0) && (
-                            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                                <Sparkles className="h-12 w-12 mb-4" />
-                                <h3 className="font-semibold">Your content area is empty</h3>
-                                <p>Click a tool on the left to start learning!</p>
-                            </div>
-                        )}
 
-                        {isLoading && (
-                             <Card className="mb-4">
-                                <CardHeader>
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                                        <Skeleton className="h-6 w-40" />
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Skeleton className="h-32 w-full" />
-                                </CardContent>
-                            </Card>
-                        )}
-                    </ScrollArea>
+            <ScrollArea className="h-[400px] p-4 rounded-lg border bg-muted/20">
+                <h3 className="font-semibold text-lg mb-3">Generated Content</h3>
+                {currentLesson.content?.map((item) => (
+                    <Card key={item.id} className="mb-4 bg-background">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
+                                {aiTools.find(t => t.id === item.type)?.title}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm whitespace-pre-wrap">{item.value}</p>
+                        </CardContent>
+                    </Card>
+                ))}
+                {!isLoading && (!currentLesson.content || currentLesson.content.length === 0) && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                        Content you generate will appear here.
+                    </div>
+                )}
+                 {isLoading && !Object.values(skillIcons).includes(isLoading as any) && (
+                    <Card><CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent></Card>
+                 )}
+            </ScrollArea>
+        </div>
+
+        {/* Right Column: Practice Zone */}
+        <div className="lg:col-span-2">
+            <Card className="h-full flex flex-col">
+                <CardHeader>
+                    <CardTitle>2. Practice Zone</CardTitle>
+                    <CardDescription>Test your knowledge with an AI-powered exercise.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                   <div className="rounded-lg border bg-muted/50 h-full">
+                       {renderPracticeZone()}
+                   </div>
                 </CardContent>
+                <CardFooter className="border-t pt-4">
+                    <Button 
+                        className="w-full" 
+                        size="lg" 
+                        onClick={handleStartPractice} 
+                        disabled={!!isLoading || !hasContentForPractice}
+                    >
+                        {isLoading === lesson.skill ? <Loader2 className="mr-2 animate-spin"/> : <PlayCircle className="mr-2"/>}
+                        Start Practice
+                    </Button>
+                </CardFooter>
             </Card>
         </div>
       </div>
     </div>
   );
 };
+
+// --- Practice Components ---
+
+const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ questions }) => {
+    const [answers, setAnswers] = useState<Record<number, string>>({});
+    const [showResults, setShowResults] = useState(false);
+
+    if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
+
+    const handleSelect = (qIndex: number, option: string) => {
+        if (showResults) return;
+        setAnswers(prev => ({ ...prev, [qIndex]: option }));
+    };
+
+    return (
+        <ScrollArea className="h-full max-h-[600px] p-4">
+            <div className="space-y-6">
+                {questions.map((q, qIndex) => {
+                    const selectedAnswer = answers[qIndex];
+                    return (
+                        <div key={qIndex} className="bg-background p-4 rounded-lg border">
+                            <p className="font-semibold mb-3">{qIndex + 1}. {q.question}</p>
+                            <div className="space-y-2">
+                                {q.options.map((opt, oIndex) => {
+                                    const isCorrect = q.correctOption === opt;
+                                    const isSelected = selectedAnswer === opt;
+                                    
+                                    const getVariant = () => {
+                                        if (!showResults) return isSelected ? "default" : "outline";
+                                        if (isCorrect) return "default";
+                                        if (isSelected) return "destructive";
+                                        return "outline";
+                                    };
+
+                                    return (
+                                        <Button
+                                            key={oIndex}
+                                            variant={getVariant()}
+                                            className="w-full justify-start text-left h-auto py-2"
+                                            onClick={() => handleSelect(qIndex, opt)}
+                                        >
+                                           {showResults && isCorrect && <Check className="mr-2 flex-shrink-0" />}
+                                           {showResults && isSelected && !isCorrect && <X className="mr-2 flex-shrink-0" />}
+                                           {opt}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+                <div className="text-center pt-4">
+                    <Button onClick={() => setShowResults(true)} disabled={showResults}>Check Answers</Button>
+                </div>
+            </div>
+        </ScrollArea>
+    );
+};
+
+
+const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
+    if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
+    return (
+       <ScrollArea className="h-full max-h-[600px] p-4">
+            <div className="space-y-6">
+            {prompts.map((p, pIndex) => (
+                <Card key={pIndex} className="bg-background">
+                    <CardHeader>
+                        <p className="text-muted-foreground">Prompt {pIndex + 1}:</p>
+                        <p className="font-semibold">"{p.vietnamesePrompt}"</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
+                           <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                           <span><strong>Hint:</strong> Try to use the word/phrase: <strong className="italic">"{p.englishHint}"</strong></span>
+                        </div>
+                        <Textarea placeholder="Write your English sentence here..." rows={3} />
+                    </CardContent>
+                    <CardFooter>
+                         <p className="text-xs text-muted-foreground">Example answer: "{p.exampleAnswer}"</p>
+                    </CardFooter>
+                </Card>
+            ))}
+            </div>
+       </ScrollArea>
+    );
+};
+
+
+const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ exercise }) => {
+    const audioRef = React.useRef<HTMLAudioElement>(null);
+    return (
+        <div className="p-4 h-full flex flex-col">
+            <Card className="bg-background mb-4">
+                <CardContent className="p-4 text-center">
+                    <p className="text-muted-foreground mb-2">Press play to hear the dialogue.</p>
+                    <audio ref={audioRef} controls src={exercise.audioUrl} className="w-full">
+                        Your browser does not support the audio element.
+                    </audio>
+                </CardContent>
+            </Card>
+            <div className="flex-grow relative">
+                <div className="absolute inset-0">
+                    <ReadingPractice questions={exercise.questions} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ exercise }) => {
+    const { toast } = useToast();
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copied!", description: "Line copied to clipboard." });
+    }
+    
+    return (
+        <ScrollArea className="h-full max-h-[600px] p-4">
+            <div className="space-y-6">
+                <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
+                    <h4 className="font-semibold">Role-Play Scenario</h4>
+                    <p className="text-sm text-blue-800">{exercise.scenario}</p>
+                </div>
+                <div className="space-y-4">
+                {exercise.dialogue.map((line, index) => (
+                    <div key={index} className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
+                        {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
+                        <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
+                           <p><strong className="font-semibold">{line.role}:</strong> {line.line}</p>
+                           {line.role === 'You' && (
+                               <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7" onClick={() => copyToClipboard(line.line)}>
+                                   <Clipboard className="h-4 w-4" />
+                               </Button>
+                           )}
+                        </div>
+                    </div>
+                ))}
+                </div>
+            </div>
+        </ScrollArea>
+    );
+};
+
 
 export default LessonDetailView;

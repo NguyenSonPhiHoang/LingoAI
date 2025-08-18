@@ -18,12 +18,27 @@ import type { LessonSuggestion } from "@/ai/flows/schemas";
 
 const lessonsCollection = collection(db, "lessons");
 
+// Can be extended with more specific exercise types
+export type Exercise = any;
+
+export interface LessonContent {
+    id: string;
+    type: 'conversation' | 'reading-passage' | 'grammar-explanation';
+    value: string;
+}
+
 export interface Lesson extends LessonSuggestion {
   id: string;
   docId: string;
   userId: string;
   createdAt: any;
-  // We can add content fields later, e.g., content: Array<{type: string, value: string}>
+  content?: LessonContent[];
+  exercises?: {
+      reading?: Exercise;
+      writing?: Exercise;
+      listening?: Exercise;
+      speaking?: Exercise;
+  };
 }
 
 export const getLessons = async (userId: string): Promise<Lesson[]> => {
@@ -42,6 +57,8 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
       skill: data.skill,
       userId: data.userId,
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+      content: data.content || [],
+      exercises: data.exercises || {},
     } as Lesson
   })
 };
@@ -51,6 +68,8 @@ export const addLesson = async (userId: string, lessonSuggestion: LessonSuggesti
         ...lessonSuggestion,
         userId,
         createdAt: Timestamp.now(),
+        content: [],
+        exercises: {},
     };
     const docRef = await addDoc(lessonsCollection, lessonData);
     
@@ -61,3 +80,12 @@ export const addLesson = async (userId: string, lessonSuggestion: LessonSuggesti
         createdAt: new Date(), // Convert for immediate client use
     };
 };
+
+export const updateLessonContent = async (docId: string, content: LessonContent[], exercises?: Lesson['exercises']) => {
+    const lessonDoc = doc(db, "lessons", docId);
+    const updates: Partial<Lesson> = { content };
+    if (exercises) {
+        updates.exercises = exercises;
+    }
+    await updateDoc(lessonDoc, updates);
+}
