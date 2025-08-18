@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,19 +35,25 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Wait until authentication is resolved.
+    // Don't do anything until Firebase auth state is resolved.
     if (authLoading) {
-      setIsLoading(true);
       return;
     }
 
-    // If there is no user, redirect to login.
+    // If auth is resolved and there's no user, redirect to login.
     if (!user) {
       router.push("/login");
       return;
     }
 
-    // If user is present, handle approved vs. pending status.
+    // If the user object is present but doesn't have a status yet,
+    // it means the Firestore data is still loading. We wait.
+    if (!user.status) {
+      setIsLoading(true);
+      return;
+    }
+    
+    // If user is approved, fetch their data.
     if (user.status === 'approved') {
       const fetchWords = async () => {
         setIsLoading(true);
@@ -66,7 +73,8 @@ const Home: FC = () => {
       };
       fetchWords();
     } else {
-      // For 'pending' or 'rejected' users, just stop loading and let the UI show the appropriate message.
+      // For 'pending' or other statuses, we don't need to fetch words,
+      // so we can stop loading. The UI will show the correct component.
       setIsLoading(false);
     }
   }, [user, authLoading, router, toast]);
@@ -75,6 +83,7 @@ const Home: FC = () => {
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
+    // Show a loader while authentication or data fetching is in progress.
     if (authLoading || isLoading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
@@ -82,17 +91,19 @@ const Home: FC = () => {
         </div>
       );
     }
-
+    
+    // This state should not be reachable if the useEffect logic is correct,
+    // but as a fallback, we prevent rendering anything.
     if (!user) {
-      // This will be briefly visible before redirecting
       return null;
     }
     
+    // Show the waiting for approval screen if the user is not approved.
     if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
     }
     
-    // Only render the main dashboard if user is approved
+    // Only render the main dashboard if the user is approved.
     if (user.status === 'approved') {
       switch (activeView) {
         case "overview":
@@ -112,12 +123,14 @@ const Home: FC = () => {
       }
     }
 
-    // Fallback for any other state, though it shouldn't be reached
+    // Fallback for any other state, though it shouldn't be reached.
     return <WaitingForApproval />;
   };
 
+  // Do not render the layout if there is no user and authentication is complete.
+  // This prevents a flash of the layout before the redirect to login happens.
   if (!user && !authLoading) {
-    return null; // Don't render layout if not logged in
+    return null;
   }
 
   return (
