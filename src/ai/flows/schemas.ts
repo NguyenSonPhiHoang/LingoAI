@@ -17,12 +17,21 @@ export type ExtractVocabularyInput = z.infer<
 >;
 
 export const VocabularyEntrySchema = z.object({
-  term: z.string().describe('The vocabulary word or term.'),
+  term: z.string().describe('The vocabulary word, phrase, or sentence.'),
   pronunciation: z
     .string()
     .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
+  partOfSpeech: z
+    .string()
+    .describe('The part of speech (e.g., Noun, Verb, Adjective, Phrase).'),
   definition: z.string().describe('A clear and concise definition of the term.'),
+  vietnameseDefinition: z
+    .string()
+    .describe('A clear and concise Vietnamese definition of the term.'),
   sentence: z.string().describe('An example sentence using the term in context.'),
+  vietnameseSentence: z
+    .string()
+    .describe('The Vietnamese translation of the example sentence.'),
 });
 export type VocabularyEntry = z.infer<typeof VocabularyEntrySchema>;
 
@@ -86,7 +95,7 @@ export type GenerateReviewOutput = z.infer<typeof GenerateReviewOutputSchema>;
 
 // Schemas for generate-word-details.ts
 export const GenerateWordDetailsInputSchema = z.object({
-  term: z.string().describe('The word to generate details for.'),
+  term: z.string().describe('The word, phrase, or sentence to generate details for.'),
 });
 export type GenerateWordDetailsInput = z.infer<
   typeof GenerateWordDetailsInputSchema
@@ -96,8 +105,17 @@ export const GenerateWordDetailsOutputSchema = z.object({
   pronunciation: z
     .string()
     .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
+  partOfSpeech: z
+    .string()
+    .describe('The part of speech (e.g., Noun, Verb, Adjective, Phrase).'),
   definition: z.string().describe('A clear and concise definition of the term.'),
+  vietnameseDefinition: z
+    .string()
+    .describe('A clear and concise Vietnamese definition of the term.'),
   sentence: z.string().describe('An example sentence using the term in context.'),
+  vietnameseSentence: z
+    .string()
+    .describe('The Vietnamese translation of the example sentence.'),
 });
 export type GenerateWordDetailsOutput = z.infer<
   typeof GenerateWordDetailsOutputSchema

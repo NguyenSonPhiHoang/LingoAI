@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview A flow for generating details for a single vocabulary word.
+ * @fileOverview A flow for generating details for a single vocabulary word, phrase, or sentence.
  *
  * - generateWordDetails - A function that generates word details.
  * - GenerateWordDetailsInput - The input type for the function.
@@ -26,12 +26,15 @@ const prompt = ai.definePrompt({
   name: 'generateWordDetailsPrompt',
   input: {schema: GenerateWordDetailsInputSchema},
   output: {schema: GenerateWordDetailsOutputSchema},
-  prompt: `You are an English language expert. Your task is to provide details for the given vocabulary word.
+  prompt: `You are an English language expert. Your task is to provide details for the given vocabulary word, phrase, or sentence.
 
-For the word "{{term}}", provide:
-1.  A clear and concise definition.
-2.  Its International Phonetic Alphabet (IPA) pronunciation.
-3.  A contextual example sentence.
+For the term "{{term}}", provide:
+1.  A clear and concise definition in English.
+2.  Its part of speech (e.g., Noun, Verb, Phrase, Sentence).
+3.  Its International Phonetic Alphabet (IPA) pronunciation. If it's a phrase or sentence, provide pronunciation for the key words.
+4.  A contextual example sentence.
+5.  A clear and concise definition in Vietnamese.
+6.  The example sentence translated into Vietnamese.
 `,
 });
 

@@ -24,9 +24,15 @@ const prompt = ai.definePrompt({
   name: 'extractVocabularyPrompt',
   input: {schema: ExtractVocabularyInputSchema},
   output: {schema: ExtractVocabularyOutputSchema},
-  prompt: `You are an English language expert. Your task is to extract a list of vocabulary words from the provided text. For each word, you must provide a clear definition, a contextual example sentence based on the document, and its International Phonetic Alphabet (IPA) pronunciation.
+  prompt: `You are an English language expert. Your task is to extract a list of vocabulary words, phrases, or sentences from the provided text. For each item, you must provide:
+1. A clear English definition.
+2. Its part of speech (e.g., Noun, Verb, Adjective, Phrase, Sentence).
+3. Its International Phonetic Alphabet (IPA) pronunciation. If it's a phrase or sentence, provide pronunciation for the key words.
+4. A contextual example sentence based on the document.
+5. A Vietnamese definition.
+6. The Vietnamese translation of the example sentence.
 
-Ignore common words and focus on words that are likely to be new to an English learner.
+Ignore common words and focus on items that are likely to be new to an English learner.
 
 Document Content:
 {{{documentContent}}}

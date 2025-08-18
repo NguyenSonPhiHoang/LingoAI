@@ -40,6 +40,7 @@ import { Switch } from "@/components/ui/switch";
 import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, addMultipleWordsToFirestore } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 
 export interface Word extends VocabularyEntry {
@@ -112,18 +113,21 @@ const AddWordDialog: FC<{
             return;
         }
 
-        const newWordData = {
+        const newWordData: Omit<VocabularyEntry, 'term'> & { term: string; favorite: boolean; viewCount: number; userId: string; } = {
             term: term,
             pronunciation: generatedDetails.pronunciation,
             definition: generatedDetails.definition,
             sentence: generatedDetails.sentence,
+            partOfSpeech: generatedDetails.partOfSpeech,
+            vietnameseDefinition: generatedDetails.vietnameseDefinition,
+            vietnameseSentence: generatedDetails.vietnameseSentence,
             favorite: false,
             viewCount: 0,
             userId: user.uid,
         };
 
         try {
-            const savedWord = await addWordToFirestore(newWordData);
+            const savedWord = await addWordToFirestore(newWordData as any);
             setWords(prevWords => [savedWord, ...prevWords]);
             handleCloseDialog();
             toast({ title: 'Success', description: 'Word added to your list.' });
@@ -154,7 +158,7 @@ const AddWordDialog: FC<{
             <DialogHeader>
               <DialogTitle>Add New Word with AI</DialogTitle>
               <DialogDescription>
-                Enter a word, and AI will generate the rest. Click the input box to paste from your clipboard.
+                Enter a word, phrase or sentence, and AI will generate the rest. Click the input box to paste from your clipboard.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -166,25 +170,30 @@ const AddWordDialog: FC<{
                   onChange={(e) => setTerm(e.target.value)}
                   onFocus={handleFocus}
                   className="col-span-3"
-                  placeholder="Click to paste or type a word"
+                  placeholder="Click to paste or type"
                 />
               </div>
               <Button onClick={handleGenerateDetails} disabled={isGenerating || !term} className="w-full">
                   {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                   Generate Details
               </Button>
-              <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
+              <div className="space-y-4 rounded-lg border bg-muted/50 p-4 max-h-[300px] overflow-y-auto">
                 {isGenerating ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-1/4" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : generatedDetails ? (
                   <div className="space-y-2 text-sm">
+                     <p><strong className="text-muted-foreground">Part of Speech:</strong> {generatedDetails.partOfSpeech}</p>
                      <p><strong className="text-muted-foreground">Pronunciation:</strong> {generatedDetails.pronunciation}</p>
-                     <p><strong className="text-muted-foreground">Definition:</strong> {generatedDetails.definition}</p>
-                     <p><strong className="text-muted-foreground">Example:</strong> "{generatedDetails.sentence}"</p>
+                     <p><strong className="text-muted-foreground">Definition (EN):</strong> {generatedDetails.definition}</p>
+                     <p><strong className="text-muted-foreground">Definition (VI):</strong> {generatedDetails.vietnameseDefinition}</p>
+                     <p><strong className="text-muted-foreground">Example (EN):</strong> "{generatedDetails.sentence}"</p>
+                     <p><strong className="text-muted-foreground">Example (VI):</strong> "{generatedDetails.vietnameseSentence}"</p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
@@ -359,7 +368,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
           <div>
             <CardTitle>My Vocabulary</CardTitle>
             <CardDescription>
-              A personalized list of words you are learning.
+              A personalized list of words, phrases, and sentences you are learning.
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
@@ -401,7 +410,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[25%]">Term & Audio</TableHead>
+              <TableHead className="w-[25%]">Term</TableHead>
               <TableHead className="w-[50%]">Definition & Example</TableHead>
               <TableHead className="text-center">Favorite</TableHead>
               <TableHead className="text-center">Views</TableHead>
@@ -412,14 +421,14 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             {filteredWords.length > 0 ? (
               filteredWords.map((word) => (
                 <TableRow key={word.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="font-medium align-top">
+                    <div className="flex items-start gap-2">
                        <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePlayAudio(word.id, 'term')}
                         disabled={word.isGeneratingAudio}
-                        className="h-8 w-8"
+                        className="h-8 w-8 flex-shrink-0"
                       >
                         {word.isGeneratingAudio ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -431,18 +440,20 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                       <div>
                         <p>{word.term}</p>
                         <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
+                        <Badge variant="outline" className="mt-1">{word.partOfSpeech}</Badge>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <p>{word.definition}</p>
-                    <div className="flex items-center gap-2">
+                  <TableCell className="align-top">
+                    <p><strong>EN:</strong> {word.definition}</p>
+                    <p className="text-sm text-muted-foreground"><strong>VI:</strong> {word.vietnameseDefinition}</p>
+                    <div className="flex items-start gap-2 mt-2">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handlePlayAudio(word.id, 'sentence')}
                         disabled={word.isGeneratingSentenceAudio}
-                        className="h-8 w-8"
+                        className="h-8 w-8 flex-shrink-0"
                       >
                         {word.isGeneratingSentenceAudio ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -451,19 +462,20 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                         )}
                         <span className="sr-only">Play sentence audio</span>
                       </Button>
-                      <p className="text-sm text-muted-foreground italic">
-                        "{word.sentence}"
-                      </p>
+                      <div className="space-y-1">
+                        <p className="italic">"{word.sentence}"</p>
+                        <p className="text-sm text-muted-foreground italic">"{word.vietnameseSentence}"</p>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center align-top">
                     <Button variant="ghost" size="icon" onClick={() => toggleFavorite(word)}>
                       <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
                       <span className="sr-only">Favorite</span>
                     </Button>
                   </TableCell>
-                  <TableCell className="text-center font-medium">{word.viewCount}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center font-medium align-top">{word.viewCount}</TableCell>
+                  <TableCell className="text-right align-top">
                     <Button
                       variant="ghost"
                       size="icon"

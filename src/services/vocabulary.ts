@@ -41,7 +41,15 @@ export const addWordToFirestore = async (word: Omit<Word, 'id' | 'docId'>): Prom
         ...word,
         createdAt: Timestamp.now(),
     });
-    return { ...word, id: docRef.id, docId: docRef.id } as Word;
+    const newWordData = { ...word, id: docRef.id, docId: docRef.id };
+    
+    // This is a temporary fix because Firestore returns a Timestamp object
+    // but the rest of the app expects a JS Date object.
+    const finalWord = {
+        ...newWordData,
+        createdAt: new Date() 
+    }
+    return finalWord as Word;
 };
 
 export const addMultipleWordsToFirestore = async (words: VocabularyEntry[], userId: string): Promise<Word[]> => {
