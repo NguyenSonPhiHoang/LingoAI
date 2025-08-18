@@ -31,6 +31,8 @@ export interface UserVocabulary extends VocabularyEntry {
   sentenceAudioUrl?: string;
 }
 
+export type Word = Omit<UserVocabulary, 'id' | 'userId' | 'favorite' | 'viewCount' | 'createdAt'>;
+
 const userVocabularyCollection = collection(db, "userVocabulary");
 
 // Helper function to remove undefined properties from an object
@@ -67,28 +69,29 @@ export const addWordToVocabulary = async (userId: string, wordData: VocabularyEn
     const userVocabSnap = await getDocs(userVocabQuery);
 
     if (!userVocabSnap.empty) {
-        // User already has this word, just return it
+        // User already has this word. Update it to ensure data is consistent.
         const existingDoc = userVocabSnap.docs[0];
-        const existingData = existingDoc.data();
+        await updateUserVocabulary(existingDoc.id, wordData);
+        
+        const updatedData = { ...existingDoc.data(), ...wordData };
+
         return {
-            ...existingData,
+            ...updatedData,
             id: existingDoc.id,
-            createdAt: existingData.createdAt instanceof Timestamp ? existingData.createdAt.toDate() : existingData.createdAt,
+            createdAt: updatedData.createdAt instanceof Timestamp ? updatedData.createdAt.toDate() : updatedData.createdAt,
         } as UserVocabulary
     }
 
     // Add to user's vocabulary
-    const newWordData: Omit<UserVocabulary, 'id' | 'createdAt'> = {
+    const newWordData: Omit<UserVocabulary, 'id'> = {
         ...wordData,
         userId,
         favorite: false,
         viewCount: 0,
+        createdAt: Timestamp.now(),
     };
     
-    const docRef = await addDoc(userVocabularyCollection, {
-        ...newWordData,
-        createdAt: Timestamp.now(),
-    });
+    const docRef = await addDoc(userVocabularyCollection, newWordData);
 
     return {
         ...newWordData,
@@ -118,5 +121,3 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
     await updateDoc(userVocabDoc, cleanUpdates);
   }
 };
-
-    
