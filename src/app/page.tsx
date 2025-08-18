@@ -90,12 +90,8 @@ const Home: FC = () => {
   
   if (!user) {
     // This state should not be reachable if useEffect is working correctly,
-    // but as a safeguard, we return a loader/null to prevent rendering children that might cause errors.
-    return (
-       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    // but as a safeguard, we return null to prevent rendering children that might cause errors.
+    return null;
   }
   
   const favoriteWords = words.filter((word) => word.favorite);
