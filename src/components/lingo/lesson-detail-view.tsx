@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import type { FC } from "react";
 import {
   ArrowLeft,
@@ -44,7 +44,7 @@ import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { updateLessonContent, updateLesson } from "@/services/lessons";
+import { updateLessonContent, updateLesson, updateWordInFirestore } from "@/services/lessons";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -71,6 +71,7 @@ interface LessonDetailViewProps {
   lesson: Lesson;
   vocabulary: Word[];
   onBack: () => void;
+  setWords: React.Dispatch<React.SetStateAction<Word[]>>;
 }
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
@@ -123,14 +124,14 @@ const statusOptions: { value: LessonStatus; label: string; icon: React.ElementTy
 ];
 
 
-const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack }) => {
+const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
   const [isLoading, setIsLoading] = useState<ToolType | Skill | null>(null);
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
   const { translations, isTranslating, toggleTranslation } = useTranslation();
-  const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback();
+  const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio } = useAudioPlayback({ setWords });
 
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
@@ -282,10 +283,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
     }
 
     switch(practiceType) {
-        case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={currentLesson.content?.find(c => c.type === 'reading-passage')?.value || ''} vocabulary={vocabulary} />;
-        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} />;
-        case 'listening': return <ListeningPractice exercise={currentExercise} passage={currentExercise.dialogue.map((d: any) => `${d.speaker}: ${d.line}`).join('\n')} vocabulary={vocabulary} />;
-        case 'speaking': return <SpeakingPractice exercise={currentExercise} vocabulary={vocabulary} />;
+        case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={currentLesson.content?.find(c => c.type === 'reading-passage')?.value || ''} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'listening': return <ListeningPractice exercise={currentExercise} passage={currentExercise.dialogue.map((d: any) => `${d.speaker}: ${d.line}`).join('\n')} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'speaking': return <SpeakingPractice exercise={currentExercise} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
         default: return null;
     }
   }
@@ -382,10 +383,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                         <Card key={item.id} className="mb-4 bg-background">
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between items-start">
-                                    <CardTitle className="text-base flex items-center gap-2 flex-1">
+                                    <div className="text-base flex items-center gap-2 flex-1">
                                         {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
                                         {aiTools.find(t => t.id === item.type)?.title}
-                                    </CardTitle>
+                                    </div>
                                     <div className="flex items-center">
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, item.value, audioUrls)} disabled={isBeingSpoken}>
                                             {isBeingSpoken ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -398,7 +399,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                             </CardHeader>
                             <CardContent>
                                 <div className="text-sm whitespace-pre-wrap">
-                                    <InteractiveText text={item.value} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />
+                                    <InteractiveText text={item.value} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />
                                 </div>
                                 {translations[translationKey] && (
                                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
@@ -470,8 +471,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 const InteractiveText: FC<{
     text: string;
     vocabulary: Word[];
-    playAudioUrl: (url: string) => void;
-}> = React.memo(({ text, vocabulary, playAudioUrl }) => {
+    playTermAudio: (word: Word) => void;
+    isTermPlaying: Record<string, boolean>;
+}> = React.memo(({ text, vocabulary, playTermAudio, isTermPlaying }) => {
     const vocabMap = useMemo(() => {
         const map = new Map<string, Word>();
         // Sort by length descending to match longer phrases first
@@ -485,7 +487,6 @@ const InteractiveText: FC<{
 
     const parts = useMemo(() => {
         const processedParts: (string | React.ReactNode)[] = [];
-        let remainingText = text;
         
         // Create a regex to find all potential words/phrases from the vocab list
         const vocabTerms = Array.from(vocabMap.keys());
@@ -511,6 +512,7 @@ const InteractiveText: FC<{
             
             const vocabWord = vocabMap.get(termLower);
             if (vocabWord) {
+                const isPlaying = isTermPlaying[vocabWord.id];
                 processedParts.push(
                     <TooltipProvider key={match.index}>
                         <Tooltip>
@@ -522,11 +524,9 @@ const InteractiveText: FC<{
                             <TooltipContent className="max-w-xs">
                                 <div className="flex items-center gap-2">
                                     <div className="font-bold">{vocabWord.pronunciation}</div>
-                                    {vocabWord.audioUrl && (
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playAudioUrl(vocabWord.audioUrl!)}>
-                                          <Volume2 className="h-4 w-4" />
-                                      </Button>
-                                    )}
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playTermAudio(vocabWord)} disabled={isPlaying}>
+                                        {isPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
                                 </div>
                             </TooltipContent>
                         </Tooltip>
@@ -545,7 +545,7 @@ const InteractiveText: FC<{
         }
 
         return processedParts;
-    }, [text, vocabMap, playAudioUrl]);
+    }, [text, vocabMap, playTermAudio, isTermPlaying]);
 
     return <>{parts.map((part, index) => <React.Fragment key={index}>{part}</React.Fragment>)}</>;
 });
@@ -597,7 +597,7 @@ const useTranslation = () => {
 };
 
 // --- Audio Playback Helper ---
-const useAudioPlayback = () => {
+const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStateAction<Word[]>> }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
@@ -631,22 +631,51 @@ const useAudioPlayback = () => {
             setIsPlaying(prev => ({ ...prev, [key]: false }));
         }
     };
+    
+    const playTermAudio = useCallback(async (word: Word) => {
+        if (word.audioUrl) {
+            playAudioUrl(word.audioUrl);
+            return;
+        }
 
-    return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls };
+        setIsPlaying(prev => ({ ...prev, [word.id]: true }));
+        try {
+            const result = await generateAudio(word.term);
+            const newAudioUrl = result.audioUrl;
+            playAudioUrl(newAudioUrl);
+            
+            // Update Firestore in the background
+            updateWordInFirestore(word.docId, { audioUrl: newAudioUrl });
+
+            // Update local state
+            setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
+
+        } catch (error: any) {
+             toast({
+                variant: "destructive",
+                title: "Audio Generation Failed",
+                description: error.message || "Please try again later.",
+            });
+        } finally {
+             setIsPlaying(prev => ({ ...prev, [word.id]: false }));
+        }
+    }, [setWords, toast]);
+
+    return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio };
 };
 
 
 
 // --- Practice Components ---
 
-const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: string, vocabulary: Word[] }> = ({ questions, passage, vocabulary }) => {
+const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: string, vocabulary: Word[], playTermAudio: (word: Word) => void, isTermPlaying: Record<string, boolean> }> = ({ questions, passage, vocabulary, playTermAudio, isTermPlaying }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [showResults, setShowResults] = useState(false);
     const [feedback, setFeedback] = useState<Record<number, string>>({});
     const [isChecking, setIsChecking] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback({ setWords: () => {} });
 
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
@@ -702,7 +731,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                 return (
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
                         <div className="flex justify-between items-start">
-                            <div className="font-semibold mb-3 flex-1">{qIndex + 1}. <InteractiveText text={q.question} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
+                            <div className="font-semibold mb-3 flex-1">{qIndex + 1}. <InteractiveText text={q.question} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
                             <div className="flex items-center">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, q.question, audioUrls)} disabled={isPlaying[translationKey]}>
                                     {isPlaying[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -738,7 +767,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                     >
                                        {showResults && isCorrectOption && <Check className="mr-2 flex-shrink-0" />}
                                        {showResults && isSelectedOption && !isCorrectOption && <X className="mr-2 flex-shrink-0" />}
-                                       <InteractiveText text={opt} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />
+                                       <InteractiveText text={opt} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />
                                     </Button>
                                 );
                             })}
@@ -761,7 +790,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                      </div>
                                 </div>
                                 {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
-                                <div className="text-sm"><InteractiveText text={feedback[qIndex] || ''} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
+                                <div className="text-sm"><InteractiveText text={feedback[qIndex] || ''} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
                                 {translations[`feedback-${qIndex}`] && (
                                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                         <strong>Dịch:</strong> {translations[`feedback-${qIndex}`]}
@@ -782,13 +811,13 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
 };
 
 
-const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> = ({ prompt, vocabulary }) => {
+const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[], playTermAudio: (word: Word) => void, isTermPlaying: Record<string, boolean> }> = ({ prompt, vocabulary, playTermAudio, isTermPlaying }) => {
     const [userText, setUserText] = useState("");
     const [feedback, setFeedback] = useState<GenerateWritingFeedbackOutput | null>(null);
     const [isGettingFeedback, setIsGettingFeedback] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback({ setWords: () => {} });
 
 
     const handleGetFeedback = async () => {
@@ -826,7 +855,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
                 <div className="flex justify-between items-start">
                     <div className="flex-1">
                         <div className="text-muted-foreground">Prompt:</div>
-                        <div className="font-semibold">"<InteractiveText text={prompt.vietnamesePrompt} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
+                        <div className="font-semibold">"<InteractiveText text={prompt.vietnamesePrompt} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />"</div>
                     </div>
                      <div className="flex items-center">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(promptKey, prompt.vietnamesePrompt, audioUrls)} disabled={isPlaying[promptKey]}>
@@ -838,7 +867,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
             <CardContent className="space-y-4">
                 <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
                    <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                   <span><strong>Hint:</strong> <InteractiveText text={prompt.englishHint} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></span>
+                   <span><strong>Hint:</strong> <InteractiveText text={prompt.englishHint} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></span>
                    <Button variant="ghost" size="icon" className="h-5 w-5 -mr-1 -mt-1 text-yellow-800 hover:bg-yellow-100" onClick={() => playAudio(hintKey, prompt.englishHint, audioUrls)} disabled={isPlaying[hintKey]}>
                       {isPlaying[hintKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                    </Button>
@@ -870,7 +899,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
                                     </Button>
                                  </div>
                              </div>
-                             <div className="text-sm"><InteractiveText text={feedback.feedback} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
+                             <div className="text-sm"><InteractiveText text={feedback.feedback} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
                              {translations[feedbackKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                     <strong>Dịch:</strong> {translations[feedbackKey]}
@@ -889,7 +918,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
                                     </Button>
                                 </div>
                             </div>
-                            <div className="text-sm font-semibold">"<InteractiveText text={feedback.correctedText} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
+                            <div className="text-sm font-semibold">"<InteractiveText text={feedback.correctedText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />"</div>
                             {translations[correctedKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                     <strong>Dịch:</strong> {translations[correctedKey]}
@@ -901,7 +930,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
             </CardContent>
             <CardFooter className="flex-col items-start gap-2">
                 <div className="flex justify-between w-full">
-                    <div className="text-xs text-muted-foreground flex-1">Example answer: "<InteractiveText text={prompt.exampleAnswer} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
+                    <div className="text-xs text-muted-foreground flex-1">Example answer: "<InteractiveText text={prompt.exampleAnswer} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />"</div>
                      <div className="flex items-center">
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playAudio(answerKey, prompt.exampleAnswer, audioUrls)} disabled={isPlaying[answerKey]}>
                             {isPlaying[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -921,19 +950,19 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
     )
 };
 
-const WritingPractice: FC<{ prompts: WritingPrompt[], vocabulary: Word[] }> = ({ prompts, vocabulary }) => {
+const WritingPractice: FC<{ prompts: WritingPrompt[], vocabulary: Word[], playTermAudio: (word: Word) => void, isTermPlaying: Record<string, boolean> }> = ({ prompts, vocabulary, playTermAudio, isTermPlaying }) => {
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
        <div className="p-4 space-y-6">
             {prompts.map((p, pIndex) => (
-                <WritingPracticePrompt key={pIndex} prompt={p} vocabulary={vocabulary} />
+                <WritingPracticePrompt key={pIndex} prompt={p} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />
             ))}
        </div>
     );
 };
 
 
-const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string, vocabulary: Word[] }> = ({ exercise, passage, vocabulary }) => {
+const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string, vocabulary: Word[], playTermAudio: (word: Word) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, passage, vocabulary, playTermAudio, isTermPlaying }) => {
     const audioRef = React.useRef<HTMLAudioElement>(null);
     return (
         <div className="p-4 h-full flex flex-col">
@@ -948,7 +977,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
             <div className="flex-grow relative">
                 <div className="absolute inset-0">
                     <ScrollArea className="h-full w-full">
-                      <ReadingPractice questions={exercise.questions} passage={passage} vocabulary={vocabulary} />
+                      <ReadingPractice questions={exercise.questions} passage={passage} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />
                     </ScrollArea>
                 </div>
             </div>
@@ -957,10 +986,10 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 };
 
 
-const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabulary: Word[] }> = ({ exercise, vocabulary }) => {
+const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabulary: Word[], playTermAudio: (word: Word) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, vocabulary, playTermAudio, isTermPlaying }) => {
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
-    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback();
+    const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls } = useAudioPlayback({ setWords: () => {} });
 
 
     const copyToClipboard = (text: string) => {
@@ -973,7 +1002,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
             <audio ref={audioRef} className="hidden" />
             <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
                 <h4 className="font-semibold">Role-Play Scenario</h4>
-                <div className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
+                <div className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
             </div>
             <div className="space-y-4">
             {exercise.dialogue.map((line, index) => {
@@ -984,7 +1013,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
                             {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
                             <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
                                <div className="flex justify-between items-start gap-2">
-                                  <div className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
+                                  <div className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
                                   <div className="flex">
                                       {line.role === 'You' && (
                                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(line.line)}>

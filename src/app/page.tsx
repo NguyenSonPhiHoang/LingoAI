@@ -123,7 +123,7 @@ const Home: FC = () => {
         case "ai-suggester":
           return <AiSuggester setActiveView={(view) => setActiveViewState({view})} />;
         case "my-lessons":
-          return <MyLessonsView setActiveViewState={setActiveViewState} />;
+          return <MyLessonsView setActiveViewState={setActiveViewState} setWords={setWords} />;
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
@@ -136,10 +136,11 @@ const Home: FC = () => {
               lesson={activeViewState.lesson}
               vocabulary={words}
               onBack={() => setActiveViewState({ view: "my-lessons" })}
+              setWords={setWords}
             />
           ) : (
             // Fallback if no lesson is provided
-            <MyLessonsView setActiveViewState={setActiveViewState} />
+            <MyLessonsView setActiveViewState={setActiveViewState} setWords={setWords} />
           );
         default:
           return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
