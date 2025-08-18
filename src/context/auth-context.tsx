@@ -27,22 +27,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    // This listener handles auth state changes.
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      let unsubscribeSnapshot: () => void = () => {};
+
       if (firebaseUser) {
+        // If user is logged in, set up a real-time listener for their Firestore document.
         const userRef = doc(db, "users", firebaseUser.uid);
         
-        const unsubscribeSnapshot = onSnapshot(userRef, (docSnapshot) => {
+        unsubscribeSnapshot = onSnapshot(userRef, (docSnapshot) => {
           if (docSnapshot.exists()) {
+            // User document exists, merge auth data with Firestore data.
             const userData = docSnapshot.data();
             setUser({
               ...firebaseUser,
               role: userData.role,
               status: userData.status
             });
-            setLoading(false);
           } else {
-            // If user exists in Auth but not in Firestore, create their doc.
-            // This handles the case for the very first admin or users created before the system was in place.
+            // This is a rare case, e.g., user exists in Auth but not in Firestore.
+            // Create their document now. The snapshot listener will automatically update the state.
             const newUserData = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
@@ -51,26 +55,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 status: 'pending',
                 createdAt: serverTimestamp(),
             };
-            setDoc(userRef, newUserData).then(() => {
-               // The snapshot listener will automatically pick up this change and set the user state.
-            }).catch(e => {
-                console.error("Error creating user document:", e);
-                setLoading(false);
+            setDoc(userRef, newUserData).catch(e => {
+                console.error("Error creating user document on-the-fly:", e);
             });
           }
+          setLoading(false);
         }, (error) => {
-           console.error("Snapshot listener error:", error);
-           setUser(firebaseUser); // Set user without role/status on error
+           console.error("Firestore snapshot listener error:", error);
+           setUser(firebaseUser); // Fallback to auth data only on error
            setLoading(false);
         });
 
-        return () => unsubscribeSnapshot();
       } else {
+        // If user is logged out, clear the user state and stop loading.
         setUser(null);
         setLoading(false);
       }
+
+      // Return a cleanup function.
+      // This will be called either when the component unmounts
+      // OR when onAuthStateChanged fires again (e.g., on logout).
+      // This is crucial to prevent permission errors.
+      return () => {
+        unsubscribeSnapshot();
+      };
     });
 
+    // This is the main cleanup function for the useEffect hook itself.
     return () => unsubscribeAuth();
   }, []);
 
@@ -84,8 +95,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if(firebaseUser){
       await updateProfile(firebaseUser, { displayName });
       const userRef = doc(db, "users", firebaseUser.uid);
-      // The onAuthStateChanged listener will now handle creating the user document,
-      // so we only need to set the initial data here.
       await setDoc(userRef, {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -101,7 +110,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     return signOut(auth);
   }
-
 
   if (loading) {
     return (
