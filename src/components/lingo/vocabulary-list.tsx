@@ -3,8 +3,12 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil } from "lucide-react";
 import mammoth from "mammoth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,6 +29,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -43,7 +56,7 @@ import { Badge } from "@/components/ui/badge";
 
 
 export interface Word extends VocabularyEntry {
-  id: string; // This is now the Firestore document ID
+  id: string;
   docId: string;
   audioUrl?: string;
   isGeneratingAudio?: boolean;
@@ -211,6 +224,185 @@ const AddWordDialog: FC<{
 };
 
 
+const editWordSchema = z.object({
+  term: z.string().min(1, "Term cannot be empty."),
+  pronunciation: z.string(),
+  partOfSpeech: z.string(),
+  definition: z.string().min(1, "Definition cannot be empty."),
+  vietnameseDefinition: z.string(),
+  sentence: z.string().min(1, "Example sentence cannot be empty."),
+  vietnameseSentence: z.string(),
+});
+
+const EditWordDialog: FC<{
+  word: Word;
+  setWords: Dispatch<SetStateAction<Word[]>>;
+}> = ({ word, setWords }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof editWordSchema>>({
+    resolver: zodResolver(editWordSchema),
+    defaultValues: {
+      term: word.term,
+      pronunciation: word.pronunciation,
+      partOfSpeech: word.partOfSpeech,
+      definition: word.definition,
+      vietnameseDefinition: word.vietnameseDefinition,
+      sentence: word.sentence,
+      vietnameseSentence: word.vietnameseSentence,
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
+    setIsSaving(true);
+    try {
+      await updateWordInFirestore(word.docId, values);
+      setWords(prev =>
+        prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
+      );
+      toast({ title: "Success", description: "Word updated successfully." });
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error updating word:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not update the word.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+          <Pencil className="h-4 w-4 text-muted-foreground hover:text-primary" />
+          <span className="sr-only">Edit Word</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit Word</DialogTitle>
+          <DialogDescription>
+            Make changes to your vocabulary word here. Click save when you're done.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[60vh] overflow-y-auto p-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="term"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Term</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="pronunciation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pronunciation (IPA)</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="partOfSpeech"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Part of Speech</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+                control={form.control}
+                name="definition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Definition (EN)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="vietnameseDefinition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Definition (VI)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="sentence"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Example Sentence (EN)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="vietnameseSentence"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Example Sentence (VI)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            <DialogFooter className="sticky bottom-0 bg-background pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
 const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -220,36 +412,29 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
-  const generateAndPlayAudio = async (
-    word: Word,
-    type: 'term' | 'sentence',
-  ) => {
-    const textToGenerate = type === 'term' ? word.term : word.sentence;
-    const isGeneratingKey = type === 'term' ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
-    const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
-
-    setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
-    
-    try {
-      const result = await generateAudio(textToGenerate);
-      const newAudioUrl = result.audioUrl;
-      
-      if (audioRef.current) {
-        audioRef.current.src = newAudioUrl;
-        audioRef.current.play();
+  const handleAudioGeneration = async (wordsToProcess: Word[]) => {
+      for (const word of wordsToProcess) {
+          if (!word.audioUrl) {
+              try {
+                  const result = await generateAudio(word.term);
+                  await updateWordInFirestore(word.docId, { audioUrl: result.audioUrl });
+                  setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: result.audioUrl } : w));
+              } catch (e) {
+                  console.error(`Error generating audio for term "${word.term}"`, e);
+              }
+          }
+          if (!word.sentenceAudioUrl) {
+              try {
+                  const result = await generateAudio(word.sentence);
+                  await updateWordInFirestore(word.docId, { sentenceAudioUrl: result.audioUrl });
+                  setWords(prev => prev.map(w => w.id === word.id ? { ...w, sentenceAudioUrl: result.audioUrl } : w));
+              } catch (e) {
+                  console.error(`Error generating audio for sentence "${word.sentence}"`, e);
+              }
+          }
       }
-      
-      await updateWordInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
-      
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl, [isGeneratingKey]: false } : w));
-
-    } catch (e) {
-      console.error(`Error generating ${type} audio`, e);
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
-      return Promise.reject(e);
-    }
   };
-  
+
   const handleDeleteWord = async (word: Word) => {
     try {
       await deleteWordFromFirestore(word.docId);
@@ -307,8 +492,12 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported.`,
+        description: `${newWords.length} words were successfully imported. Audio generation will continue in the background.`,
       });
+      
+      // Start background audio generation without blocking UI
+      handleAudioGeneration(newWords);
+
     } catch (error) {
       console.error("Error importing file:", error);
       toast({
@@ -341,6 +530,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const handlePlayAudio = async (word: Word, type: 'term' | 'sentence') => {
     incrementViewCount(word);
     const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
+    const isGeneratingKey = type === 'term' ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
     
     if (audioUrl) {
       if (audioRef.current) {
@@ -348,15 +538,30 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         audioRef.current.play();
       }
     } else {
-      try {
-        await generateAndPlayAudio(word, type);
-      } catch (e: any) {
-         toast({
-            variant: "destructive",
-            title: "Audio Generation Failed",
-            description: e.message || "Please try again in a moment.",
-        })
-      }
+       setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: true } : w));
+       try {
+         const textToGenerate = type === 'term' ? word.term : word.sentence;
+         const result = await generateAudio(textToGenerate);
+         const newAudioUrl = result.audioUrl;
+         
+         if (audioRef.current) {
+           audioRef.current.src = newAudioUrl;
+           audioRef.current.play();
+         }
+         
+         const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
+         await updateWordInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
+         
+         setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl } : w));
+       } catch (e: any) {
+          toast({
+             variant: "destructive",
+             title: "Audio Generation Failed",
+             description: e.message || "Please try again in a moment.",
+         })
+       } finally {
+         setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
+       }
     }
   }
 
@@ -413,45 +618,42 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg">
-          <div className="hidden md:flex font-medium text-muted-foreground px-4 py-3 text-sm border-b">
-              <div className="flex-1">Term</div>
-              <div className="flex-1">Definition (EN)</div>
-              <div className="w-[120px] text-center">Actions</div>
-          </div>
           <Accordion type="single" collapsible className="w-full">
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
                   <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                    <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
-                      <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline">
-                        <div className="grid md:grid-cols-2 flex-1 items-center gap-4">
-                          {/* Term Column */}
-                          <div className="flex items-center gap-3">
+                     <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
+                        <AccordionTrigger className="flex-1 text-left p-0 hover:no-underline group">
+                          <div className="grid grid-cols-[auto,1fr] md:grid-cols-[auto,1fr,1fr] flex-1 items-center gap-x-4">
+                            {/* Audio Button */}
                             <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                                disabled={word.isGeneratingAudio}
-                                className="h-8 w-8 flex-shrink-0"
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                              disabled={word.isGeneratingAudio}
+                              className="h-8 w-8 flex-shrink-0"
                             >
-                                {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
-                                <span className="sr-only">Play term audio</span>
+                              {word.isGeneratingAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              <span className="sr-only">Play term audio</span>
                             </Button>
+                            
+                            {/* Term and Pronunciation */}
                             <div className="flex-1">
-                                <p className="font-semibold">{word.term}</p>
-                                <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
-                                <Badge variant="outline" className="mt-1 md:hidden">{word.partOfSpeech}</Badge>
+                              <p className="font-semibold">{word.term}</p>
+                              <p className="text-sm text-muted-foreground">{word.pronunciation}</p>
+                            </div>
+                            
+                            {/* Definition and Part of Speech */}
+                            <div className="hidden md:flex items-center">
+                              <Badge variant="outline" className="mr-3">{word.partOfSpeech}</Badge>
+                              <p className="text-sm text-muted-foreground truncate">{word.definition}</p>
                             </div>
                           </div>
-                           {/* Definition Column */}
-                          <div className="flex items-center">
-                            <Badge variant="outline" className="hidden md:inline-flex mr-3">{word.partOfSpeech}</Badge>
-                            <p className="text-sm text-muted-foreground">{word.definition}</p>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      {/* Actions Column */}
-                      <div className="w-auto md:w-[120px] flex justify-end items-center gap-1 pl-4">
+                        </AccordionTrigger>
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end items-center gap-1 pl-4">
+                           <EditWordDialog word={word} setWords={setWords} />
                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
                              <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
                              <span className="sr-only">Favorite</span>
@@ -460,10 +662,14 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                              <span className="sr-only">Delete</span>
                            </Button>
-                      </div>
-                    </div>
-                     <AccordionContent className="px-4 pb-4 bg-background">
-                        <div className="pl-12 pt-2 space-y-3 text-sm">
+                        </div>
+                     </div>
+                     <AccordionContent className="px-4 pb-4 pt-0 bg-background">
+                        <div className="pl-12 space-y-4 text-sm">
+                           <div className="md:hidden">
+                              <p className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></p>
+                              <p className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</p>
+                           </div>
                            <div>
                              <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
                              <p>{word.vietnameseDefinition}</p>
@@ -485,7 +691,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                            </div>
                            <div>
                               <p className="font-semibold text-muted-foreground">Example (VI):</p>
-                              <p className="italic">"{word.vietnameseSentence}"</p>
+                              <p className="italic ml-12">"{word.vietnameseSentence}"</p>
                            </div>
                         </div>
                      </AccordionContent>
