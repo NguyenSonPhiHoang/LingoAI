@@ -9,6 +9,8 @@ import LevelView from "@/components/lingo/level-view";
 import AiSuggester from "@/components/lingo/ai-suggester";
 import VocabularyList from "@/components/lingo/vocabulary-list";
 import ReviewView from "@/components/lingo/review-view";
+import UserManagement from "@/components/lingo/user-management";
+import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import type { Word } from "@/components/lingo/vocabulary-list";
 import { getVocabulary } from "@/services/vocabulary";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +22,8 @@ export type View =
   | "levels"
   | "ai-suggester"
   | "vocabulary"
-  | "review";
+  | "review"
+  | "user-management";
 
 const Home: FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -37,7 +40,7 @@ const Home: FC = () => {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (user) {
+    if (user?.uid && user.status === 'approved') {
       const fetchWords = async () => {
         try {
           setIsLoading(true);
@@ -55,6 +58,8 @@ const Home: FC = () => {
         }
       };
       fetchWords();
+    } else {
+        setIsLoading(false);
     }
   }, [user, toast]);
 
@@ -73,6 +78,10 @@ const Home: FC = () => {
       // This will be briefly visible before redirecting
       return null;
     }
+    
+    if (user.status === 'pending') {
+        return <WaitingForApproval />;
+    }
 
     switch (activeView) {
       case "overview":
@@ -85,6 +94,8 @@ const Home: FC = () => {
         return <VocabularyList words={words} setWords={setWords} />;
       case "review":
         return <ReviewView words={favoriteWords} />;
+      case "user-management":
+        return <UserManagement />;
       default:
         return <DashboardOverview setActiveView={setActiveView} />;
     }

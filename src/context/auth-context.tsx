@@ -2,9 +2,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
+
+export interface User extends FirebaseUser {
+  role?: 'admin' | 'user';
+  status?: 'pending' | 'approved' | 'rejected';
+}
 
 interface AuthContextType {
   user: User | null;
@@ -21,12 +27,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const userData = doc.data();
+            setUser({
+              ...firebaseUser,
+              role: userData.role,
+              status: userData.status
+            });
+          }
+          setLoading(false);
+        });
+        return () => unsubscribeSnapshot();
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   const login = (email: string, pass: string) => {
@@ -35,8 +57,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, pass: string, displayName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    if(userCredential.user){
-        await updateProfile(userCredential.user, {displayName});
+    const firebaseUser = userCredential.user;
+    if(firebaseUser){
+      await updateProfile(firebaseUser, { displayName });
+      const userRef = doc(db, "users", firebaseUser.uid);
+      await setDoc(userRef, {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: displayName,
+        role: 'user',
+        status: 'pending',
+        createdAt: new Date(),
+      });
     }
     return userCredential;
   }

@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   User,
+  Users,
   ClipboardCheck,
 } from "lucide-react";
 import type { View } from "@/app/page";
@@ -53,12 +54,16 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "levels", label: "All Levels", icon: GraduationCap },
-    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles },
-    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy },
-    { id: "review", label: "Review", icon: ClipboardCheck },
+    { id: "overview", label: "Overview", icon: LayoutDashboard, role: ['user', 'admin'] },
+    { id: "levels", label: "All Levels", icon: GraduationCap, role: ['user', 'admin'] },
+    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'] },
+    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
+    { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
+    { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
   ];
+  
+  const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
+
 
   const handleViewChange = (view: View) => {
     setActiveView(view);
@@ -75,7 +80,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {menuItems.map((item) => (
+            {user?.status === 'approved' && availableMenuItems.map((item) => (
               <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
                   onClick={() => handleViewChange(item.id as View)}
