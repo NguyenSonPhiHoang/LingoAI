@@ -82,7 +82,7 @@ const MatchingGame: FC<{
                         ? "destructive"
                         : "outline"
                       : isSelected
-                      ? "secondary"
+                      ? "default"
                       : "outline"
                   }
                   className="h-auto min-h-[4rem] whitespace-normal text-left"
