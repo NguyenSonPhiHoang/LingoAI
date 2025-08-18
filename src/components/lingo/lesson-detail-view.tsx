@@ -413,22 +413,23 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       {/* Section 1: Learning Content */}
       <Card>
         <CardHeader>
-          <CardTitle>1. Learning Content</CardTitle>
-          <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+           <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>1. Learning Content</CardTitle>
+                    <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+                </div>
+                <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
+                    {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+                    {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+                </Button>
+           </div>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-              <div className="flex justify-end items-center">
-                  <div className='flex-grow'></div>
-                  <AccordionTrigger className='flex-none py-0'>
-                      <Button onClick={handleGenerateContent} disabled={!!isLoading}>
-                        {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-                        {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                      </Button>
-                  </AccordionTrigger>
-              </div>
-
+               <AccordionTrigger className="justify-center py-2 text-sm">
+                  {hasContentForPractice ? 'Show/Hide Learning Content' : ''}
+               </AccordionTrigger>
               <AccordionContent className="pt-4">
                 <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
                   {isLoading === 'content' ? (
@@ -453,8 +454,20 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       {/* Section 2: Practice Zone */}
         <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle>2. Practice Zone</CardTitle>
-                <CardDescription>Test your knowledge with an AI-powered exercise.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>2. Practice Zone</CardTitle>
+                        <CardDescription>Test your knowledge with an AI-powered exercise.</CardDescription>
+                    </div>
+                    <Button 
+                        size="sm" 
+                        onClick={handleStartPractice} 
+                        disabled={!!isLoading || !hasContentForPractice}
+                    >
+                        {isLoading === lesson.skill ? <Loader2 className="mr-2 animate-spin"/> : <PlayCircle className="mr-2"/>}
+                        {currentLesson.exercises?.[lesson.skill.toLowerCase() as keyof typeof currentLesson.exercises] ? 'Regenerate Practice' : 'Start Practice'}
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col gap-4">
                <div className="space-y-2">
@@ -478,17 +491,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                    </div>
                </div>
             </CardContent>
-            <CardFooter className="border-t pt-4">
-                <Button 
-                    className="w-full" 
-                    size="lg" 
-                    onClick={handleStartPractice} 
-                    disabled={!!isLoading || !hasContentForPractice}
-                >
-                    {isLoading === lesson.skill ? <Loader2 className="mr-2 animate-spin"/> : <PlayCircle className="mr-2"/>}
-                    {currentLesson.exercises?.[lesson.skill.toLowerCase() as keyof typeof currentLesson.exercises] ? 'Regenerate Practice' : 'Start Practice'}
-                </Button>
-            </CardFooter>
         </Card>
     </div>
   );
