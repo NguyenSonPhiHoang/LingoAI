@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { Word } from "./vocabulary-list";
+import { Input } from "@/components/ui/input";
 
 interface ReviewViewProps {
   words: Word[];
@@ -109,7 +110,7 @@ const MatchingGame: FC<{ words: Word[] }> = ({ words }) => {
       ))}
       <div className="flex justify-center gap-4">
         <Button onClick={generateQuestions} variant="outline" size="lg">
-          <Repeat className="mr-2" /> Thử lại
+          <Repeat className="mr-2" /> Chơi lại
         </Button>
         <Button onClick={checkAnswers} size="lg" disabled={showResults}>
           Kiểm tra
@@ -127,7 +128,7 @@ const FillInBlankGame: FC<{ words: Word[] }> = ({ words }) => {
     const generateQuestion = () => {
         setIsCorrect(null);
         setInputValue("");
-        const availableWords = words.filter(w => w.sentence.includes(w.term));
+        const availableWords = words.filter(w => w.sentence && w.sentence.toLowerCase().includes(w.term.toLowerCase()));
         if (availableWords.length === 0) {
             setQuestion(null);
             return;
@@ -148,7 +149,7 @@ const FillInBlankGame: FC<{ words: Word[] }> = ({ words }) => {
         setIsCorrect(correct);
     }
     
-    if (words.filter(w => w.sentence.includes(w.term)).length === 0) {
+    if (words.filter(w => w.sentence && w.sentence.toLowerCase().includes(w.term.toLowerCase())).length === 0) {
         return (
             <div className="text-center text-muted-foreground">
                 <p>Bạn không có từ yêu thích nào có câu ví dụ phù hợp để chơi trò này.</p>
