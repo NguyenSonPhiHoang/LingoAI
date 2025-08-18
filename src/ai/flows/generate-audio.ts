@@ -9,15 +9,12 @@
 
 import {ai} from '@/ai/genkit';
 import wav from 'wav';
-import {z} from 'genkit';
-
-export const GenerateAudioInputSchema = z.string();
-export type GenerateAudioInput = z.infer<typeof GenerateAudioInputSchema>;
-
-export const GenerateAudioOutputSchema = z.object({
-  audioUrl: z.string().describe('The base64 encoded data URI of the audio.'),
-});
-export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
+import {
+  GenerateAudioInputSchema,
+  GenerateAudioOutputSchema,
+  type GenerateAudioInput,
+  type GenerateAudioOutput,
+} from './schemas';
 
 export async function generateAudio(
   input: GenerateAudioInput
