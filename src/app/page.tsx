@@ -92,6 +92,12 @@ const Home: FC = () => {
   }, [user, authLoading, router, toast]);
 
 
+  // Prevent flash of content after logout, before redirect.
+  // The layout itself handles a top-level loading spinner via the context.
+  if (!user && !authLoading) {
+    return null;
+  }
+  
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
@@ -154,14 +160,9 @@ const Home: FC = () => {
     // Fallback for any other state, though it shouldn't be reached.
     return null;
   };
-
-  // Do not render the layout if there is no user and authentication is complete.
-  // This prevents a flash of the layout before the redirect to login happens.
-  if (!user && !authLoading) {
-    return null;
-  }
   
-  // Render the appropriate layout and content based on user status
+  // Render the layout and content. If there's no user, `renderContent` will be null,
+  // but the redirect from `useEffect` will handle navigation.
   return (
     <DashboardLayout
       activeView={activeViewState.view}

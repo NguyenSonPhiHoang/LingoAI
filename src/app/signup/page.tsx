@@ -40,7 +40,7 @@ export default function SignupPage() {
   const router = useRouter();
   const { signup, user, loading } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,21 +52,21 @@ export default function SignupPage() {
   });
   
   useEffect(() => {
-    // Only redirect if auth is not loading and user is logged in.
+    // Redirect only when auth state is fully resolved and a user exists.
     if (!loading && user) {
       router.push("/");
     }
   }, [user, loading, router]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       await signup(values.email, values.password, values.displayName);
       toast({
         title: "Account Created",
         description: "Welcome to LingoAI! You have been logged in.",
       });
-      router.push("/");
+      // The useEffect hook will handle the redirect.
     } catch (error: any) {
       console.error("Signup failed:", error);
       toast({
@@ -75,11 +75,12 @@ export default function SignupPage() {
         description: error.message || "An unknown error occurred.",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
   
-  if (loading || (!loading && user)) {
+  // Show a loader while auth state is resolving or if a user is found (and redirect is imminent).
+  if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -87,6 +88,7 @@ export default function SignupPage() {
     );
   }
 
+  // Only show the form when loading is complete and there's no user.
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm">
@@ -146,8 +148,8 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <UserPlus className="mr-2 h-4 w-4" />
