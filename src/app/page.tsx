@@ -134,6 +134,7 @@ const Home: FC = () => {
            return activeViewState.lesson ? (
             <LessonDetailView
               lesson={activeViewState.lesson}
+              vocabulary={words}
               onBack={() => setActiveViewState({ view: "my-lessons" })}
             />
           ) : (
