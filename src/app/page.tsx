@@ -47,16 +47,18 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // If auth is resolved and there's no user, redirect to login.
-    if (!authLoading && !user) {
+    if (authLoading) {
+      return; // Wait for auth context to resolve
+    }
+    if (!user) {
       router.push("/login");
       return;
     }
     
     // If we have a user and they are approved, fetch their data.
-    if (user && user.status === 'approved') {
+    if (user.status === 'approved') {
       const fetchWords = async () => {
-        // No need to set isLoading here, the main page loader handles it
+        setIsLoading(true);
         try {
           const fetchedWords = await getVocabulary(user.uid);
           setWords(fetchedWords);
@@ -72,24 +74,22 @@ const Home: FC = () => {
         }
       };
       fetchWords();
-    } else if (user) {
+    } else {
       // For 'pending' or 'rejected' users, we don't need to fetch words.
       setIsLoading(false);
     }
   }, [user, authLoading, router, toast]);
 
-  // The main loader from AuthProvider handles the initial auth check.
-  // This loader handles subsequent data fetching after auth is confirmed.
-  if (authLoading || (user && isLoading)) {
+  if (authLoading || (!user && !authLoading) || (user && isLoading)) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
-
-  // If loading is finished and there's still no user, the useEffect will handle the redirect.
-  // Returning null prevents rendering children that might cause permission errors.
+  
+  // This state should not be reachable if useEffect is working correctly,
+  // but as a safeguard, we prevent rendering children that might cause errors.
   if (!user) {
     return null;
   }
@@ -138,7 +138,7 @@ const Home: FC = () => {
       }
     }
 
-    // Fallback for any other state, though it shouldn't be reached.
+    // Fallback for any other state.
     return null;
   };
   
