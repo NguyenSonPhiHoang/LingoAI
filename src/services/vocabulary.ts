@@ -27,6 +27,7 @@ export interface Word {
   term_normalized: string;
   pronunciation: string;
   createdAt: Timestamp;
+  audioUrl?: string; 
 }
 
 // This is the user-specific data, stored in 'userVocabulary'.
@@ -42,7 +43,6 @@ export interface UserVocabulary {
   vietnameseDefinition: string;
   sentence: string;
   vietnameseSentence: string;
-  audioUrl?: string; // Stored here as it might be user-specific (e.g. voice choice in future)
   sentenceAudioUrl?: string;
   
   // User-specific metadata
@@ -203,16 +203,14 @@ export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], use
 
 // Deletes the entry from the user's personal list, not the global word.
 export const deleteUserVocabulary = async (userVocabularyId: string) => {
+  if (!auth.currentUser) return;
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   await deleteDoc(userVocabDoc);
 };
 
 // Updates fields in the `userVocabulary` collection.
 export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id' | 'wordId' | 'userId' | 'createdAt'>>) => {
-  // Prevent updates if the user is logged out. This stops permission errors on cleanup.
-  if (!auth.currentUser) {
-    return;
-  }
+  if (!auth.currentUser) return;
   
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   const cleanUpdates = cleanObject(updates);
@@ -222,11 +220,9 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
 };
 
 // Updates fields in the global `words` collection (for Admin).
-export const updateWord = async (wordId: string, updates: Partial<Pick<Word, 'term' | 'pronunciation'>>) => {
-    // Also check for auth here to be safe.
-    if (!auth.currentUser) {
-        return;
-    }
+export const updateWord = async (wordId: string, updates: Partial<Pick<Word, 'term' | 'pronunciation' | 'audioUrl'>>) => {
+    if (!auth.currentUser) return;
+    
     const wordDoc = doc(db, "words", wordId);
     const cleanUpdates = cleanObject({
         ...updates,
