@@ -66,7 +66,7 @@ const generateAudioFlow = ai.defineFlow(
           },
         },
       },
-      prompt: {text: query},
+      prompt: query,
     });
     if (!media) {
       throw new Error(
