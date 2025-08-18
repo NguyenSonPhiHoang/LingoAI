@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   User,
+  ClipboardCheck,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +54,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "levels", label: "All Levels", icon: GraduationCap },
     { id: "ai-suggester", label: "AI Suggester", icon: Sparkles },
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy },
+    { id: "review", label: "Review", icon: ClipboardCheck },
   ];
 
   const handleViewChange = (view: View) => {

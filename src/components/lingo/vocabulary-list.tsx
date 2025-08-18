@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { FC } from "react";
+import type { FC, Dispatch, SetStateAction } from "react";
 import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ import { generateAudio } from "@/ai/flows/generate-audio";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 
-interface Word extends VocabularyEntry {
+export interface Word extends VocabularyEntry {
   id: number;
   audioUrl?: string;
   isGeneratingAudio?: boolean;
@@ -47,38 +47,12 @@ interface Word extends VocabularyEntry {
   viewCount: number;
 }
 
-const initialWords: Word[] = [
-  {
-    id: 1,
-    term: "Ubiquitous",
-    pronunciation: "/juːˈbɪkwɪtəs/",
-    definition: "Present, appearing, or found everywhere.",
-    sentence: "Smartphones have become ubiquitous in modern society.",
-    favorite: false,
-    viewCount: 5,
-  },
-  {
-    id: 2,
-    term: "Ephemeral",
-    pronunciation: "/ɪˈfemərəl/",
-    definition: "Lasting for a very short time.",
-    sentence: "The beauty of the cherry blossoms is ephemeral.",
-    favorite: true,
-    viewCount: 3,
-  },
-  {
-    id: 3,
-    term: "Mellifluous",
-    pronunciation: "/məˈlɪfluəs/",
-    definition: "(of a voice or words) Sweet or musical; pleasant to hear.",
-    sentence: "Her mellifluous voice captivated the audience.",
-    favorite: false,
-    viewCount: 7,
-  },
-];
+interface VocabularyListProps {
+  words: Word[];
+  setWords: Dispatch<SetStateAction<Word[]>>;
+}
 
-const VocabularyList: FC = () => {
-  const [words, setWords] = useState<Word[]>(initialWords);
+const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);

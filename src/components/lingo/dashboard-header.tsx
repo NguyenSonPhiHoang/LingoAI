@@ -12,6 +12,7 @@ const viewTitles: Record<View, string> = {
   levels: "Tất cả các cấp độ",
   "ai-suggester": "Gợi ý của AI",
   vocabulary: "Từ vựng của tôi",
+  review: "Ôn tập",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {

@@ -7,6 +7,7 @@ import {
   FilePenLine,
   Headphones,
   Mic,
+  ClipboardCheck,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Button } from "@/components/ui/button";
@@ -65,8 +66,8 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
           <CardHeader>
             <CardTitle>Overall Progress</CardTitle>
             <CardDescription>
@@ -120,38 +121,61 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
         </Card>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-2xl font-bold tracking-tight">Skill Progress</h3>
-        <p className="text-muted-foreground">
-          Track your improvement in each core skill.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {skillData.map((skill) => (
-          <Card
-            key={skill.name}
-            className="transition-transform hover:-translate-y-1 hover:shadow-xl"
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-medium">
-                {skill.name}
-              </CardTitle>
-              <div className={`rounded-lg p-2 ${skill.bgColor}`}>
-                <skill.icon className={`h-6 w-6 ${skill.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{skill.progress}%</div>
-              <p className="text-xs text-muted-foreground">
-                Proficiency Level
-              </p>
-            </CardContent>
-            <CardFooter>
-              <Progress value={skill.progress} className="h-2" />
-            </CardFooter>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <h3 className="text-2xl font-bold tracking-tight">Skill Progress</h3>
+            <p className="text-muted-foreground">
+              Track your improvement in each core skill.
+            </p>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {skillData.map((skill) => (
+              <Card
+                key={skill.name}
+                className="transition-transform hover:-translate-y-1 hover:shadow-xl"
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-base font-medium">
+                    {skill.name}
+                  </CardTitle>
+                  <div className={`rounded-lg p-2 ${skill.bgColor}`}>
+                    <skill.icon className={`h-6 w-6 ${skill.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{skill.progress}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Proficiency Level
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Progress value={skill.progress} className="h-2" />
+                </CardFooter>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+        <Card className="flex flex-col justify-between bg-secondary/20 transition-transform hover:scale-[1.02] hover:shadow-lg">
+          <CardHeader>
+            <CardTitle>Review Vocabulary</CardTitle>
+            <CardDescription>
+              Practice your saved words with interactive exercises.
+            </CardDescription>
+            <div className="flex justify-center pt-4">
+               <ClipboardCheck className="h-16 w-16 text-secondary-foreground/50" />
+            </div>
+          </CardHeader>
+          <CardFooter>
+            <Button
+              className="w-full"
+              onClick={() => setActiveView("review")}
+              variant="secondary"
+            >
+              Start Review <ArrowRight className="ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
