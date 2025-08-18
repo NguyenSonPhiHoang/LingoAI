@@ -1,0 +1,46 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Rules for the 'vocabulary' collection
+    match /vocabulary/{docId} {
+      // Any authenticated user can create their own vocabulary entry.
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);
+      // Only the owner can read, update, or delete their own vocabulary entry.
+      allow read, update, delete: if request.auth != null && isOwner(resource.data.userId);
+    }
+
+    // Rules for the 'lessons' collection
+    match /lessons/{docId} {
+      // Any authenticated user can create their own lesson.
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);
+      // Only the owner can read, update, or delete their own lesson.
+      allow read, update, delete: if request.auth != null && isOwner(resource.data.userId);
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // A user can read their own document. Admins can read any user document.
+      allow read: if request.auth != null && (isOwner(userId) || isAdmin());
+      
+      // A new user can create their own user document upon signup.
+      allow create: if request.auth != null && isOwner(userId);
+
+      // Only an admin can update a user's status.
+      // A user cannot change their own role or status.
+      allow update: if request.auth != null && isAdmin() && !('role' in request.resource.data);
+    }
+  }
+}
