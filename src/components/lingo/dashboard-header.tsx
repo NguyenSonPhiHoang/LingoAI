@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Settings, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 
 interface DashboardHeaderProps {
@@ -35,6 +36,18 @@ const viewTitles: Record<View, string> = {
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
   const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Force immediate redirection to login page.
+      // This ensures the dashboard components unmount cleanly before auth state fully propagates.
+      router.push('/login');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
   
   const getTitle = () => {
     if (user?.status === 'pending') {
@@ -76,7 +89,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
