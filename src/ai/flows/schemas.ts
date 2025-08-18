@@ -43,3 +43,43 @@ export const GenerateAudioOutputSchema = z.object({
   audioUrl: z.string().describe('The base64 encoded data URI of the audio.'),
 });
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
+
+// Schemas for generate-review-flow.ts
+export const GenerateReviewInputSchema = z.object({
+  words: z.array(
+    z.object({
+      term: z.string(),
+      definition: z.string(),
+      sentence: z.string(),
+    })
+  ),
+});
+export type GenerateReviewInput = z.infer<typeof GenerateReviewInputSchema>;
+
+const MatchingQuestionSchema = z.object({
+  term: z.string().describe('The word to be defined.'),
+  options: z
+    .array(z.string())
+    .length(4)
+    .describe('An array of 4 definitions, one of which is correct.'),
+  correctDefinition: z.string().describe('The correct definition.'),
+});
+export type MatchingQuestion = z.infer<typeof MatchingQuestionSchema>;
+
+const FillInTheBlankQuestionSchema = z.object({
+  sentence: z.string().describe('A sentence with a blank (e.g., "___").'),
+  correctTerm: z.string().describe('The word that correctly fills the blank.'),
+});
+export type FillInTheBlankQuestion = z.infer<
+  typeof FillInTheBlankQuestionSchema
+>;
+
+export const GenerateReviewOutputSchema = z.object({
+  matchingQuestions: z
+    .array(MatchingQuestionSchema)
+    .describe('An array of matching questions.'),
+  fillInTheBlankQuestions: z
+    .array(FillInTheBlankQuestionSchema)
+    .describe('An array of fill-in-the-blank questions.'),
+});
+export type GenerateReviewOutput = z.infer<typeof GenerateReviewOutputSchema>;
