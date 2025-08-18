@@ -30,7 +30,9 @@ const prompt = ai.definePrompt({
 
 Create logical topic names based on the context of the words provided. For words that do not fit into a clear category, group them under a topic named "Miscellaneous".
 
-Vocabulary List:
+You MUST categorize every word provided.
+
+Vocabulary List to Group:
 {{#each vocabulary}}
 - Term: {{{this.term}}}
 - Definition: {{{this.definition}}}

@@ -12,6 +12,7 @@ import {
   orderBy,
   where,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import type { Word } from "@/components/lingo/vocabulary-list";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
@@ -31,20 +32,20 @@ export const getVocabulary = async (userId: string): Promise<Word[]> => {
       ...data,
       id: doc.id,
       docId: doc.id,
-      // Firestore Timestamps need to be converted, but we store them as Dates
+      // Firestore Timestamps need to be converted to Date objects for serialization
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
     } as Word
   })
 };
 
-export const addWordToFirestore = async (word: Omit<Word, 'id' | 'docId'>): Promise<Word> => {
+export const addWordToFirestore = async (word: Omit<Word, 'id' | 'docId' | 'createdAt'>): Promise<Word> => {
     const docRef = await addDoc(vocabularyCollection, {
         ...word,
         createdAt: Timestamp.now(),
     });
     const newWordData = { ...word, id: docRef.id, docId: docRef.id };
     
-    // This is a temporary fix because Firestore returns a Timestamp object
-    // but the rest of the app expects a JS Date object.
+    // Convert Firestore Timestamp to JS Date for immediate use in the client
     const finalWord = {
         ...newWordData,
         createdAt: new Date() 
@@ -53,19 +54,32 @@ export const addWordToFirestore = async (word: Omit<Word, 'id' | 'docId'>): Prom
 };
 
 export const addMultipleWordsToFirestore = async (words: VocabularyEntry[], userId: string): Promise<Word[]> => {
+  const batch = writeBatch(db);
   const newWords: Word[] = [];
+  
   for (const word of words) {
-    const newWordData: Omit<Word, 'id' | 'docId'> = {
+    const newWordData: Omit<Word, 'id' | 'docId' | 'createdAt'> = {
       ...word,
       favorite: false,
       viewCount: 0,
       userId: userId,
+      topic: undefined, // New words don't have a topic
     };
-    const savedWord = await addWordToFirestore(newWordData);
-    newWords.push(savedWord);
+    const docRef = doc(vocabularyCollection); // Create a new doc reference
+    batch.set(docRef, { ...newWordData, createdAt: Timestamp.now() });
+    
+    newWords.push({
+      ...newWordData,
+      id: docRef.id,
+      docId: docRef.id,
+      createdAt: new Date(), // Use current date for immediate client state update
+    } as Word);
   }
+  
+  await batch.commit();
   return newWords;
 };
+
 
 export const deleteWordFromFirestore = async (docId: string) => {
   const wordDoc = doc(db, "vocabulary", docId);
@@ -74,5 +88,7 @@ export const deleteWordFromFirestore = async (docId: string) => {
 
 export const updateWordInFirestore = async (docId: string, updates: Partial<Omit<Word, 'id' | 'docId'>>) => {
   const wordDoc = doc(db, "vocabulary", docId);
-  await updateDoc(wordDoc, updates);
+  // Remove undefined values, as Firestore doesn't allow them in updates.
+  const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([_, v]) => v !== undefined));
+  await updateDoc(wordDoc, cleanUpdates);
 };

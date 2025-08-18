@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown, FolderKanban } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye, ChevronDown } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,6 +54,11 @@ import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, add
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 
 export interface Word extends VocabularyEntry {
@@ -67,6 +72,7 @@ export interface Word extends VocabularyEntry {
   viewCount: number;
   userId: string;
   createdAt: any;
+  topic?: string;
 }
 
 interface VocabularyListProps {
@@ -138,6 +144,7 @@ const AddWordDialog: FC<{
             favorite: false,
             viewCount: 0,
             userId: user.uid,
+            topic: undefined, // New words don't have a topic yet
         };
 
         try {
@@ -261,8 +268,6 @@ const EditWordDialog: FC<{
     setIsSaving(true);
     try {
       const plainWord = { ...word };
-      // This is a plain JS object, so we don't need to check for complex types
-      // before sending to firestore.
       const wordToUpdate = {
         ...plainWord,
         ...values,
@@ -412,19 +417,30 @@ const EditWordDialog: FC<{
 };
 
 const GroupedView: FC<{
-  groupedWords: { topic: string; words: Word[] }[];
   words: Word[];
   setWords: Dispatch<SetStateAction<Word[]>>;
-}> = ({ groupedWords, words, setWords }) => {
+}> = ({ words, setWords }) => {
+
+  const grouped = words.reduce((acc, word) => {
+    const topic = word.topic || 'Miscellaneous';
+    if (!acc[topic]) {
+      acc[topic] = [];
+    }
+    acc[topic].push(word);
+    return acc;
+  }, {} as Record<string, Word[]>);
+
+  const topics = Object.keys(grouped).sort();
+
   return (
     <div className="space-y-6">
-      {groupedWords.map(group => (
-        <Card key={group.topic}>
+      {topics.map(topic => (
+        <Card key={topic}>
           <CardHeader>
-            <CardTitle>{group.topic}</CardTitle>
+            <CardTitle>{topic}</CardTitle>
           </CardHeader>
           <CardContent>
-            <VocabularyListInternal words={group.words} allWords={words} setWords={setWords} />
+            <VocabularyListInternal words={grouped[topic]} allWords={words} setWords={setWords} />
           </CardContent>
         </Card>
       ))}
@@ -434,7 +450,7 @@ const GroupedView: FC<{
 
 const VocabularyListInternal: FC<{ 
   words: Word[];
-  allWords: Word[]; // The full unsorted list
+  allWords: Word[]; 
   setWords: Dispatch<SetStateAction<Word[]>>;
 }> = ({ words, allWords, setWords }) => {
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
@@ -532,13 +548,13 @@ const VocabularyListInternal: FC<{
         {words.length > 0 ? (
             words.map((word) => (
               <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
-                  <div className="flex items-center pr-4">
+                  <div className="flex items-center">
                     <div 
-                      className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50" 
+                      className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50 p-4" 
                       onClick={() => toggleAccordionItem(word.id)}
                     >
-                        {/* Desktop View */}
-                      <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
+                      {/* Desktop View */}
+                      <div className="hidden md:flex flex-1 items-center gap-4">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -567,7 +583,7 @@ const VocabularyListInternal: FC<{
                           </div>
                       </div>
                         {/* Mobile View */}
-                        <div className="md:hidden flex items-center gap-3 flex-1 px-4 py-3">
+                        <div className="md:hidden flex items-center gap-3 flex-1">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -585,7 +601,7 @@ const VocabularyListInternal: FC<{
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1 pl-2">
+                    <div className="flex items-center justify-end gap-1 pr-2">
                         <EditWordDialog word={word} setWords={setWords} />
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
                           <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
@@ -596,12 +612,12 @@ const VocabularyListInternal: FC<{
                           <span className="sr-only">Delete</span>
                         </Button>
                         <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
-                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                           <span className="sr-only">Toggle Details</span>
                         </AccordionTrigger>
                     </div>
                   </div>
-                  <AccordionContent className="px-4 pb-4 pt-0 bg-background">
-                    <div className="pl-12 space-y-4 text-sm">
+                  <AccordionContent>
+                    <div className="px-4 pb-4 pt-0 pl-16 space-y-4 text-sm">
                         <div className="md:hidden">
                           <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
                           <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
@@ -623,7 +639,7 @@ const VocabularyListInternal: FC<{
                                   variant="ghost" size="icon"
                                   onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
                                   disabled={word.isGeneratingSentenceAudio}
-                                  className="h-8 w-8 flex-shrink-0"
+                                  className="h-8 w-8 flex-shrink-0 -ml-2"
                               >
                                   {word.isGeneratingSentenceAudio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   <span className="sr-only">Play sentence audio</span>
@@ -633,7 +649,7 @@ const VocabularyListInternal: FC<{
                         </div>
                         <div>
                           <p className="font-semibold text-muted-foreground">Example (VI):</p>
-                          <p className="italic ml-12">"{word.vietnameseSentence}"</p>
+                          <p className="italic ml-10">"{word.vietnameseSentence}"</p>
                         </div>
                     </div>
                   </AccordionContent>
@@ -657,7 +673,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const [isGrouping, setIsGrouping] = useState(false);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
-  const [groupedWords, setGroupedWords] = useState<{ topic: string; words: Word[] }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -714,19 +729,30 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     setIsGrouping(true);
     setViewMode('grouped');
     try {
-        const plainWords = words.map(({ id, docId, createdAt, ...rest }) => rest);
-        const result = await groupVocabularyByTopic({ vocabulary: plainWords });
+      const wordsToGroup = words.filter(word => !word.topic);
+      
+      if (wordsToGroup.length > 0) {
+        toast({ title: "AI is at work!", description: `Grouping ${wordsToGroup.length} new word(s) by topic.`});
+        const plainWordsToGroup = wordsToGroup.map(({ id, docId, createdAt, ...rest }) => rest);
+        const result = await groupVocabularyByTopic({ vocabulary: plainWordsToGroup });
         
-        // Now, map the results back, but find the original word object
-        // to preserve IDs, view counts, favorite status, etc.
-        const originalWordsMap = new Map(words.map(w => [w.term, w]));
-        
-        const richGroupedWords = result.topics.map(topic => ({
-            ...topic,
-            words: topic.words.map(word => originalWordsMap.get(word.term)).filter(Boolean) as Word[]
-        }));
-        
-        setGroupedWords(richGroupedWords);
+        const updatedWords = [...words];
+        for (const topicGroup of result.topics) {
+          for (const wordFromAI of topicGroup.words) {
+            const originalWordIndex = updatedWords.findIndex(w => w.term === wordFromAI.term);
+            if (originalWordIndex !== -1) {
+              const wordToUpdate = updatedWords[originalWordIndex];
+              const newTopic = topicGroup.topic;
+              updatedWords[originalWordIndex] = { ...wordToUpdate, topic: newTopic };
+              // Update in Firestore without waiting
+              updateWordInFirestore(wordToUpdate.docId, { topic: newTopic }).catch(console.error);
+            }
+          }
+        }
+        setWords(updatedWords);
+      } else {
+        toast({ title: "All words are grouped!", description: "No new words to classify."});
+      }
 
     } catch (error) {
         console.error("Error grouping by topic:", error);
@@ -741,7 +767,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     fileInputRef.current?.click();
   }
 
-  const filteredWords = showOnlyFavorites
+  const wordsToDisplay = showOnlyFavorites
     ? words.filter((word) => word.favorite)
     : words;
 
@@ -751,14 +777,14 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[300px]">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                    <p className="text-muted-foreground">AI is grouping your vocabulary...</p>
+                    <p className="text-muted-foreground">AI is analyzing your vocabulary...</p>
                 </div>
             )
         }
-        return <GroupedView groupedWords={groupedWords} words={words} setWords={setWords} />;
+        return <GroupedView words={wordsToDisplay} setWords={setWords} />;
     }
 
-    return <VocabularyListInternal words={filteredWords} allWords={words} setWords={setWords} />;
+    return <VocabularyListInternal words={wordsToDisplay} allWords={words} setWords={setWords} />;
   }
 
   return (
@@ -781,7 +807,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                         handleGroupByTopic();
                       } else {
                         setViewMode('list');
-                        setGroupedWords([]);
                       }
                     }}
                 />
