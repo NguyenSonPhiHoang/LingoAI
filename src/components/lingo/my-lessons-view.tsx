@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { cn } from '@/lib/utils';
 
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
@@ -31,6 +32,14 @@ const skillIcons: Record<Skill, React.ElementType> = {
     Reading: BookOpen,
     Writing: FilePenLine,
 };
+
+const skillStyles: Record<Skill, string> = {
+    Listening: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200',
+    Speaking: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
+    Reading: 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200',
+    Writing: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200',
+};
+
 
 const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
 
@@ -337,7 +346,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="secondary">{lesson.skill}</Badge>
+                                        <Badge variant="secondary" className={cn(skillStyles[lesson.skill as Skill])}>{lesson.skill}</Badge>
                                         <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
                                     </div>
                                     <CardTitle className="pt-2 pr-8">{lesson.topic}</CardTitle>
