@@ -45,7 +45,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { updateLessonContent, updateLesson } from "@/services/lessons";
-import { updateUserVocabulary, type Word, type UserVocabulary, type CombinedVocabulary } from "@/services/vocabulary";
+import { updateUserVocabulary, updateWord, type CombinedVocabulary } from "@/services/vocabulary";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -643,10 +643,8 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             const newAudioUrl = result.audioUrl;
             playAudioUrl(newAudioUrl);
             
-            // Note: We only update the word, not the userVocabulary entry for audio.
             await updateWord(word.id, { audioUrl: newAudioUrl });
 
-            // Update local state for immediate feedback
             setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
 
         } catch (error: any) {
@@ -1046,3 +1044,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
 
 export default LessonDetailView;
 
+
+    
