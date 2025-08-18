@@ -51,11 +51,12 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
       </h1>
        <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-10 w-10">
+              <Button variant="ghost" className="relative flex items-center gap-2 rounded-full h-10 pr-4 pl-2">
+                <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} data-ai-hint="person" />
                   <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
+                <span className="font-medium text-sm hidden sm:inline">{user?.displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
