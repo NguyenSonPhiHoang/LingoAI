@@ -45,7 +45,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { updateLessonContent, updateLesson } from "@/services/lessons";
-import { updateUserVocabulary } from "@/services/vocabulary";
+import { updateUserVocabulary, type Word, type UserVocabulary, type CombinedVocabulary } from "@/services/vocabulary";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -65,14 +65,13 @@ import { useAuth } from "@/context/auth-context";
 import { Label } from "../ui/label";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "../ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { UserVocabulary } from "@/services/vocabulary";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
-  vocabulary: UserVocabulary[];
+  vocabulary: CombinedVocabulary[];
   onBack: () => void;
-  setWords: React.Dispatch<React.SetStateAction<UserVocabulary[]>>;
+  setWords: React.Dispatch<React.SetStateAction<CombinedVocabulary[]>>;
 }
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
@@ -471,12 +470,12 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 
 const InteractiveText: FC<{
     text: string;
-    vocabulary: UserVocabulary[];
-    playTermAudio: (word: UserVocabulary) => void;
+    vocabulary: CombinedVocabulary[];
+    playTermAudio: (word: CombinedVocabulary) => void;
     isTermPlaying: Record<string, boolean>;
 }> = React.memo(({ text, vocabulary, playTermAudio, isTermPlaying }) => {
     const vocabMap = useMemo(() => {
-        const map = new Map<string, UserVocabulary>();
+        const map = new Map<string, CombinedVocabulary>();
         // Sort by length descending to match longer phrases first
         const sortedVocab = [...vocabulary].sort((a, b) => b.term.length - a.term.length);
         sortedVocab.forEach(word => {
@@ -558,6 +557,7 @@ InteractiveText.displayName = 'InteractiveText';
 const useTranslation = () => {
     const [translations, setTranslations] = useState<Record<string, string | null>>({});
     const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
+    const { toast } = useToast();
 
     const toggleTranslation = async (key: string, text: string) => {
         if (translations[key]) {
@@ -581,7 +581,7 @@ const useTranslation = () => {
 };
 
 // --- Audio Playback Helper ---
-const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStateAction<UserVocabulary[]>> }) => {
+const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStateAction<CombinedVocabulary[]>> }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
@@ -591,6 +591,20 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
         if (audioRef.current) {
             audioRef.current.src = url;
             audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+        }
+    };
+
+    const playWithBrowserTTS = (text: string) => {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Browser Not Supported",
+                description: "Your browser does not support text-to-speech.",
+            });
         }
     };
 
@@ -606,17 +620,18 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
             playAudioUrl(result.audioUrl);
         } catch (error: any) {
-            toast({
+             toast({
                 variant: "destructive",
-                title: "Audio Generation Failed",
-                description: error.message || "Please try again later.",
+                title: "AI Audio Failed",
+                description: "Using standard browser voice as a fallback.",
             });
+            playWithBrowserTTS(text);
         } finally {
             setIsPlaying(prev => ({ ...prev, [key]: false }));
         }
     };
     
-    const playTermAudio = useCallback(async (word: UserVocabulary) => {
+    const playTermAudio = useCallback(async (word: CombinedVocabulary) => {
         if (word.audioUrl) {
             playAudioUrl(word.audioUrl);
             return;
@@ -628,7 +643,8 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             const newAudioUrl = result.audioUrl;
             playAudioUrl(newAudioUrl);
             
-            await updateUserVocabulary(word.id, { audioUrl: newAudioUrl });
+            // Note: We only update the word, not the userVocabulary entry for audio.
+            await updateWord(word.id, { audioUrl: newAudioUrl });
 
             // Update local state for immediate feedback
             setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
@@ -636,9 +652,10 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
         } catch (error: any) {
              toast({
                 variant: "destructive",
-                title: "Audio Generation Failed",
-                description: error.message || "Please try again later.",
+                title: "AI Audio Failed",
+                description: "Using standard browser voice as a fallback.",
             });
+            playWithBrowserTTS(word.term);
         } finally {
              setIsPlaying(prev => ({ ...prev, [word.id]: false }));
         }
@@ -651,7 +668,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
 
 // --- Practice Components ---
 
-const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: string, vocabulary: UserVocabulary[], playTermAudio: (word: UserVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ questions, passage, vocabulary, playTermAudio, isTermPlaying }) => {
+const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: string, vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ questions, passage, vocabulary, playTermAudio, isTermPlaying }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [showResults, setShowResults] = useState(false);
     const [feedback, setFeedback] = useState<Record<number, string>>({});
@@ -794,7 +811,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
 };
 
 
-const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: UserVocabulary[], playTermAudio: (word: UserVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ prompt, vocabulary, playTermAudio, isTermPlaying }) => {
+const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ prompt, vocabulary, playTermAudio, isTermPlaying }) => {
     const [userText, setUserText] = useState("");
     const [feedback, setFeedback] = useState<GenerateWritingFeedbackOutput | null>(null);
     const [isGettingFeedback, setIsGettingFeedback] = useState(false);
@@ -933,7 +950,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: UserVocabul
     )
 };
 
-const WritingPractice: FC<{ prompts: WritingPrompt[], vocabulary: UserVocabulary[], playTermAudio: (word: UserVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ prompts, vocabulary, playTermAudio, isTermPlaying }) => {
+const WritingPractice: FC<{ prompts: WritingPrompt[], vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ prompts, vocabulary, playTermAudio, isTermPlaying }) => {
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
        <div className="p-4 space-y-6">
@@ -945,7 +962,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[], vocabulary: UserVocabulary
 };
 
 
-const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string, vocabulary: UserVocabulary[], playTermAudio: (word: UserVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, passage, vocabulary, playTermAudio, isTermPlaying }) => {
+const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string, vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, passage, vocabulary, playTermAudio, isTermPlaying }) => {
     const audioRef = React.useRef<HTMLAudioElement>(null);
     return (
         <div className="p-4 h-full flex flex-col">
@@ -969,7 +986,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 };
 
 
-const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabulary: UserVocabulary[], playTermAudio: (word: UserVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, vocabulary, playTermAudio, isTermPlaying }) => {
+const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, vocabulary, playTermAudio, isTermPlaying }) => {
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
     const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
