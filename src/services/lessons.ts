@@ -16,7 +16,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import type { LessonSuggestion, UserLevel } from "@/ai/flows/schemas";
-import type { Word } from "@/components/lingo/vocabulary-list";
+import type { Word } from "./vocabulary";
 
 const lessonsCollection = collection(db, "lessons");
 
@@ -126,13 +126,3 @@ export const deleteLesson = async (docId: string) => {
     const lessonDoc = doc(db, "lessons", docId);
     await deleteDoc(lessonDoc);
 };
-
-export const updateWordInFirestore = async (docId: string, updates: Partial<Omit<Word, 'id' | 'docId'>>) => {
-  const wordDoc = doc(db, "vocabulary", docId);
-  // Remove undefined values, as Firestore doesn't allow them in updates.
-  const cleanUpdates = Object.fromEntries(Object.entries(updates).filter(([_, v]) => v !== undefined));
-  if (Object.keys(cleanUpdates).length > 0) {
-    await updateDoc(wordDoc, cleanUpdates);
-  }
-};
-    

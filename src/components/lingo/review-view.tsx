@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import type { Word } from "./vocabulary-list";
+import type { UserVocabulary } from "@/services/vocabulary";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,7 +27,7 @@ import type {
 import { useToast } from "@/hooks/use-toast";
 
 interface ReviewViewProps {
-  words: Word[];
+  words: UserVocabulary[];
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -358,5 +358,3 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
 };
 
 export default ReviewView;
-
-    

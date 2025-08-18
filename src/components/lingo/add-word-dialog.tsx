@@ -20,12 +20,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { generateWordDetails } from "@/ai/flows/generate-word-details";
 import type { GenerateWordDetailsOutput } from "@/ai/flows/schemas";
-import { addWordToFirestore } from "@/services/vocabulary";
-import type { Word } from "./vocabulary-list";
+import { addWordToVocabulary } from "@/services/vocabulary";
+import type { UserVocabulary, Word } from "@/services/vocabulary";
 
 interface AddWordDialogProps {
   user: any;
-  setWords: Dispatch<SetStateAction<Word[]>>;
+  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
   trigger: React.ReactNode;
 }
 
@@ -108,7 +108,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       return;
     }
 
-    const newWordData: Omit<Word, "id" | "docId" | "createdAt"> = {
+    const newWordData: Word = {
       term: term,
       pronunciation: generatedDetails.pronunciation,
       definition: generatedDetails.definition,
@@ -116,13 +116,10 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       partOfSpeech: generatedDetails.partOfSpeech,
       vietnameseDefinition: generatedDetails.vietnameseDefinition,
       vietnameseSentence: generatedDetails.vietnameseSentence,
-      favorite: false,
-      viewCount: 0,
-      userId: user.uid,
     };
 
     try {
-      const savedWord = await addWordToFirestore(newWordData);
+      const savedWord = await addWordToVocabulary(user.uid, newWordData);
       setWords((prevWords) => [savedWord, ...prevWords]);
       handleCloseDialog();
       toast({ title: "Success", description: "Word added to your list." });
@@ -239,5 +236,3 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
 };
 
 export default AddWordDialog;
-
-    

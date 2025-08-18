@@ -42,14 +42,14 @@ import {
 import DashboardHeader from "./dashboard-header";
 import { useAuth } from "@/context/auth-context";
 import AddWordDialog from "./add-word-dialog";
-import type { Word } from "./vocabulary-list";
+import type { UserVocabulary } from "@/services/vocabulary";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   activeView: View;
   setActiveView: Dispatch<SetStateAction<View>>;
-  setWords: Dispatch<SetStateAction<Word[]>>;
+  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
 }
 
 const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
@@ -179,5 +179,3 @@ const DashboardLayout: FC<Omit<DashboardLayoutProps, 'user'>> = (props) => {
 };
 
 export default DashboardLayout;
-
-    
