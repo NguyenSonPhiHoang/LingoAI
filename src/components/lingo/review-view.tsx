@@ -112,36 +112,31 @@ const FillInBlankGame: FC<{
   onRegenerate: () => void;
 }> = ({ questions, onRegenerate }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [inputValue, setInputValue] = useState("");
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const sentenceParts = useMemo(() => {
     if (!currentQuestion) return ["", ""];
-    // This regex is safer and handles cases with multiple blanks
     const parts = currentQuestion.sentence.split(/_{3,}/);
     return [parts[0] || "", parts.slice(1).join("___") || ""];
   }, [currentQuestion]);
   
   useEffect(() => {
-    setInputValue("");
-    setIsCorrect(null);
+    setSelectedOption(null);
+    setShowResult(false);
   }, [currentQuestionIndex, questions]);
 
-
-  const goToNextQuestion = () => {
-    setIsCorrect(null);
-    setInputValue("");
-    setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
+  const handleSelectOption = (option: string) => {
+    if (showResult) return;
+    setSelectedOption(option);
+    setShowResult(true);
   };
   
-  const handleCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentQuestion) return;
-    const correct =
-      inputValue.trim().toLowerCase() ===
-      currentQuestion.correctTerm.toLowerCase();
-    setIsCorrect(correct);
+  const goToNextQuestion = () => {
+    setSelectedOption(null);
+    setShowResult(false);
+    setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
   };
 
   if (!currentQuestion) {
@@ -151,63 +146,78 @@ const FillInBlankGame: FC<{
        </div>
     );
   }
+  
+  const isCorrect = selectedOption === currentQuestion.correctTerm;
 
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Fill in the Blank</CardTitle>
         <CardDescription>
-          Complete the sentence with the correct word.
+          Complete the sentence by choosing the correct word.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleCheck} className="space-y-6">
-          <div className="flex flex-wrap items-center justify-center text-center text-lg md:text-xl p-4 bg-muted rounded-lg min-h-[6rem]">
-            <span>{sentenceParts[0]}</span>
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              className={cn(
-                "w-36 text-center text-lg md:text-xl font-bold mx-2",
-                isCorrect === true && "border-green-500 ring-green-500",
-                isCorrect === false && "border-destructive ring-destructive"
-              )}
-              style={{ width: `${currentQuestion.correctTerm.length + 4}ch` }}
-              disabled={isCorrect !== null}
-            />
-            <span>{sentenceParts[1]}</span>
-          </div>
+      <CardContent className="space-y-6">
+        <div className="flex flex-wrap items-center justify-center text-center text-lg md:text-xl p-4 bg-muted rounded-lg min-h-[6rem]">
+          <span>{sentenceParts[0]}</span>
+          <span className="font-bold text-primary mx-2 underline decoration-dashed underline-offset-4">
+            {showResult ? currentQuestion.correctTerm : "_____"}
+          </span>
+          <span>{sentenceParts[1]}</span>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {currentQuestion.options.map((option, index) => {
+                const isTheCorrectOption = option === currentQuestion.correctTerm;
+                const isTheSelectedOption = option === selectedOption;
+                
+                return (
+                    <Button
+                      key={index}
+                      variant={
+                        showResult
+                          ? isTheCorrectOption
+                            ? "default"
+                            : isTheSelectedOption
+                            ? "destructive"
+                            : "outline"
+                          : "outline"
+                      }
+                      onClick={() => handleSelectOption(option)}
+                      disabled={showResult}
+                      className="h-auto py-3"
+                    >
+                        {option}
+                    </Button>
+                )
+            })}
+        </div>
 
-          {isCorrect !== null && (
-            <div
-              className={`p-3 rounded-md text-center ${
-                isCorrect
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {isCorrect
-                ? "Correct!"
-                : `Not quite! The correct answer is "${currentQuestion.correctTerm}".`}
-            </div>
-          )}
-
-          <div className="flex justify-center gap-4">
-            <Button type="submit" disabled={isCorrect !== null}>
-              Check
-            </Button>
-            <Button
-              type="button"
-              onClick={goToNextQuestion}
-              variant="secondary"
-            >
-              <Repeat className="mr-2" /> Next Question
-            </Button>
+        {showResult && (
+          <div
+            className={`p-3 rounded-md text-center ${
+              isCorrect
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {isCorrect ? "Correct!" : "Not quite! Try the next one."}
           </div>
-            <div className="text-center text-sm text-muted-foreground">
-                Question {currentQuestionIndex + 1} / {questions.length}
-            </div>
-        </form>
+        )}
+
+        <div className="flex justify-center gap-4">
+           <Button
+            type="button"
+            onClick={goToNextQuestion}
+            variant="secondary"
+            disabled={!showResult}
+          >
+            <Repeat className="mr-2" /> Next Question
+          </Button>
+        </div>
+        <div className="text-center text-sm text-muted-foreground">
+            Question {currentQuestionIndex + 1} / {questions.length}
+        </div>
       </CardContent>
     </Card>
   );
@@ -263,7 +273,13 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
         options: shuffleArray(q.options)
       }));
       setMatchingQuestions(shuffledMatching);
-      setFillInTheBlankQuestions(shuffleArray(result.fillInTheBlankQuestions));
+      
+      const shuffledFillIn = result.fillInTheBlankQuestions.map(q => ({
+        ...q,
+        options: shuffleArray(q.options)
+      }));
+      setFillInTheBlankQuestions(shuffleArray(shuffledFillIn));
+
     } catch (error) {
       console.error("Failed to generate exercises:", error);
       toast({

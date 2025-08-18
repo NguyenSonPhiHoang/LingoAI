@@ -77,6 +77,10 @@ export type MatchingQuestion = z.infer<typeof MatchingQuestionSchema>;
 
 const FillInTheBlankQuestionSchema = z.object({
   sentence: z.string().describe('A sentence with a blank (e.g., "___").'),
+  options: z
+    .array(z.string())
+    .length(4)
+    .describe('An array of 4 terms, one of which is correct.'),
   correctTerm: z.string().describe('The word that correctly fills the blank.'),
 });
 export type FillInTheBlankQuestion = z.infer<

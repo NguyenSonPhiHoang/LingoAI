@@ -31,7 +31,7 @@ const prompt = ai.definePrompt({
 Generate exactly 10 matching questions and 10 fill-in-the-blank questions.
 
 For matching questions, provide a term and four definition options, one of which is correct.
-For fill-in-the-blank questions, provide a sentence with a blank where the vocabulary term should go, and list the correct term. The sentence should be different from the original example sentence for the word.
+For fill-in-the-blank questions, provide a sentence with a blank (e.g., "___"), four term options (one correct and three plausible but incorrect distractors), and specify the correct term. The sentence should be different from the original example sentence for the word.
 
 Vocabulary List:
 {{#each words}}
