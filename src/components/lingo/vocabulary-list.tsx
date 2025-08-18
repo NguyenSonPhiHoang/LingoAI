@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, ChevronDown } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles, Pencil, Eye } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -505,9 +505,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   }
 
   const handlePlayAudio = async (word: Word, type: 'term' | 'sentence') => {
-    incrementViewCount(word);
     const audioUrlKey = type === 'term' ? 'audioUrl' : 'sentenceAudioUrl';
-    const audioUrl = word[audioUrlKey];
+    let audioUrl = word[audioUrlKey];
     const isGeneratingKey = type === 'term' ? 'isGeneratingAudio' : 'isGeneratingSentenceAudio';
 
     if (audioUrl) {
@@ -522,15 +521,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     try {
       const textToGenerate = type === 'term' ? word.term : word.sentence;
       const result = await generateAudio(textToGenerate);
-      const newAudioUrl = result.audioUrl;
+      audioUrl = result.audioUrl;
       
       if (audioRef.current) {
-        audioRef.current.src = newAudioUrl;
+        audioRef.current.src = audioUrl;
         audioRef.current.play().catch(e => console.error("Error playing audio:", e));
       }
       
-      await updateWordInFirestore(word.docId, { [audioUrlKey]: newAudioUrl });
-      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: newAudioUrl, [isGeneratingKey]: false } : w));
+      await updateWordInFirestore(word.docId, { [audioUrlKey]: audioUrl });
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, [audioUrlKey]: audioUrl, [isGeneratingKey]: false } : w));
     } catch (e: any) {
        toast({
           variant: "destructive",
@@ -540,6 +539,14 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
        setWords(prev => prev.map(w => w.id === word.id ? { ...w, [isGeneratingKey]: false } : w));
     }
   }
+  
+  useEffect(() => {
+    words.forEach(word => {
+        if (word.id === accordionValue) {
+            incrementViewCount(word);
+        }
+    });
+  }, [accordionValue]);
 
   const filteredWords = showOnlyFavorites
     ? words.filter((word) => word.favorite)
@@ -600,9 +607,12 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
           <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
             {filteredWords.length > 0 ? (
                 filteredWords.map((word) => (
-                  <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0 hover:bg-muted/50 transition-colors">
-                     <div className="flex items-center pr-2">
-                        <div className="flex-1 cursor-pointer" onClick={() => toggleAccordionItem(word.id)}>
+                  <AccordionItem value={word.id} key={word.id} className="border-b last:border-b-0">
+                     <div className="flex items-center pr-4">
+                        <div 
+                          className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50" 
+                          onClick={() => toggleAccordionItem(word.id)}
+                        >
                            {/* Desktop View */}
                           <div className="hidden md:flex flex-1 items-center gap-4 px-4 py-3">
                               <Button
@@ -624,7 +634,13 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                     <p>{word.definition}</p>
                                 </div>
                               </div>
-                              <Badge variant="outline">{word.partOfSpeech}</Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="flex items-center gap-1.5">
+                                  <Eye className="h-3 w-3" />
+                                  {word.viewCount || 0}
+                                </Badge>
+                                <Badge variant="outline">{word.partOfSpeech}</Badge>
+                              </div>
                           </div>
                            {/* Mobile View */}
                            <div className="md:hidden flex items-center gap-3 flex-1 px-4 py-3">
@@ -706,5 +722,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+
+    
 
     
