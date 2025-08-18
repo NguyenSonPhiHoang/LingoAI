@@ -47,7 +47,7 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Don't do anything until Firebase auth state is resolved.
+    // Wait for auth context to resolve.
     if (authLoading) {
       return;
     }
@@ -58,11 +58,11 @@ const Home: FC = () => {
       return;
     }
 
-    // If the user object is present but doesn't have a status yet,
-    // it means the Firestore data is still loading. We wait.
+    // If user object is present but doesn't have a status yet,
+    // it means the Firestore data is still loading.
     if (!user.status) {
-      setIsLoading(true);
-      return;
+        setIsLoading(true);
+        return;
     }
     
     // If user is approved, fetch their data.
@@ -85,37 +85,30 @@ const Home: FC = () => {
       };
       fetchWords();
     } else {
-      // For 'pending' or 'rejected' statuses, we don't need to fetch words,
-      // so we can stop loading. The UI will show the correct component.
+      // For 'pending' or 'rejected' statuses, we don't need to fetch words.
       setIsLoading(false);
     }
   }, [user, authLoading, router, toast]);
 
+  // Main loader while auth context or initial data is loading.
+  // The AuthProvider also has a loader, but this handles the period after auth resolves but before data is ready.
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  // Prevent flash of content after logout, before redirect.
-  // The layout itself handles a top-level loading spinner via the context.
-  if (!user && !authLoading) {
+  // If loading is finished and there's still no user, don't render anything.
+  // The useEffect will handle the redirect.
+  if (!user) {
     return null;
   }
   
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
-    // Show a loader while authentication or data fetching is in progress.
-    if (authLoading || (isLoading && user?.status === 'approved')) {
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-          <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        </div>
-      );
-    }
-    
-    // This state should not be reachable if the useEffect logic is correct,
-    // but as a fallback, we prevent rendering anything.
-    if (!user) {
-      return null;
-    }
-    
     // Show the waiting for approval screen if the user is not approved.
     if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
@@ -161,8 +154,6 @@ const Home: FC = () => {
     return null;
   };
   
-  // Render the layout and content. If there's no user, `renderContent` will be null,
-  // but the redirect from `useEffect` will handle navigation.
   return (
     <DashboardLayout
       activeView={activeViewState.view}

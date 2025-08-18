@@ -62,11 +62,7 @@ export default function SignupPage() {
     setIsSubmitting(true);
     try {
       await signup(values.email, values.password, values.displayName);
-      toast({
-        title: "Account Created",
-        description: "Welcome to LingoAI! You have been logged in.",
-      });
-      // The useEffect hook will handle the redirect.
+      // Let the useEffect handle the redirect
     } catch (error: any) {
       console.error("Signup failed:", error);
       toast({

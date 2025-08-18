@@ -60,11 +60,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      // The useEffect hook will handle the redirect.
+      // Let the useEffect handle the redirect
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
