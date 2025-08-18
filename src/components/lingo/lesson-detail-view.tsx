@@ -415,59 +415,47 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 // --- Translation Helper ---
 
 const useTranslation = () => {
-    const [translations, setTranslations] = useState<Record<string, string | null>>({});
+    const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
+    const [visibility, setVisibility] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
     const toggleTranslation = async (key: string, text: string) => {
-        // If translation is already visible, hide it.
-        if (translations[key]) {
-            setTranslations(prev => ({ ...prev, [key]: null }));
+        // If translation is already visible, just hide it
+        if (visibility[key]) {
+            setVisibility(prev => ({ ...prev, [key]: false }));
             return;
         }
 
-        // If translation was fetched before but is hidden, just show it.
-        if (translations.hasOwnProperty(key) && translations[key] === null) {
-            // This logic is flawed. Let's refactor.
-            // We need a way to distinguish between "not fetched" and "fetched but hidden".
-            // Let's reconsider.
-            // If `translations[key]` has a value (is not undefined), it means it's fetched.
-            // If the value is a string, it's visible. If it's null, it's hidden.
+        // If translation has been fetched, just show it
+        if (translations[key]) {
+            setVisibility(prev => ({ ...prev, [key]: true }));
+            return;
+        }
 
-            // The issue is that I cannot get back the previous value.
-            // Let's store translations in a separate state from their visibility.
-            // NO, let's keep it simple. `if (translations[key])` handles showing. `else` handles fetching.
-            // The request is to hide it.
-            
-            // Ok, I will change the logic.
-            // a separate visibility state? No, too complex.
-            
-            // Current `translations` state has string values.
-            // Let's make it `Record<string, string | null>`.
-            // null means hidden, string means visible. undefined means not fetched.
-            
-            // When toggling...
-            // 1. If `translations[key]` is a string, it's visible. Set to null to hide.
-            if (typeof translations[key] === 'string') {
-                 setTranslations(prev => ({ ...prev, [key]: null }));
-                 return;
-            }
-            
-            // 2. It's not a string. It's either null or undefined.
-            setIsTranslating(prev => ({ ...prev, [key]: true }));
-            try {
-                const result = await translateText({ text });
-                setTranslations(prev => ({ ...prev, [key]: result.translation }));
-            } catch (error) {
-                console.error("Translation failed:", error);
-                toast({ variant: "destructive", title: "Translation Failed" });
-            } finally {
-                setIsTranslating(prev => ({ ...prev, [key]: false }));
-            }
+        // Otherwise, fetch it for the first time
+        setIsTranslating(prev => ({ ...prev, [key]: true }));
+        try {
+            const result = await translateText({ text });
+            setTranslations(prev => ({ ...prev, [key]: result.translation }));
+            setVisibility(prev => ({...prev, [key]: true}));
+        } catch (error) {
+            console.error("Translation failed:", error);
+            toast({ variant: "destructive", title: "Translation Failed" });
+        } finally {
+            setIsTranslating(prev => ({ ...prev, [key]: false }));
         }
     };
+    
+    // Return an object that combines the translation text with its visibility status
+    const visibleTranslations: Record<string, string | null> = {};
+    for (const key in translations) {
+        if (visibility[key]) {
+            visibleTranslations[key] = translations[key];
+        }
+    }
 
-    return { translations, isTranslating, toggleTranslation };
+    return { translations: visibleTranslations, isTranslating, toggleTranslation };
 };
 
 
@@ -659,5 +647,3 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
 
 
 export default LessonDetailView;
-
-    
