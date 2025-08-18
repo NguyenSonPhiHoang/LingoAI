@@ -45,7 +45,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { updateLessonContent, updateLesson } from "@/services/lessons";
-import { updateUserVocabulary, updateWord } from "@/services/vocabulary";
+import { updateUserVocabulary } from "@/services/vocabulary";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -513,7 +513,7 @@ const InteractiveText: FC<{
             
             const vocabWord = vocabMap.get(termLower);
             if (vocabWord) {
-                const isPlaying = isTermPlaying[vocabWord.wordId];
+                const isPlaying = isTermPlaying[vocabWord.id];
                 processedParts.push(
                     <TooltipProvider key={match.index}>
                         <Tooltip>
@@ -622,17 +622,16 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             return;
         }
 
-        setIsPlaying(prev => ({ ...prev, [word.wordId]: true }));
+        setIsPlaying(prev => ({ ...prev, [word.id]: true }));
         try {
             const result = await generateAudio({ text: word.term });
             const newAudioUrl = result.audioUrl;
             playAudioUrl(newAudioUrl);
             
-            // Update the global word in Firestore
-            await updateWord(word.wordId, { audioUrl: newAudioUrl });
+            await updateUserVocabulary(word.id, { audioUrl: newAudioUrl });
 
             // Update local state for immediate feedback
-            setWords(prev => prev.map(w => w.wordId === word.wordId ? { ...w, audioUrl: newAudioUrl } : w));
+            setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
 
         } catch (error: any) {
              toast({
@@ -641,7 +640,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
                 description: error.message || "Please try again later.",
             });
         } finally {
-             setIsPlaying(prev => ({ ...prev, [word.wordId]: false }));
+             setIsPlaying(prev => ({ ...prev, [word.id]: false }));
         }
     }, [setWords, toast]);
 
@@ -1029,3 +1028,4 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
 
 
 export default LessonDetailView;
+

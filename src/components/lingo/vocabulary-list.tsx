@@ -53,9 +53,8 @@ import {
   addMultipleWordsToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
-  updateWord,
 } from "@/services/vocabulary";
-import type { UserVocabulary, Word } from "@/services/vocabulary";
+import type { UserVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -101,9 +100,9 @@ const EditWordDialog: FC<{
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateWord(word.wordId, values);
+      await updateUserVocabulary(word.id, values);
       setWords(prev =>
-        prev.map(w => (w.wordId === word.wordId ? { ...w, ...values } : w))
+        prev.map(w => (w.id === word.id ? { ...w, ...values } : w))
       );
       toast({ title: "Success", description: "Word updated successfully." });
       setIsOpen(false);
@@ -337,7 +336,7 @@ const VocabularyListInternal: FC<{
     const isTerm = type === 'term';
     const audioUrl = isTerm ? word.audioUrl : word.sentenceAudioUrl;
     const textToGenerate = isTerm ? word.term : word.sentence;
-    const audioGenKey = `${word.wordId}-${type}`;
+    const audioGenKey = `${word.id}-${type}`;
 
     if (audioUrl) {
       if (audioRef.current) {
@@ -359,9 +358,9 @@ const VocabularyListInternal: FC<{
       }
       
       const updateData = isTerm ? { audioUrl: newAudioUrl } : { sentenceAudioUrl: newAudioUrl };
-      await updateWord(word.wordId, updateData);
+      await updateUserVocabulary(word.id, updateData);
 
-      setWords(prev => prev.map(w => w.wordId === word.wordId ? { ...w, ...updateData } : w));
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, ...updateData } : w));
 
     } catch (e: any) {
        toast({
@@ -404,10 +403,10 @@ const VocabularyListInternal: FC<{
                             variant="ghost"
                             size="icon"
                             onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                            disabled={isGeneratingAudio[`${word.wordId}-term`]}
+                            disabled={isGeneratingAudio[`${word.id}-term`]}
                             className="h-8 w-8 flex-shrink-0"
                           >
-                            {isGeneratingAudio[`${word.wordId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                             <span className="sr-only">Play term audio</span>
                           </Button>
                           <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
@@ -433,10 +432,10 @@ const VocabularyListInternal: FC<{
                               variant="ghost"
                               size="icon"
                               onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                              disabled={isGeneratingAudio[`${word.wordId}-term`]}
+                              disabled={isGeneratingAudio[`${word.id}-term`]}
                               className="h-8 w-8 flex-shrink-0"
                             >
-                              {isGeneratingAudio[`${word.wordId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              {isGeneratingAudio[`${word.id}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                               <span className="sr-only">Play term audio</span>
                             </Button>
                             <div>
@@ -483,10 +482,10 @@ const VocabularyListInternal: FC<{
                               <Button
                                   variant="ghost" size="icon"
                                   onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                  disabled={isGeneratingAudio[`${word.wordId}-sentence`]}
+                                  disabled={isGeneratingAudio[`${word.id}-sentence`]}
                                   className="h-8 w-8 flex-shrink-0 -ml-2"
                               >
-                                  {isGeneratingAudio[`${word.wordId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  {isGeneratingAudio[`${word.id}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   <span className="sr-only">Play sentence audio</span>
                               </Button>
                               <p className="italic pt-1.5">"{word.sentence}"</p>
@@ -552,7 +551,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       setWords(prevWords => {
           const prevWordsMap = new Map(prevWords.map(w => [w.id, w]));
           newWords.forEach(nw => prevWordsMap.set(nw.id, nw));
-          return Array.from(prevWordsMap.values());
+          // Sort by creation date after merging
+          return Array.from(prevWordsMap.values()).sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       });
 
       toast({
@@ -585,9 +585,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       if (wordsToGroup.length > 0) {
         toast({ title: "AI is at work!", description: `Grouping ${wordsToGroup.length} new word(s) by topic.`});
         
-        // Pass only the word data, not the user-specific data
-        const plainWordsToGroup = wordsToGroup.map(({ term, definition }) => ({ term, definition })) as VocabularyEntrySchema[];
-        const result = await groupVocabularyByTopic({ vocabulary: plainWordsToGroup });
+        const result = await groupVocabularyByTopic({ vocabulary: wordsToGroup });
         
         const updatedWords = [...words];
         for (const topicGroup of result.topics) {
@@ -724,3 +722,4 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
+

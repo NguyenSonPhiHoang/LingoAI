@@ -140,7 +140,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild onClick={handleDialogOpen}>
             {trigger}
         </DialogTrigger>
@@ -148,8 +148,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Word with AI</DialogTitle>
           <DialogDescription>
-            Copy a word/phrase, then open this dialog. It will be pasted
-            automatically.
+            Enter a word/phrase, or copy one before opening, and it will be pasted automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
