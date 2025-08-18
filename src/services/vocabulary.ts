@@ -17,7 +17,7 @@ import {
   getDoc,
   limit,
 } from "firebase/firestore";
-import type { VocabularyEntry as VocabularyEntrySchema } from "@/ai/flows/schemas";
+import type { VocabularyEntry } from "@/ai/flows/schemas";
 
 // This is the base type from AI, stored in the 'words' collection.
 // It only contains the term and pronunciation.
@@ -53,7 +53,7 @@ export interface UserVocabulary {
 }
 
 // This is the combined, denormalized type used in the application UI.
-export type CombinedVocabulary = Word & Omit<UserVocabulary, 'id' | 'wordId' | 'userId' | 'term' | 'pronunciation'> & {
+export type CombinedVocabulary = Word & Omit<UserVocabulary, 'id' | 'wordId' | 'userId'> & {
     userVocabularyId: string;
 };
 
@@ -84,7 +84,7 @@ export const getVocabulary = async (userId: string): Promise<CombinedVocabulary[
   for (const userVocabDoc of userVocabSnapshot.docs) {
       const userVocabData = userVocabDoc.data() as UserVocabulary;
       
-      if (userVocabData.wordId) {
+      if (userVocabData && userVocabData.wordId) {
         const wordDocRef = doc(db, "words", userVocabData.wordId);
         const wordDocSnap = await getDoc(wordDocRef);
 
@@ -105,7 +105,7 @@ export const getVocabulary = async (userId: string): Promise<CombinedVocabulary[
 
 
 // ADD a new word. This function separates global data from user-specific data.
-export const addWordToVocabulary = async (userId: string, fullWordData: VocabularyEntrySchema): Promise<CombinedVocabulary> => {
+export const addWordToVocabulary = async (userId: string, fullWordData: VocabularyEntry): Promise<CombinedVocabulary> => {
     const normalizedTerm = fullWordData.term.toLowerCase();
     
     // 1. Check if the word exists in the global 'words' collection.
@@ -113,7 +113,7 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     const wordSnap = await getDocs(wordQuery);
 
     let wordDocId: string;
-    let existingWord: Omit<Word, 'id'> | null = null;
+    let existingWordData: Word;
 
     if (wordSnap.empty) {
         // 2a. If word doesn't exist globally, create it with minimal data.
@@ -125,12 +125,12 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
         };
         const wordDocRef = await addDoc(wordsCollection, newWordPayload);
         wordDocId = wordDocRef.id;
-        existingWord = newWordPayload;
+        existingWordData = { ...newWordPayload, id: wordDocId };
     } else {
         // 2b. If word exists, use its ID.
         const doc = wordSnap.docs[0];
         wordDocId = doc.id;
-        existingWord = doc.data() as Omit<Word, 'id'>;
+        existingWordData = { ...doc.data(), id: doc.id } as Word;
     }
 
     // 3. Check if the user already has this word in their personal list.
@@ -155,7 +155,6 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
         vietnameseSentence: fullWordData.vietnameseSentence,
         favorite: false,
         viewCount: 0,
-        topic: undefined, // Let grouping handle this later
         createdAt: Timestamp.now(),
     };
 
@@ -172,18 +171,14 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     
     // 5. Return the combined data for immediate UI update.
     return {
-        id: wordDocId,
+        ...existingWordData,
         userVocabularyId: userVocabDocRefId,
-        term: fullWordData.term,
-        term_normalized: normalizedTerm,
-        pronunciation: fullWordData.pronunciation,
         ...userSpecificPayload,
-        createdAt: userSpecificPayload.createdAt,
     };
 };
 
 
-export const addMultipleWordsToVocabulary = async (words: VocabularyEntrySchema[], userId: string): Promise<CombinedVocabulary[]> => {
+export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], userId: string): Promise<CombinedVocabulary[]> => {
   const addedOrUpdatedWords: CombinedVocabulary[] = [];
   for (const word of words) {
     const savedWord = await addWordToVocabulary(userId, word);
@@ -207,8 +202,7 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
   }
 };
 
-// Updates fields in the global `words` collection (e.g., pronunciation).
-// This should be used sparingly, perhaps by an admin role in the future.
+// Updates fields in the global `words` collection (e.g., when generating audio).
 export const updateWord = async (wordId: string, updates: Partial<Omit<Word, 'id' | 'createdAt' | 'term_normalized' | 'term'>>) => {
     const wordDoc = doc(db, "words", wordId);
     const cleanUpdates = cleanObject(updates);
@@ -216,5 +210,3 @@ export const updateWord = async (wordId: string, updates: Partial<Omit<Word, 'id
         await updateDoc(wordDoc, cleanUpdates);
     }
 };
-
-    
