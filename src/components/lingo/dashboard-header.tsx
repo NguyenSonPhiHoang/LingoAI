@@ -56,7 +56,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
                   <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} data-ai-hint="person" />
                   <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
-                <span className="font-medium text-sm hidden sm:inline">{user?.displayName}</span>
+                <span className="font-medium text-sm">{user?.displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
