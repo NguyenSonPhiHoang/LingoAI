@@ -18,8 +18,6 @@ import {
   limit
 } from "firebase/firestore";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
-import { createHash } from 'crypto';
-
 
 // Shared, global word data
 export interface Word extends VocabularyEntry {
@@ -50,11 +48,6 @@ const cleanObject = (obj: any) => {
 
 // Function to generate a consistent hash for a term
 const generateTermHash = (term: string): string => {
-  // Simple hash function (for demonstration; consider a more robust one for production)
-  // In a real app, you might use a library or a more complex algorithm.
-  // For Node.js environment:
-  // return createHash('sha256').update(term.toLowerCase().trim()).digest('hex');
-  // For client-side, a simple string manipulation can work if collisions are acceptable for this use case.
   return term.toLowerCase().trim().replace(/\s+/g, '-');
 };
 
@@ -73,37 +66,32 @@ export const getVocabulary = async (userId: string): Promise<UserVocabulary[]> =
     return [];
   }
 
-  // 2. Get all unique word IDs
-  const wordIds = [...new Set(userVocabList.map(uv => uv.wordId))];
+  // 2. Fetch the global word data for each user vocabulary entry individually.
+  // This avoids a complex 'in' query that can cause permission issues.
+  const combinedVocabulary: UserVocabulary[] = [];
 
-  // 3. Fetch the global word data for those IDs
-  // Firestore 'in' queries are limited to 30 items. We need to batch them.
-  const wordDataMap = new Map<string, Word>();
-  const CHUNK_SIZE = 30;
-  for (let i = 0; i < wordIds.length; i += CHUNK_SIZE) {
-      const chunk = wordIds.slice(i, i + CHUNK_SIZE);
-      const wordsQuery = query(wordsCollection, where('id', 'in', chunk));
-      const wordsSnapshot = await getDocs(wordsQuery);
-      wordsSnapshot.forEach(doc => {
-          const data = doc.data() as Word;
-          wordDataMap.set(data.id!, data);
-      });
+  for (const userVocab of userVocabList) {
+      if (!userVocab.wordId) {
+          console.warn(`User vocabulary item ${userVocab.id} is missing a wordId.`);
+          continue;
+      }
+      
+      const wordRef = doc(db, "words", userVocab.wordId);
+      const wordSnap = await getDoc(wordRef);
+
+      if (wordSnap.exists()) {
+          const globalWordData = wordSnap.data() as Word;
+          combinedVocabulary.push({
+              ...globalWordData,
+              ...userVocab,
+              createdAt: userVocab.createdAt instanceof Timestamp ? userVocab.createdAt.toDate() : userVocab.createdAt,
+          });
+      } else {
+          console.warn(`Could not find global word data for wordId: ${userVocab.wordId}`);
+      }
   }
 
-  // 4. Combine user data with global word data
-  return userVocabList.map(userVocab => {
-    const globalWordData = wordDataMap.get(userVocab.wordId);
-    if (!globalWordData) {
-        // This case should ideally not happen if data is consistent
-        console.warn(`Could not find global word data for wordId: ${userVocab.wordId}`);
-        return null;
-    }
-    return {
-      ...globalWordData, // term, definition, etc.
-      ...userVocab, // overrides with user-specific data like favorite, topic
-      createdAt: userVocab.createdAt instanceof Timestamp ? userVocab.createdAt.toDate() : userVocab.createdAt,
-    };
-  }).filter((item): item is UserVocabulary => item !== null);
+  return combinedVocabulary;
 };
 
 
