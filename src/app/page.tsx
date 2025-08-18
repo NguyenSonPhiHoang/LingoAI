@@ -47,28 +47,16 @@ const Home: FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Wait for auth context to resolve.
-    if (authLoading) {
-      return;
-    }
-
     // If auth is resolved and there's no user, redirect to login.
-    if (!user) {
+    if (!authLoading && !user) {
       router.push("/login");
       return;
     }
-
-    // If user object is present but doesn't have a status yet,
-    // it means the Firestore data is still loading.
-    if (!user.status) {
-        setIsLoading(true);
-        return;
-    }
     
-    // If user is approved, fetch their data.
-    if (user.status === 'approved') {
+    // If we have a user and they are approved, fetch their data.
+    if (user && user.status === 'approved') {
       const fetchWords = async () => {
-        setIsLoading(true);
+        // No need to set isLoading here, the main page loader handles it
         try {
           const fetchedWords = await getVocabulary(user.uid);
           setWords(fetchedWords);
@@ -80,19 +68,19 @@ const Home: FC = () => {
             description: "Could not fetch your vocabulary. Please try again later.",
           });
         } finally {
-          setIsLoading(false);
+            setIsLoading(false); // Data loading is complete
         }
       };
       fetchWords();
-    } else {
-      // For 'pending' or 'rejected' statuses, we don't need to fetch words.
+    } else if (user) {
+      // For 'pending' or 'rejected' users, we don't need to fetch words.
       setIsLoading(false);
     }
   }, [user, authLoading, router, toast]);
 
-  // Main loader while auth context or initial data is loading.
-  // The AuthProvider also has a loader, but this handles the period after auth resolves but before data is ready.
-  if (authLoading || isLoading) {
+  // The main loader from AuthProvider handles the initial auth check.
+  // This loader handles subsequent data fetching after auth is confirmed.
+  if (authLoading || (user && isLoading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -100,8 +88,8 @@ const Home: FC = () => {
     );
   }
 
-  // If loading is finished and there's still no user, don't render anything.
-  // The useEffect will handle the redirect.
+  // If loading is finished and there's still no user, the useEffect will handle the redirect.
+  // Returning null prevents rendering children that might cause permission errors.
   if (!user) {
     return null;
   }

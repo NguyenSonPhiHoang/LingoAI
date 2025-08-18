@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userRef = doc(db, "users", firebaseUser.uid);
         
         unsubscribeSnapshot = onSnapshot(userRef, (docSnapshot) => {
+          setLoading(true); // Set loading while we process Firestore data
           if (docSnapshot.exists()) {
             // User document exists, merge auth data with Firestore data.
             const userData = docSnapshot.data();
@@ -72,10 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
 
-      // Return a cleanup function.
-      // This will be called either when the component unmounts
-      // OR when onAuthStateChanged fires again (e.g., on logout).
-      // This is crucial to prevent permission errors.
+      // Return a cleanup function for the auth state listener.
+      // This is crucial to prevent permission errors on logout.
       return () => {
         unsubscribeSnapshot();
       };
@@ -111,17 +110,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signOut(auth);
   }
 
-  if (loading) {
-    return (
+  return (
+    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+      {loading ? (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
         </div>
-    );
-  }
-
-  return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
-      {children}
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };
