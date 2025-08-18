@@ -46,8 +46,11 @@ export type ExtractVocabularyOutput = z.infer<
 >;
 
 // Schemas for generate-audio.ts
-export const GenerateAudioInputSchema = z.string();
+export const GenerateAudioInputSchema = z.object({
+  text: z.string().describe('The text to convert to audio.'),
+});
 export type GenerateAudioInput = z.infer<typeof GenerateAudioInputSchema>;
+
 
 export const GenerateAudioOutputSchema = z.object({
   audioUrl: z.string().describe('The base64 encoded data URI of the audio.'),
