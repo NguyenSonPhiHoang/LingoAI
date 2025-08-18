@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2 } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,8 @@ interface Word extends VocabularyEntry {
   isGeneratingAudio?: boolean;
   sentenceAudioUrl?: string;
   isGeneratingSentenceAudio?: boolean;
+  favorite: boolean;
+  viewCount: number;
 }
 
 const initialWords: Word[] = [
@@ -51,6 +53,8 @@ const initialWords: Word[] = [
     pronunciation: "/juːˈbɪkwɪtəs/",
     definition: "Present, appearing, or found everywhere.",
     sentence: "Smartphones have become ubiquitous in modern society.",
+    favorite: false,
+    viewCount: 5,
   },
   {
     id: 2,
@@ -58,6 +62,8 @@ const initialWords: Word[] = [
     pronunciation: "/ɪˈfemərəl/",
     definition: "Lasting for a very short time.",
     sentence: "The beauty of the cherry blossoms is ephemeral.",
+    favorite: true,
+    viewCount: 3,
   },
   {
     id: 3,
@@ -65,6 +71,8 @@ const initialWords: Word[] = [
     pronunciation: "/məˈlɪfluəs/",
     definition: "(of a voice or words) Sweet or musical; pleasant to hear.",
     sentence: "Her mellifluous voice captivated the audience.",
+    favorite: false,
+    viewCount: 7,
   },
 ];
 
@@ -76,7 +84,6 @@ const VocabularyList: FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
-
   const handleAddWord = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -86,6 +93,8 @@ const VocabularyList: FC = () => {
       pronunciation: formData.get("pronunciation") as string,
       definition: formData.get("definition") as string,
       sentence: formData.get("sentence") as string,
+      favorite: false,
+      viewCount: 0,
     };
     if (newWord.term && newWord.definition) {
       setWords([newWord, ...words]);
@@ -97,6 +106,12 @@ const VocabularyList: FC = () => {
     setWords(words.filter((word) => word.id !== id));
   };
   
+  const toggleFavorite = (id: number) => {
+    setWords(words.map(word => 
+      word.id === id ? { ...word, favorite: !word.favorite } : word
+    ));
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -117,7 +132,7 @@ const VocabularyList: FC = () => {
       
       const result = await extractVocabularyFromFile({ documentContent: text });
       
-      const newWords: Word[] = result.vocabulary.map(v => ({...v, id: Date.now() + Math.random()}));
+      const newWords: Word[] = result.vocabulary.map(v => ({...v, id: Date.now() + Math.random(), favorite: false, viewCount: 0}));
       
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
@@ -144,10 +159,15 @@ const VocabularyList: FC = () => {
     fileInputRef.current?.click();
   }
   
+  const incrementViewCount = (wordId: number) => {
+    setWords(prev => prev.map(w => w.id === wordId ? { ...w, viewCount: w.viewCount + 1 } : w));
+  }
+
   const handlePlayAudio = async (wordId: number, type: 'term' | 'sentence') => {
     const word = words.find(w => w.id === wordId);
     if (!word) return;
   
+    incrementViewCount(wordId);
     const textToSpeak = type === 'term' ? word.term : word.sentence;
     const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
     const isGenerating = type === 'term' ? word.isGeneratingAudio : word.isGeneratingSentenceAudio;
@@ -270,8 +290,10 @@ const VocabularyList: FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/4">Từ & Âm thanh</TableHead>
-              <TableHead className="w-2/4">Định nghĩa & Ví dụ</TableHead>
+              <TableHead className="w-[25%]">Từ & Âm thanh</TableHead>
+              <TableHead className="w-[50%]">Định nghĩa & Ví dụ</TableHead>
+              <TableHead className="text-center">Yêu thích</TableHead>
+              <TableHead className="text-center">Lượt xem</TableHead>
               <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
@@ -323,6 +345,13 @@ const VocabularyList: FC = () => {
                       </p>
                     </div>
                   </TableCell>
+                  <TableCell className="text-center">
+                    <Button variant="ghost" size="icon" onClick={() => toggleFavorite(word.id)}>
+                      <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
+                      <span className="sr-only">Yêu thích</span>
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-center font-medium">{word.viewCount}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
@@ -337,7 +366,7 @@ const VocabularyList: FC = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   Danh sách từ vựng của bạn trống. Thêm một từ mới để bắt đầu!
                 </TableCell>
               </TableRow>
