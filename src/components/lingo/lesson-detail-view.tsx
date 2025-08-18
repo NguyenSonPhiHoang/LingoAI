@@ -258,7 +258,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
                 <Sparkles className="h-12 w-12 mb-4" />
                 <h3 className="font-semibold">Ready to practice?</h3>
-                <p>Optionally add focus points, then click "Start Practice" to generate an exercise.</p>
+                <div>Optionally add focus points, then click "Start Practice" to generate an exercise.</div>
             </div>
         );
     }
@@ -267,7 +267,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         return (
             <div className="flex flex-col items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">AI is building your exercise...</p>
+                <div className="text-muted-foreground">AI is building your exercise...</div>
             </div>
         );
     }
@@ -336,9 +336,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                 <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{lesson.topic}</h1>
-            <p className="text-muted-foreground">
+            <div className="text-muted-foreground">
               First, generate learning content. Then, start an interactive practice session.
-            </p>
+            </div>
           </div>
         </div>
       </div>
@@ -362,10 +362,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                         >
                             {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
                             <div className="text-left group-hover:text-accent-foreground">
-                                <p className="text-sm font-semibold">{tool.title}</p>
-                                <p className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
+                                <div className="text-sm font-semibold">{tool.title}</div>
+                                <div className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
                                     {tool.description}
-                                </p>
+                                </div>
                             </div>
                          </Button>
                     ))}
@@ -397,9 +397,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm whitespace-pre-wrap">
+                                <div className="text-sm whitespace-pre-wrap">
                                     <InteractiveText text={item.value} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />
-                                </p>
+                                </div>
                                 {translations[translationKey] && (
                                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                         <strong>Dịch:</strong> {translations[translationKey]}
@@ -437,9 +437,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                    onChange={(e) => setFocusPoints(e.target.value)}
                    disabled={!!isLoading}
                  />
-                 <p className="text-xs text-muted-foreground">
+                 <div className="text-xs text-muted-foreground">
                    Guide the AI on what to include in the exercise.
-                 </p>
+                 </div>
                </div>
                <div className="rounded-lg border bg-muted/50 flex-grow relative min-h-[400px]">
                    <div className="absolute inset-0">
@@ -702,7 +702,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                 return (
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
                         <div className="flex justify-between items-start">
-                            <p className="font-semibold mb-3 flex-1">{qIndex + 1}. <InteractiveText text={q.question} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></p>
+                            <div className="font-semibold mb-3 flex-1">{qIndex + 1}. <InteractiveText text={q.question} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
                             <div className="flex items-center">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, q.question, audioUrls)} disabled={isPlaying[translationKey]}>
                                     {isPlaying[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -761,7 +761,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                      </div>
                                 </div>
                                 {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
-                                <p className="text-sm"><InteractiveText text={feedback[qIndex] || ''} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></p>
+                                <div className="text-sm"><InteractiveText text={feedback[qIndex] || ''} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
                                 {translations[`feedback-${qIndex}`] && (
                                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                         <strong>Dịch:</strong> {translations[`feedback-${qIndex}`]}
@@ -825,8 +825,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div className="flex-1">
-                        <p className="text-muted-foreground">Prompt:</p>
-                        <p className="font-semibold">"<InteractiveText text={prompt.vietnamesePrompt} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</p>
+                        <div className="text-muted-foreground">Prompt:</div>
+                        <div className="font-semibold">"<InteractiveText text={prompt.vietnamesePrompt} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
                     </div>
                      <div className="flex items-center">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(promptKey, prompt.vietnamesePrompt, audioUrls)} disabled={isPlaying[promptKey]}>
@@ -870,7 +870,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
                                     </Button>
                                  </div>
                              </div>
-                             <p className="text-sm"><InteractiveText text={feedback.feedback} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></p>
+                             <div className="text-sm"><InteractiveText text={feedback.feedback} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
                              {translations[feedbackKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                     <strong>Dịch:</strong> {translations[feedbackKey]}
@@ -889,7 +889,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
                                     </Button>
                                 </div>
                             </div>
-                            <p className="text-sm font-semibold">"<InteractiveText text={feedback.correctedText} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</p>
+                            <div className="text-sm font-semibold">"<InteractiveText text={feedback.correctedText} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
                             {translations[correctedKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                                     <strong>Dịch:</strong> {translations[correctedKey]}
@@ -901,7 +901,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[] }> =
             </CardContent>
             <CardFooter className="flex-col items-start gap-2">
                 <div className="flex justify-between w-full">
-                    <p className="text-xs text-muted-foreground flex-1">Example answer: "<InteractiveText text={prompt.exampleAnswer} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</p>
+                    <div className="text-xs text-muted-foreground flex-1">Example answer: "<InteractiveText text={prompt.exampleAnswer} vocabulary={vocabulary} playAudioUrl={playAudioUrl} />"</div>
                      <div className="flex items-center">
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playAudio(answerKey, prompt.exampleAnswer, audioUrls)} disabled={isPlaying[answerKey]}>
                             {isPlaying[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -939,7 +939,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
         <div className="p-4 h-full flex flex-col">
             <Card className="bg-background mb-4">
                 <CardContent className="p-4 text-center">
-                    <p className="text-muted-foreground mb-2">Press play to hear the dialogue.</p>
+                    <div className="text-muted-foreground mb-2">Press play to hear the dialogue.</div>
                     <audio ref={audioRef} controls src={exercise.audioUrl} className="w-full">
                         Your browser does not support the audio element.
                     </audio>
@@ -973,7 +973,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
             <audio ref={audioRef} className="hidden" />
             <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
                 <h4 className="font-semibold">Role-Play Scenario</h4>
-                <p className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></p>
+                <div className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
             </div>
             <div className="space-y-4">
             {exercise.dialogue.map((line, index) => {
@@ -984,7 +984,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
                             {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
                             <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
                                <div className="flex justify-between items-start gap-2">
-                                  <p className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></p>
+                                  <div className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playAudioUrl={playAudioUrl} /></div>
                                   <div className="flex">
                                       {line.role === 'You' && (
                                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(line.line)}>
