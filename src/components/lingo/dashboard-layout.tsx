@@ -1,0 +1,124 @@
+"use client";
+
+import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
+import Link from "next/link";
+import {
+  BookCopy,
+  GraduationCap,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Sparkles,
+  User,
+} from "lucide-react";
+import type { View } from "@/app/page";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
+import DashboardHeader from "./dashboard-header";
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+  activeView: View;
+  setActiveView: Dispatch<SetStateAction<View>>;
+}
+
+const DashboardLayout: FC<DashboardLayoutProps> = ({
+  children,
+  activeView,
+  setActiveView,
+}) => {
+  const menuItems = [
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "levels", label: "All Levels", icon: GraduationCap },
+    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles },
+    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy },
+  ];
+
+  return (
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <Link href="/" className="block">
+            <h1 className="text-2xl font-bold text-primary">LingoAI</h1>
+          </Link>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            {menuItems.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  onClick={() => setActiveView(item.id as View)}
+                  isActive={activeView === item.id}
+                  tooltip={item.label}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start gap-2 p-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="https://placehold.co/100x100.png" data-ai-hint="person" />
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+                <div className="text-left group-data-[collapsible=icon]:hidden">
+                  <p className="font-semibold text-sm">User</p>
+                  <p className="text-xs text-muted-foreground">user@email.com</p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset>
+        <DashboardHeader activeView={activeView} />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+};
+
+export default DashboardLayout;
