@@ -105,7 +105,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
-  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(null);
+  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
+      // If there are existing exercises for this skill, open that tab by default
+      const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
+      if (lesson.exercises && lesson.exercises[skillKey]) {
+          return skillKey as any;
+      }
+      return null;
+  });
 
   const Icon = skillIcons[lesson.skill as Skill] || Sparkles;
 
@@ -235,7 +242,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
     <div className="space-y-6">
       <div>
         <Button variant="ghost" onClick={onBack} className="mb-4">
-          <ArrowLeft className="mr-2" /> Back to Suggestions
+          <ArrowLeft className="mr-2" /> Back to My Lessons
         </Button>
         <div className="flex items-start gap-4">
           <div className="bg-primary/10 p-3 rounded-lg">

@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lightbulb, List, Loader2, Sparkles, Headphones, Mic, BookOpen, FilePenLine, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -16,7 +16,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,12 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { addLesson, getLessons, type Lesson } from "@/services/lessons";
+import { addLesson } from "@/services/lessons";
 import type { ViewState } from "@/app/page";
-import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   userLevel: z.enum(["beginner", "intermediate", "advanced"], {
@@ -54,23 +51,13 @@ const formSchema = z.object({
   interests: z.string().optional(),
 });
 
-type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
-
-const skillIcons: Record<Skill, React.ElementType> = {
-    Listening: Headphones,
-    Speaking: Mic,
-    Reading: BookOpen,
-    Writing: FilePenLine,
-};
 
 interface AiSuggesterProps {
-    setActiveViewState: Dispatch<SetStateAction<ViewState>>;
+    setActiveView: Dispatch<SetStateAction<ViewState>>;
 }
 
-const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -81,27 +68,6 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
       interests: "",
     },
   });
-
-  useEffect(() => {
-    const fetchLessons = async () => {
-      if (!user) return;
-      setIsLoading(true);
-      try {
-        const userLessons = await getLessons(user.uid);
-        setLessons(userLessons);
-      } catch (error) {
-        console.error("Failed to fetch lessons:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not fetch your saved lessons.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchLessons();
-  }, [user, toast]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
@@ -121,13 +87,14 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
       const newLessonPromises = result.lessonSuggestions.map(suggestion => 
         addLesson(user.uid, suggestion)
       );
-      const newLessons = await Promise.all(newLessonPromises);
+      await Promise.all(newLessonPromises);
 
-      setLessons(prev => [...newLessons, ...prev]);
       toast({
         title: "Success!",
-        description: `${newLessons.length} new lessons have been added.`
+        description: `${result.lessonSuggestions.length} new lessons have been added to 'My Lessons'.`
       })
+      
+      setActiveView({view: 'my-lessons'});
 
     } catch (error) {
       console.error("Failed to get suggestions:", error);
@@ -141,19 +108,14 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
     }
   };
 
-  const handleStartLesson = (lesson: Lesson) => {
-    setActiveViewState({ view: 'lesson-detail', lesson: lesson });
-  }
-
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-      <div className="lg:col-span-1">
+    <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Personalized Path</CardTitle>
+            <CardTitle>AI Lesson Suggester</CardTitle>
             <CardDescription>
               Tell us about yourself, and our AI will create a custom learning
-              plan for you.
+              plan for you. The generated lessons will be saved in "My Lessons".
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,69 +195,12 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
                   )}
-                  Generate Lessons
+                  Generate & Save Lessons
                 </Button>
               </form>
             </Form>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="lg:col-span-2">
-        <Card className="min-h-full">
-          <CardHeader>
-            <CardTitle>Your AI-Generated Lessons</CardTitle>
-            <CardDescription>
-              Here are topics tailored just for you. Select one to start learning.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-5/6" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : lessons.length > 0 ? (
-              <ul className="space-y-3">
-                {lessons.map((lesson) => {
-                  const Icon = skillIcons[lesson.skill as Skill] || Lightbulb;
-                  return (
-                    <li
-                      key={lesson.id}
-                      className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50"
-                    >
-                      <Icon className="h-6 w-6 flex-shrink-0 text-primary" />
-                      <div className="flex-grow">
-                        <p className="font-medium">{lesson.topic}</p>
-                        <Badge variant="secondary">{lesson.skill}</Badge>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => handleStartLesson(lesson)}>
-                        Start <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 text-center">
-                <List className="h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-semibold">
-                  No lessons yet
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Fill out the form to get your personalized lesson plan.
-                </p>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter>
-            <p className="text-xs text-muted-foreground">
-              These lessons are generated by AI. Click 'Start' to add content and activities.
-            </p>
-          </CardFooter>
-        </Card>
-      </div>
     </div>
   );
 };

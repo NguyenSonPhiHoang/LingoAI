@@ -13,6 +13,7 @@ import {
   User,
   Users,
   ClipboardCheck,
+  BookMarked,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,6 +59,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "overview", label: "Overview", icon: LayoutDashboard, role: ['user', 'admin'] },
     { id: "levels", label: "All Levels", icon: GraduationCap, role: ['user', 'admin'] },
     { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'] },
+    { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'] },
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
     { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
@@ -85,7 +87,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
               <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
                   onClick={() => handleViewChange(item.id as View)}
-                  isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'ai-suggester')}
+                  isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
                   tooltip={item.label}
                 >
                   <item.icon />

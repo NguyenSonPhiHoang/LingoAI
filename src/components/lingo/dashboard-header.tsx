@@ -13,6 +13,7 @@ const viewTitles: Record<View, string> = {
   overview: "Overview",
   levels: "All Levels",
   "ai-suggester": "AI Suggester",
+  "my-lessons": "My Lessons",
   vocabulary: "My Vocabulary",
   review: "Review",
   "user-management": "User Management",

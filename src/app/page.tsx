@@ -13,6 +13,7 @@ import ReviewView from "@/components/lingo/review-view";
 import UserManagement from "@/components/lingo/user-management";
 import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import LessonDetailView from "@/components/lingo/lesson-detail-view";
+import MyLessonsView from "@/components/lingo/my-lessons-view";
 import type { Word } from "@/components/lingo/vocabulary-list";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -24,6 +25,7 @@ export type View =
   | "overview"
   | "levels"
   | "ai-suggester"
+  | "my-lessons"
   | "vocabulary"
   | "review"
   | "user-management"
@@ -119,7 +121,9 @@ const Home: FC = () => {
         case "levels":
           return <LevelView />;
         case "ai-suggester":
-          return <AiSuggester setActiveViewState={setActiveViewState} />;
+          return <AiSuggester setActiveView={(view) => setActiveViewState({view})} />;
+        case "my-lessons":
+          return <MyLessonsView setActiveViewState={setActiveViewState} />;
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
@@ -130,11 +134,11 @@ const Home: FC = () => {
            return activeViewState.lesson ? (
             <LessonDetailView
               lesson={activeViewState.lesson}
-              onBack={() => setActiveViewState({ view: "ai-suggester" })}
+              onBack={() => setActiveViewState({ view: "my-lessons" })}
             />
           ) : (
             // Fallback if no lesson is provided
-            <AiSuggester setActiveViewState={setActiveViewState} />
+            <MyLessonsView setActiveViewState={setActiveViewState} />
           );
         default:
           return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
