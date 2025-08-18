@@ -427,9 +427,11 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         <CardContent>
           <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-               <AccordionTrigger className="justify-center py-2 text-sm">
-                  {hasContentForPractice ? 'Show/Hide Learning Content' : ''}
-               </AccordionTrigger>
+               {hasContentForPractice && (
+                 <AccordionTrigger className="justify-center py-2 text-sm">
+                    <span className="sr-only">Show/Hide Learning Content</span>
+                 </AccordionTrigger>
+               )}
               <AccordionContent className="pt-4">
                 <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
                   {isLoading === 'content' ? (
@@ -1073,3 +1075,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
 
 
 export default LessonDetailView;
+
+    
