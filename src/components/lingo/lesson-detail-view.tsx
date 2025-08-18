@@ -25,6 +25,7 @@ import {
   Circle,
   CircleDashed,
   ChevronDown,
+  Bot,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -49,11 +50,13 @@ import { generateListeningExercise } from "@/ai/flows/generate-listening-exercis
 import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
+import { generateWritingFeedback } from "@/ai/flows/generate-writing-feedback-flow";
 import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
   type GenerateListeningExerciseOutput,
   type GenerateSpeakingExerciseOutput,
+  type GenerateWritingFeedbackOutput,
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
 import { Label } from "../ui/label";
@@ -350,7 +353,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                             disabled={!!isLoading}
                         >
                             {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
-                            <div className="text-left">
+                            <div className="text-left group-hover:text-accent-foreground">
                                 <p className="text-sm font-semibold">{tool.title}</p>
                                 <p className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
                                     {tool.description}
@@ -625,42 +628,98 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
 };
 
 
-const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
+const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
+    const [userText, setUserText] = useState("");
+    const [feedback, setFeedback] = useState<GenerateWritingFeedbackOutput | null>(null);
+    const [isGettingFeedback, setIsGettingFeedback] = useState(false);
+    const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
+
+    const handleGetFeedback = async () => {
+        if (!userText) {
+            toast({ variant: 'destructive', title: 'Please enter your answer first.' });
+            return;
+        }
+        setIsGettingFeedback(true);
+        setFeedback(null);
+        try {
+            const result = await generateWritingFeedback({
+                vietnamesePrompt: prompt.vietnamesePrompt,
+                englishHint: prompt.englishHint,
+                userWrittenText: userText
+            });
+            setFeedback(result);
+        } catch (error) {
+            console.error("Error getting writing feedback:", error);
+            toast({ variant: "destructive", title: "Feedback Error", description: "Could not get feedback for your writing." });
+        } finally {
+            setIsGettingFeedback(false);
+        }
+    };
+
+    const answerKey = `answer-${prompt.vietnamesePrompt}`;
+
+    return (
+        <Card className="bg-background">
+            <CardHeader>
+                <p className="text-muted-foreground">Prompt:</p>
+                <p className="font-semibold">"{prompt.vietnamesePrompt}"</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
+                   <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                   <span><strong>Hint:</strong> {prompt.englishHint}</span>
+                </div>
+                 <Textarea 
+                    placeholder="Write your English sentence here..." 
+                    rows={3} 
+                    value={userText}
+                    onChange={(e) => setUserText(e.target.value)}
+                />
+                 <Button onClick={handleGetFeedback} disabled={isGettingFeedback || !userText}>
+                    {isGettingFeedback ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                    Get AI Feedback
+                </Button>
+                
+                {isGettingFeedback && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin h-4 w-4" /><span>AI is analyzing your text...</span></div>}
+
+                {feedback && (
+                    <div className="space-y-4 pt-4">
+                        <div className="p-3 rounded-md bg-blue-50 border-l-4 border-blue-400 text-blue-900">
+                             <h4 className="font-bold mb-1">AI Feedback</h4>
+                             <p className="text-sm">{feedback.feedback}</p>
+                        </div>
+                        <div className="p-3 rounded-md bg-green-50 border-l-4 border-green-400 text-green-900">
+                            <h4 className="font-bold mb-1">Suggested Answer</h4>
+                            <p className="text-sm font-semibold">"{feedback.correctedText}"</p>
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+            <CardFooter className="flex-col items-start gap-2">
+                <div className="flex justify-between w-full">
+                    <p className="text-xs text-muted-foreground flex-1">Example answer: "{prompt.exampleAnswer}"</p>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={isTranslating[answerKey]}>
+                        {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                    </Button>
+                </div>
+                {translations[answerKey] && (
+                    <div className="text-xs w-full text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 rounded-r-md">
+                        <strong>Dịch:</strong> {translations[answerKey]}
+                    </div>
+                )}
+            </CardFooter>
+        </Card>
+    )
+};
+
+const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
        <div className="p-4 space-y-6">
-            {prompts.map((p, pIndex) => {
-                const answerKey = `answer-${pIndex}`;
-                return (
-                    <Card key={pIndex} className="bg-background">
-                        <CardHeader>
-                            <p className="text-muted-foreground">Prompt {pIndex + 1}:</p>
-                            <p className="font-semibold">"{p.vietnamesePrompt}"</p>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
-                               <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                               <span><strong>Hint:</strong> {p.englishHint}</span>
-                            </div>
-                             <Textarea placeholder="Write your English sentence here..." rows={3} />
-                        </CardContent>
-                        <CardFooter className="flex-col items-start gap-2">
-                            <div className="flex justify-between w-full">
-                                <p className="text-xs text-muted-foreground flex-1">Example answer: "{p.exampleAnswer}"</p>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, p.exampleAnswer)} disabled={isTranslating[answerKey]}>
-                                    {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                            {translations[answerKey] && (
-                                <div className="text-xs w-full text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 rounded-r-md">
-                                    <strong>Dịch:</strong> {translations[answerKey]}
-                                </div>
-                            )}
-                        </CardFooter>
-                    </Card>
-                )
-            })}
+            {prompts.map((p, pIndex) => (
+                <WritingPracticePrompt key={pIndex} prompt={p} />
+            ))}
        </div>
     );
 };

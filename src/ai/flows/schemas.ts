@@ -216,7 +216,7 @@ export type GenerateWritingExerciseInput = z.infer<typeof GenerateWritingExercis
 
 export const WritingPromptSchema = z.object({
     vietnamesePrompt: z.string().describe('The sentence prompt in Vietnamese.'),
-    englishHint: z.string().describe('A hint, which could be a key vocabulary word or a grammar structure to use.'),
+    englishHint: z.string().describe("A hint, which MUST be a grammar structure or syntax advice (e.g., \"Use the past continuous tense\", \"Try using a relative clause with 'which'\")."),
     exampleAnswer: z.string().describe('An example of a good answer in English.'),
 });
 export type WritingPrompt = z.infer<typeof WritingPromptSchema>;
@@ -295,3 +295,18 @@ export const GenerateFeedbackOutputSchema = z.object({
 export type GenerateFeedbackOutput = z.infer<
   typeof GenerateFeedbackOutputSchema
 >;
+
+
+// Schemas for generate-writing-feedback-flow.ts
+export const GenerateWritingFeedbackInputSchema = z.object({
+  vietnamesePrompt: z.string().describe('The original prompt in Vietnamese.'),
+  englishHint: z.string().describe('The English hint that was provided.'),
+  userWrittenText: z.string().describe("The user's written response in English."),
+});
+export type GenerateWritingFeedbackInput = z.infer<typeof GenerateWritingFeedbackInputSchema>;
+
+export const GenerateWritingFeedbackOutputSchema = z.object({
+  feedback: z.string().describe('Constructive feedback on the user\'s writing, explaining grammar, style, and vocabulary issues.'),
+  correctedText: z.string().describe('A corrected version of the user\'s text.'),
+});
+export type GenerateWritingFeedbackOutput = z.infer<typeof GenerateWritingFeedbackOutputSchema>;
