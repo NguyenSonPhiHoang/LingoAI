@@ -8,47 +8,37 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Ensure the user is authenticated before trying to access their role.
       return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isOwner(userId) {
-      // Ensure the user is authenticated before comparing UIDs.
       return isAuth() && request.auth.uid == userId;
     }
 
     match /words/{wordId} {
-      // Any authenticated user can read (get, list) and create words.
       allow get, list, create: if isAuth();
-      // Only admins can update or delete global words.
       allow update, delete: if isAdmin();
     }
 
     match /userVocabulary/{docId} {
       // Allow creation if the user is the owner of the new data.
       allow create: if isOwner(request.resource.data.userId);
-      // Allow reading and deleting only if the user is the owner of the existing data.
+      // Allow read and delete if the user is the owner of the existing data.
       allow read, delete: if isOwner(resource.data.userId);
-      // Allow updating only if the user is the owner, preventing writes on logout.
+      // Allow update if the user is the owner of the existing data.
+      // This prevents errors on logout, as resource.data won't exist for a new write.
       allow update: if isOwner(resource.data.userId);
     }
     
     match /lessons/{lessonId} {
-       // Allow creation if the user is the owner of the new data.
-      allow create: if isOwner(request.resource.data.userId);
-       // Allow reading, updating, and deleting only if the user is the owner of the existing data.
-      allow read, update, delete: if isOwner(resource.data.userId);
+      allow read, write: if isAuth() &&
+                           (isOwner(resource.data.userId) || isOwner(request.resource.data.userId));
     }
     
     match /users/{userId} {
-      // Allow a user to create their own document.
       allow create: if isOwner(userId);
-      // Allow a user to read their own document, or an admin to read any user document.
       allow read: if isOwner(userId) || isAdmin();
-      // Allow only admins to update user documents (e.g., status, role).
-      allow update: if isAdmin();
-       // Allow only admins to delete users.
-      allow delete: if isAdmin();
+      allow update, delete: if isAdmin();
     }
   }
 }
