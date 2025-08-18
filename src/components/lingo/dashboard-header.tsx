@@ -82,7 +82,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>Hồ sơ</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
