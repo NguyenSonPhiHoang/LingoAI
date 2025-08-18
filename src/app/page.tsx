@@ -96,7 +96,7 @@ const Home: FC = () => {
 
   const renderContent = () => {
     // Show a loader while authentication or data fetching is in progress.
-    if (authLoading || isLoading) {
+    if (authLoading || (isLoading && user?.status === 'approved')) {
       return (
         <div className="flex h-full w-full items-center justify-center">
           <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -152,7 +152,7 @@ const Home: FC = () => {
     }
 
     // Fallback for any other state, though it shouldn't be reached.
-    return <WaitingForApproval />;
+    return null;
   };
 
   // Do not render the layout if there is no user and authentication is complete.
@@ -160,39 +160,16 @@ const Home: FC = () => {
   if (!user && !authLoading) {
     return null;
   }
-
-  // Also, don't render the layout if the user data is available but they are not approved yet,
-  // as the WaitingForApproval component doesn't need the full dashboard layout.
-  if (user && user.status !== 'approved') {
-      return (
-        <DashboardLayout
-          activeView={activeViewState.view}
-          setActiveView={(view) => setActiveViewState({ view })}
-          setWords={setWords}
-        >
-          {renderContent()}
-        </DashboardLayout>
-      );
-  }
-
-  // Render full layout for approved users
-  if (user && user.status === 'approved') {
-      return (
-        <DashboardLayout
-          activeView={activeViewState.view}
-          setActiveView={(view) => setActiveViewState({ view })}
-          setWords={setWords}
-        >
-          {renderContent()}
-        </DashboardLayout>
-      );
-  }
   
-  // Fallback loader during initial state transitions
+  // Render the appropriate layout and content based on user status
   return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <Loader2 className="h-16 w-16 animate-spin text-primary" />
-    </div>
+    <DashboardLayout
+      activeView={activeViewState.view}
+      setActiveView={(view) => setActiveViewState({ view })}
+      setWords={setWords}
+    >
+      {renderContent()}
+    </DashboardLayout>
   );
 };
 
