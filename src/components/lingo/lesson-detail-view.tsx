@@ -419,14 +419,16 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         <CardContent>
           <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-              <AccordionTrigger asChild>
-                  <div className="flex justify-end">
-                     <Button onClick={handleGenerateContent} disabled={!!isLoading}>
+              <div className="flex justify-end items-center">
+                  <div className='flex-grow'></div>
+                  <AccordionTrigger className='flex-none py-0'>
+                      <Button onClick={handleGenerateContent} disabled={!!isLoading}>
                         {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
                         {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                    </Button>
-                  </div>
-              </AccordionTrigger>
+                      </Button>
+                  </AccordionTrigger>
+              </div>
+
               <AccordionContent className="pt-4">
                 <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
                   {isLoading === 'content' ? (
