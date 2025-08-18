@@ -32,6 +32,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import DashboardHeader from "./dashboard-header";
 
@@ -41,11 +42,12 @@ interface DashboardLayoutProps {
   setActiveView: Dispatch<SetStateAction<View>>;
 }
 
-const DashboardLayout: FC<DashboardLayoutProps> = ({
+const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   children,
   activeView,
   setActiveView,
 }) => {
+  const { setOpenMobile } = useSidebar();
   const menuItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "levels", label: "All Levels", icon: GraduationCap },
@@ -53,8 +55,13 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy },
   ];
 
+  const handleViewChange = (view: View) => {
+    setActiveView(view);
+    setOpenMobile(false);
+  };
+
   return (
-    <SidebarProvider>
+    <>
       <Sidebar>
         <SidebarHeader>
           <Link href="/" className="block">
@@ -66,7 +73,7 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
-                  onClick={() => setActiveView(item.id as View)}
+                  onClick={() => handleViewChange(item.id as View)}
                   isActive={activeView === item.id}
                   tooltip={item.label}
                 >
@@ -117,6 +124,14 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({
           {children}
         </main>
       </SidebarInset>
+    </>
+  );
+};
+
+const DashboardLayout: FC<DashboardLayoutProps> = (props) => {
+  return (
+    <SidebarProvider>
+      <DashboardLayoutContent {...props} />
     </SidebarProvider>
   );
 };
