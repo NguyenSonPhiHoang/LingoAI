@@ -71,20 +71,20 @@ const MatchingGame: FC<{
             {q.options.map((opt, oIndex) => {
               const isCorrect = q.correctDefinition === opt;
               const isSelected = selections[qIndex] === opt;
+              
+              const getVariant = () => {
+                if (showResults) {
+                  if (isCorrect) return "default"; // Always show correct answer in green
+                  if (isSelected) return "destructive"; // If selected and not correct, show in red
+                  return "outline"; // Otherwise, stay neutral
+                }
+                return isSelected ? "default" : "outline";
+              };
+
               return (
                 <Button
                   key={oIndex}
-                  variant={
-                    showResults
-                      ? isCorrect
-                        ? "default"
-                        : isSelected
-                        ? "destructive"
-                        : "outline"
-                      : isSelected
-                      ? "default"
-                      : "outline"
-                  }
+                  variant={getVariant()}
                   className="h-auto min-h-[4rem] whitespace-normal text-left"
                   onClick={() => handleSelect(qIndex, opt)}
                 >
