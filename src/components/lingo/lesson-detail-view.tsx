@@ -152,6 +152,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 const readingPassage = currentLesson.content?.find(c => c.type === 'reading-passage')?.value;
                 if (!readingPassage) {
                     toast({ variant: "destructive", title: "No Reading Passage", description: "Please generate a reading passage first." });
+                    setIsLoading(null);
                     return;
                 }
                 newExercise = await generateReadingExercise({ passage: readingPassage });
@@ -166,7 +167,11 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 newExercise = await generateSpeakingExercise({ topic: lesson.topic });
                 break;
         }
-        const updatedExercises = { ...currentLesson.exercises, [lesson.skill.toLowerCase()]: newExercise };
+        
+        // Ensure newExercise is a plain JavaScript object before saving to Firestore
+        const cleanExercise = JSON.parse(JSON.stringify(newExercise));
+
+        const updatedExercises = { ...currentLesson.exercises, [lesson.skill.toLowerCase()]: cleanExercise };
         await updateLessonContent(currentLesson.docId, currentLesson.content || [], updatedExercises);
         setCurrentLesson(prev => ({...prev, exercises: updatedExercises }));
         setActivePracticeTab(lesson.skill.toLowerCase() as any);
@@ -471,3 +476,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
 
 
 export default LessonDetailView;
+
+    
