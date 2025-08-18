@@ -350,7 +350,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                             disabled={!!isLoading}
                         >
                             {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
-                            <div className="flex-1 min-w-0 text-left">
+                            <div className="text-left">
                                 <p className="text-sm font-semibold">{tool.title}</p>
                                 <p className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
                                     {tool.description}
@@ -631,7 +631,6 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
     return (
        <div className="p-4 space-y-6">
             {prompts.map((p, pIndex) => {
-                const hintKey = `hint-${pIndex}`;
                 const answerKey = `answer-${pIndex}`;
                 return (
                     <Card key={pIndex} className="bg-background">
@@ -642,7 +641,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
                         <CardContent className="space-y-4">
                             <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                               <span><strong>Hint:</strong> Try to use the word/phrase: <strong className="italic">"{p.englishHint}"</strong></span>
+                               <span><strong>Hint:</strong> {p.englishHint}</span>
                             </div>
                              <Textarea placeholder="Write your English sentence here..." rows={3} />
                         </CardContent>
