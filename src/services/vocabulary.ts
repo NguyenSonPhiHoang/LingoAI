@@ -1,7 +1,7 @@
 
 "use client";
 
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import {
   collection,
   getDocs,
@@ -211,6 +211,11 @@ export const deleteUserVocabulary = async (userVocabularyId: string) => {
 
 // Updates fields in the `userVocabulary` collection.
 export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id' | 'wordId' | 'userId' | 'createdAt'>>) => {
+  // Prevent updates if the user is logged out. This stops permission errors on cleanup.
+  if (!auth.currentUser) {
+    return;
+  }
+  
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   const cleanUpdates = cleanObject(updates);
   if (Object.keys(cleanUpdates).length > 0) {

@@ -80,7 +80,7 @@ const Home: FC = () => {
     }
   }, [user, authLoading, router, toast]);
 
-  if (authLoading || (!user && !authLoading) || (user && isLoading)) {
+  if (authLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -88,15 +88,28 @@ const Home: FC = () => {
     );
   }
   
-  // This state should not be reachable if useEffect is working correctly,
-  // but as a safeguard, we prevent rendering children that might cause errors.
   if (!user) {
-    return null;
+    // This state should not be reachable if useEffect is working correctly,
+    // but as a safeguard, we return a loader/null to prevent rendering children that might cause errors.
+    return (
+       <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
   }
   
   const favoriteWords = words.filter((word) => word.favorite);
 
   const renderContent = () => {
+    // Show a loader while words are being fetched for an approved user
+    if (user.status === 'approved' && isLoading) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
     // Show the waiting for approval screen if the user is not approved.
     if (user.status === 'pending' || user.status === 'rejected') {
         return <WaitingForApproval />;
