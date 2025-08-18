@@ -521,7 +521,7 @@ const InteractiveText: FC<{
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                                 <div className="flex items-center gap-2">
-                                    <p className="font-bold">{vocabWord.pronunciation}</p>
+                                    <div className="font-bold">{vocabWord.pronunciation}</div>
                                     {vocabWord.audioUrl && (
                                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playAudioUrl(vocabWord.audioUrl!)}>
                                           <Volume2 className="h-4 w-4" />
@@ -1016,3 +1016,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
 
 
 export default LessonDetailView;
+
+    
