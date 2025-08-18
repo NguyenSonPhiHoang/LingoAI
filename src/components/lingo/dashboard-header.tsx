@@ -8,11 +8,11 @@ interface DashboardHeaderProps {
 }
 
 const viewTitles: Record<View, string> = {
-  overview: "Tổng quan",
-  levels: "Tất cả các cấp độ",
-  "ai-suggester": "Gợi ý của AI",
-  vocabulary: "Từ vựng của tôi",
-  review: "Ôn tập",
+  overview: "Overview",
+  levels: "All Levels",
+  "ai-suggester": "AI Suggester",
+  vocabulary: "My Vocabulary",
+  review: "Review",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {

@@ -96,10 +96,10 @@ const MatchingGame: FC<{
       ))}
       <div className="flex justify-center gap-4">
         <Button onClick={onRegenerate} variant="outline" size="lg">
-          <Repeat className="mr-2" /> Tạo lại
+          <Repeat className="mr-2" /> Regenerate
         </Button>
         <Button onClick={checkAnswers} size="lg" disabled={showResults}>
-          Kiểm tra
+          Check
         </Button>
       </div>
     </div>
@@ -146,7 +146,7 @@ const FillInBlankGame: FC<{
   if (!currentQuestion) {
     return (
        <div className="text-center text-muted-foreground">
-          <p>Không có câu hỏi nào để hiển thị.</p>
+          <p>No questions to display.</p>
        </div>
     );
   }
@@ -154,9 +154,9 @@ const FillInBlankGame: FC<{
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Điền vào chỗ trống</CardTitle>
+        <CardTitle>Fill in the Blank</CardTitle>
         <CardDescription>
-          Hoàn thành câu bằng cách điền từ đúng.
+          Complete the sentence with the correct word.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -186,25 +186,25 @@ const FillInBlankGame: FC<{
               }`}
             >
               {isCorrect
-                ? "Chính xác!"
-                : `Sai rồi! Đáp án đúng là "${currentQuestion.correctTerm}".`}
+                ? "Correct!"
+                : `Not quite! The correct answer is "${currentQuestion.correctTerm}".`}
             </div>
           )}
 
           <div className="flex justify-center gap-4">
             <Button type="submit" disabled={isCorrect !== null}>
-              Kiểm tra
+              Check
             </Button>
             <Button
               type="button"
               onClick={goToNextQuestion}
               variant="secondary"
             >
-              <Repeat className="mr-2" /> Câu tiếp theo
+              <Repeat className="mr-2" /> Next Question
             </Button>
           </div>
             <div className="text-center text-sm text-muted-foreground">
-                Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                Question {currentQuestionIndex + 1} / {questions.length}
             </div>
         </form>
       </CardContent>
@@ -262,8 +262,8 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
       console.error("Failed to generate exercises:", error);
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể tạo bài ôn tập. Vui lòng thử lại.",
+        title: "Error",
+        description: "Could not generate review exercises. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -282,14 +282,14 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Ôn tập từ vựng</CardTitle>
+          <CardTitle>Vocabulary Review</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
             <AlertTriangle className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-xl font-semibold">Chưa có đủ từ để ôn tập</h3>
+            <h3 className="text-xl font-semibold">Not Enough Words to Review</h3>
             <p className="text-muted-foreground">
-              Vui lòng vào trang "Từ vựng của tôi" và đánh dấu ít nhất 4 từ là "yêu thích" để bắt đầu.
+              Please go to "My Vocabulary" and mark at least 4 words as "favorite" to start.
             </p>
           </div>
         </CardContent>
@@ -301,12 +301,12 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
     <Tabs defaultValue="matching" className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <TabsList className="grid grid-cols-2 w-full sm:w-auto">
-          <TabsTrigger value="matching" disabled={matchingQuestions.length === 0}>Nối từ</TabsTrigger>
-          <TabsTrigger value="fill-in-the-blank" disabled={fillInTheBlankQuestions.length === 0}>Điền từ</TabsTrigger>
+          <TabsTrigger value="matching" disabled={matchingQuestions.length === 0}>Matching</TabsTrigger>
+          <TabsTrigger value="fill-in-the-blank" disabled={fillInTheBlankQuestions.length === 0}>Fill-in-the-blank</TabsTrigger>
         </TabsList>
         <div className="flex items-center text-sm mt-4 sm:mt-0 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
           <Lightbulb className="w-5 h-5 mr-2 flex-shrink-0" />
-          <span>Chỉ những từ được yêu thích mới được sử dụng trong các bài ôn tập này.</span>
+          <span>Only your favorited words are used in these review exercises.</span>
         </div>
       </div>
 
@@ -315,7 +315,7 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
             <MatchingGame questions={matchingQuestions} onRegenerate={fetchExercises} />
         ) : (
              <div className="text-center text-muted-foreground p-8">
-                <p>Không thể tạo bài tập nối từ với các từ đã chọn.</p>
+                <p>Could not generate matching exercises with the selected words.</p>
              </div>
         )}
       </TabsContent>
@@ -324,7 +324,7 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
             <FillInBlankGame questions={fillInTheBlankQuestions} onRegenerate={fetchExercises} />
          ) : (
             <div className="text-center text-muted-foreground p-8">
-                <p>Không thể tạo bài tập điền từ với các từ đã chọn.</p>
+                <p>Could not generate fill-in-the-blank exercises with the selected words.</p>
              </div>
          )}
       </TabsContent>

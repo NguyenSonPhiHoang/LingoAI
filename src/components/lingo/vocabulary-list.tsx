@@ -121,8 +121,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     if (file.type !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Vui lòng chỉ tải lên các tệp .docx.",
+        title: "Error",
+        description: "Please upload only .docx files.",
       });
       return;
     }
@@ -138,15 +138,15 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
-        title: "Thành công",
-        description: `${newWords.length} từ đã được nhập thành công.`,
+        title: "Success",
+        description: `${newWords.length} words were successfully imported.`,
       });
     } catch (error) {
-      console.error("Lỗi khi nhập tệp:", error);
+      console.error("Error importing file:", error);
       toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể nhập từ tệp. Vui lòng thử lại.",
+        title: "Error",
+        description: "Failed to import from file. Please try again.",
       });
     } finally {
       setIsImporting(false);
@@ -208,8 +208,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
        console.error("Error generating audio:", error);
        toast({
         variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể tạo âm thanh. Vui lòng thử lại.",
+        title: "Error",
+        description: "Could not generate audio. Please try again.",
       });
        const updateData = type === 'term' ? { isGeneratingAudio: false } : { isGeneratingSentenceAudio: false };
        setWords(prev => prev.map(w => w.id === wordId ? { ...w, ...updateData } : w));
@@ -227,9 +227,9 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       <CardHeader>
         <div className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Từ vựng của tôi</CardTitle>
+            <CardTitle>My Vocabulary</CardTitle>
             <CardDescription>
-              Một danh sách cá nhân hóa các từ bạn đang học.
+              A personalized list of words you are learning.
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
@@ -239,7 +239,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 checked={showOnlyFavorites}
                 onCheckedChange={setShowOnlyFavorites}
               />
-              <Label htmlFor="favorites-only">Chỉ hiển thị mục yêu thích</Label>
+              <Label htmlFor="favorites-only">Show favorites only</Label>
             </div>
             <div className="flex gap-2">
               <Input
@@ -255,38 +255,38 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                Nhập từ tệp
+                Import from File
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Thêm từ
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Word
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>Thêm từ mới</DialogTitle>
+                    <DialogTitle>Add New Word</DialogTitle>
                     <DialogDescription>
-                      Lưu một từ mới vào danh sách từ vựng cá nhân của bạn.
+                      Save a new word to your personal vocabulary list.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleAddWord}>
                     <div className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="term" className="text-right">
-                          Từ
+                          Term
                         </Label>
                         <Input id="term" name="term" className="col-span-3" required />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="pronunciation" className="text-right">
-                          Phiên âm
+                          Pronunciation
                         </Label>
                         <Input id="pronunciation" name="pronunciation" className="col-span-3" />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="definition" className="text-right">
-                          Định nghĩa
+                          Definition
                         </Label>
                         <Input
                           id="definition"
@@ -297,7 +297,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="sentence" className="text-right">
-                          Câu
+                          Sentence
                         </Label>
                         <Input
                           id="sentence"
@@ -307,7 +307,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="submit">Lưu từ</Button>
+                      <Button type="submit">Save Word</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
@@ -320,11 +320,11 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[25%]">Từ & Âm thanh</TableHead>
-              <TableHead className="w-[50%]">Định nghĩa & Ví dụ</TableHead>
-              <TableHead className="text-center">Yêu thích</TableHead>
-              <TableHead className="text-center">Lượt xem</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
+              <TableHead className="w-[25%]">Term & Audio</TableHead>
+              <TableHead className="w-[50%]">Definition & Example</TableHead>
+              <TableHead className="text-center">Favorite</TableHead>
+              <TableHead className="text-center">Views</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -345,7 +345,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                         ) : (
                           <Volume2 className="h-4 w-4" />
                         )}
-                        <span className="sr-only">Phát âm từ</span>
+                        <span className="sr-only">Play term audio</span>
                       </Button>
                       <div>
                         <p>{word.term}</p>
@@ -368,7 +368,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                         ) : (
                           <Volume2 className="h-4 w-4" />
                         )}
-                        <span className="sr-only">Phát âm câu</span>
+                        <span className="sr-only">Play sentence audio</span>
                       </Button>
                       <p className="text-sm text-muted-foreground italic">
                         "{word.sentence}"
@@ -378,7 +378,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                   <TableCell className="text-center">
                     <Button variant="ghost" size="icon" onClick={() => toggleFavorite(word)}>
                       <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
-                      <span className="sr-only">Yêu thích</span>
+                      <span className="sr-only">Favorite</span>
                     </Button>
                   </TableCell>
                   <TableCell className="text-center font-medium">{word.viewCount}</TableCell>
@@ -389,7 +389,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                       onClick={() => handleDeleteWord(word)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
-                      <span className="sr-only">Xóa</span>
+                      <span className="sr-only">Delete</span>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -398,8 +398,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                    {showOnlyFavorites
-                    ? "Bạn chưa có từ yêu thích nào. Hãy đánh dấu một vài từ!"
-                    : "Danh sách từ vựng của bạn trống. Thêm một từ mới để bắt đầu!"}
+                    ? "You don't have any favorite words yet. Go ahead and star a few!"
+                    : "Your vocabulary list is empty. Add a new word to get started!"}
                 </TableCell>
               </TableRow>
             )}
