@@ -146,10 +146,11 @@ export const GroupVocabularyOutputSchema = z.object({
 export type GroupVocabularyOutput = z.infer<typeof GroupVocabularyOutputSchema>;
 
 // Schemas for suggest-personalized-lessons.ts
+export const UserLevelSchema = z.enum(['beginner', 'intermediate', 'advanced']);
+export type UserLevel = z.infer<typeof UserLevelSchema>;
+
 export const SuggestPersonalizedLessonsInputSchema = z.object({
-  userLevel: z
-    .enum(['beginner', 'intermediate', 'advanced'])
-    .describe('The user\'s current English proficiency level.'),
+  userLevel: UserLevelSchema.describe('The user\'s current English proficiency level.'),
   learningGoals: z
     .string()
     .describe(
@@ -169,6 +170,7 @@ export type SuggestPersonalizedLessonsInput = z.infer<
 const LessonSuggestionSchema = z.object({
     topic: z.string().describe('A concise and engaging topic for the lesson.'),
     skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing']).describe('The core skill this lesson focuses on.'),
+    level: UserLevelSchema.describe('The difficulty level of the lesson.'),
 });
 export type LessonSuggestion = z.infer<typeof LessonSuggestionSchema>;
 
@@ -207,7 +209,7 @@ export type GenerateReadingExerciseOutput = z.infer<typeof GenerateReadingExerci
 // Schemas for generate-writing-exercise-flow.ts
 export const GenerateWritingExerciseInputSchema = z.object({
     topic: z.string().describe('The lesson topic.'),
-    userLevel: z.enum(['beginner', 'intermediate', 'advanced']).describe('The user\'s proficiency level.'),
+    userLevel: UserLevelSchema.describe('The user\'s proficiency level.'),
     focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense the user should practice.'),
 });
 export type GenerateWritingExerciseInput = z.infer<typeof GenerateWritingExerciseInputSchema>;

@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateActi
 import { useAuth } from '@/context/auth-context';
 import { getLessons, type Lesson } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import type { ViewState } from '@/app/page';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import type { UserLevel } from '@/ai/flows/schemas';
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
 
@@ -22,6 +23,9 @@ const skillIcons: Record<Skill, React.ElementType> = {
     Reading: BookOpen,
     Writing: FilePenLine,
 };
+
+const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
+
 
 interface MyLessonsViewProps {
     setActiveViewState: Dispatch<SetStateAction<ViewState>>;
@@ -38,6 +42,11 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         Speaking: true,
         Reading: true,
         Writing: true,
+    });
+    const [levelFilters, setLevelFilters] = useState<Record<UserLevel, boolean>>({
+        beginner: true,
+        intermediate: true,
+        advanced: true,
     });
 
     useEffect(() => {
@@ -64,12 +73,17 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const handleSkillFilterChange = (skill: Skill) => {
         setSkillFilters(prev => ({ ...prev, [skill]: !prev[skill] }));
     }
+    
+    const handleLevelFilterChange = (level: UserLevel) => {
+        setLevelFilters(prev => ({ ...prev, [level]: !prev[level] }));
+    }
 
     const filteredLessons = useMemo(() => {
         return lessons
             .filter(lesson => skillFilters[lesson.skill as Skill])
+            .filter(lesson => levelFilters[lesson.level])
             .filter(lesson => lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [lessons, searchTerm, skillFilters]);
+    }, [lessons, searchTerm, skillFilters, levelFilters]);
     
     const handleStartLesson = (lesson: Lesson) => {
         setActiveViewState({ view: 'lesson-detail', lesson });
@@ -101,27 +115,51 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="w-full sm:w-auto">
-                                    <ListFilter className="mr-2" />
-                                    Filter by Skill
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuLabel>Show Skills</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {Object.keys(skillFilters).map(skill => (
-                                    <DropdownMenuCheckboxItem
-                                        key={skill}
-                                        checked={skillFilters[skill as Skill]}
-                                        onCheckedChange={() => handleSkillFilterChange(skill as Skill)}
-                                    >
-                                        {skill}
-                                    </DropdownMenuCheckboxItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex gap-2">
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="w-full sm:w-auto">
+                                        <GraduationCap className="mr-2" />
+                                        Filter by Level
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuLabel>Show Levels</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {levels.map(level => (
+                                        <DropdownMenuCheckboxItem
+                                            key={level}
+                                            checked={levelFilters[level]}
+                                            onCheckedChange={() => handleLevelFilterChange(level)}
+                                            className="capitalize"
+                                        >
+                                            {level}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="w-full sm:w-auto">
+                                        <ListFilter className="mr-2" />
+                                        Filter by Skill
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuLabel>Show Skills</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {Object.keys(skillFilters).map(skill => (
+                                        <DropdownMenuCheckboxItem
+                                            key={skill}
+                                            checked={skillFilters[skill as Skill]}
+                                            onCheckedChange={() => handleSkillFilterChange(skill as Skill)}
+                                        >
+                                            {skill}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                         <Button
                             className="w-full sm:w-auto"
                             onClick={() => setActiveViewState({view: 'ai-suggester'})}
@@ -141,7 +179,10 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                             <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <Badge variant="secondary">{lesson.skill}</Badge>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary">{lesson.skill}</Badge>
+                                            <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
+                                        </div>
                                         <Icon className="h-6 w-6 text-muted-foreground" />
                                     </div>
                                     <CardTitle className="pt-2">{lesson.topic}</CardTitle>

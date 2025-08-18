@@ -169,7 +169,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 newExercise = await generateReadingExercise({ ...basePayload, passage: readingPassage });
                 break;
             case "Writing":
-                newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: user?.status === 'approved' ? 'intermediate' : 'beginner' });
+                newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
                 break;
             case "Listening":
                 newExercise = await generateListeningExercise({ ...basePayload, topic: lesson.topic });
@@ -249,7 +249,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
             <Icon className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <Badge variant="secondary" className="mb-1">{lesson.skill}</Badge>
+            <div className="flex items-center gap-2 mb-1">
+                <Badge variant="secondary">{lesson.skill}</Badge>
+                <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
+            </div>
             <h1 className="text-3xl font-bold tracking-tight">{lesson.topic}</h1>
             <p className="text-muted-foreground">
               First, generate learning content. Then, start an interactive practice session.

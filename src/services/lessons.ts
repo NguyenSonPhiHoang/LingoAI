@@ -14,7 +14,7 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import type { LessonSuggestion } from "@/ai/flows/schemas";
+import type { LessonSuggestion, UserLevel } from "@/ai/flows/schemas";
 
 const lessonsCollection = collection(db, "lessons");
 
@@ -32,6 +32,7 @@ export interface Lesson extends LessonSuggestion {
   docId: string;
   userId: string;
   createdAt: any;
+  level: UserLevel;
   content?: LessonContent[];
   exercises?: {
       reading?: Exercise;
@@ -74,6 +75,7 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
       topic: data.topic,
       skill: data.skill,
       userId: data.userId,
+      level: data.level,
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
       content: data.content || [],
       exercises: data.exercises || {},
