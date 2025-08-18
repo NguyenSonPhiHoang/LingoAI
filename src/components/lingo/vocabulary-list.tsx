@@ -50,9 +50,10 @@ import { groupVocabularyByTopic } from "@/ai/flows/group-vocabulary";
 import type { VocabularyTopic } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import {
-  addMultipleWordsToVocabulary,
+  addWordToVocabulary,
   deleteUserVocabulary,
   updateUserVocabulary,
+  updateWord
 } from "@/services/vocabulary";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
@@ -81,6 +82,7 @@ const EditWordDialog: FC<{
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof editWordSchema>>({
     resolver: zodResolver(editWordSchema),
@@ -113,6 +115,24 @@ const EditWordDialog: FC<{
       setIsSaving(false);
     }
   };
+  
+  const handleGlobalUpdate = async (globalValues: { term: string; pronunciation: string; }) => {
+      if (user?.role !== 'admin') {
+          toast({ variant: "destructive", title: "Permission Denied", description: "Only admins can edit global word properties." });
+          return;
+      }
+      setIsSaving(true);
+      try {
+        await updateWord(word.id, globalValues);
+        setWords(prev => prev.map(w => w.id === word.id ? {...w, ...globalValues} : w));
+        toast({ title: "Global Word Updated", description: `The term "${globalValues.term}" has been updated for all users.` });
+      } catch (error) {
+          console.error("Error updating global word:", error);
+          toast({ variant: "destructive", title: "Error", description: "Could not update the global word." });
+      } finally {
+          setIsSaving(false);
+      }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -126,97 +146,114 @@ const EditWordDialog: FC<{
         <DialogHeader>
           <DialogTitle>Edit: {word.term}</DialogTitle>
           <DialogDescription>
-            Make changes to your personalized word details here. Click save when you're done. The term and pronunciation are shared and cannot be edited here.
+             Make changes to your personalized word details here. As an admin, you can also edit the global term and pronunciation.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[60vh] overflow-y-auto p-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <FormItem>
-                  <FormLabel>Term</FormLabel>
-                  <FormControl>
-                    <Input value={word.term} disabled className="font-semibold" />
-                  </FormControl>
-                </FormItem>
-                <FormItem>
-                  <FormLabel>Pronunciation (IPA)</FormLabel>
-                  <FormControl>
-                     <Input value={word.pronunciation} disabled />
-                  </FormControl>
-                </FormItem>
-            </div>
-            <FormField
-              control={form.control}
-              name="partOfSpeech"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Part of Speech</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-                control={form.control}
-                name="definition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Definition (EN)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="vietnameseDefinition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Definition (VI)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="sentence"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Example Sentence (EN)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="vietnameseSentence"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Example Sentence (VI)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+             {user?.role === 'admin' && (
+                <Card className="bg-muted/30">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Global Properties (Admin)</CardTitle>
+                        <CardDescription>Changes here affect all users.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                         <FormItem>
+                            <FormLabel>Term</FormLabel>
+                            <FormControl>
+                                <Input defaultValue={word.term} id="globalTerm" />
+                            </FormControl>
+                         </FormItem>
+                         <FormItem>
+                           <FormLabel>Pronunciation (IPA)</FormLabel>
+                           <FormControl>
+                                <Input defaultValue={word.pronunciation} id="globalPronunciation" />
+                           </FormControl>
+                         </FormItem>
+                         <Button type="button" size="sm" onClick={() => handleGlobalUpdate({ term: (document.getElementById('globalTerm') as HTMLInputElement).value, pronunciation: (document.getElementById('globalPronunciation') as HTMLInputElement).value})}>Save Global Changes</Button>
+                    </CardContent>
+                </Card>
+             )}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Personalized Properties</CardTitle>
+                    <CardDescription>Changes here only affect your own vocabulary list.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="partOfSpeech"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Part of Speech</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="definition"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Definition (EN)</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="vietnameseDefinition"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Definition (VI)</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="sentence"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Example Sentence (EN)</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="vietnameseSentence"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Example Sentence (VI)</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                </CardContent>
+            </Card>
             <DialogFooter className="sticky bottom-0 bg-background pt-4">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+                Save Personalized Changes
               </Button>
             </DialogFooter>
           </form>
@@ -289,14 +326,16 @@ const VocabularyListInternal: FC<{
   
   const toggleFavorite = async (wordToUpdate: CombinedVocabulary) => {
     const newFavoriteState = !wordToUpdate.favorite;
-    setWords(allWords.map(w => 
+    const optimisticWords = allWords.map(w => 
       w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, favorite: newFavoriteState } : w
-    ));
+    );
+    setWords(optimisticWords);
     try {
       await updateUserVocabulary(wordToUpdate.userVocabularyId, { favorite: newFavoriteState });
     } catch (error) {
       console.error("Error updating favorite status:", error);
-      setWords(allWords.map(w => 
+      // Revert on failure
+       setWords(allWords.map(w => 
         w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, favorite: !newFavoriteState } : w
       ));
       toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
@@ -340,9 +379,14 @@ const VocabularyListInternal: FC<{
       }
       
       const updateData = isTerm ? { audioUrl: newAudioUrl } : { sentenceAudioUrl: newAudioUrl };
-      await updateUserVocabulary(word.userVocabularyId, updateData);
-
-      setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, ...updateData } : w));
+      
+      if (isTerm) {
+          await updateWord(word.id, { audioUrl: newAudioUrl });
+          setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
+      } else {
+          await updateUserVocabulary(word.userVocabularyId, { sentenceAudioUrl: newAudioUrl });
+          setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, sentenceAudioUrl: newAudioUrl } : w));
+      }
 
     } catch (e: any) {
        toast({
@@ -638,79 +682,85 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle>My Vocabulary</CardTitle>
-            <CardDescription>
-              A personalized list of words, phrases, and sentences you are learning.
-            </CardDescription>
-          </div>
-          <div className="flex-1">
-             <Input
-                placeholder="Search by word or topic..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full md:max-w-xs"
-              />
-          </div>
-          <div className="flex items-center justify-end gap-2 flex-wrap">
-             <div className="flex items-center space-x-2">
-                <Switch
-                    id="view-mode"
-                    checked={viewMode === 'grouped'}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        handleGroupByTopic();
-                      } else {
-                        setViewMode('list');
-                      }
-                    }}
-                    disabled={isGrouping}
-                />
-                <Label htmlFor="view-mode">Group by Topic</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="favorites-only"
-                checked={showOnlyFavorites}
-                onCheckedChange={setShowOnlyFavorites}
-              />
-              <Label htmlFor="favorites-only">Favorites</Label>
-            </div>
-            <div className="flex gap-2">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>My Vocabulary</CardTitle>
+          <CardDescription>
+            A personalized list of words, phrases, and sentences you are learning.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
               <Input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".docx"
-              />
-              <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
-                {isImporting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="mr-2 h-4 w-4" />
-                )}
-                Import
-              </Button>
-               <AddWordDialog
-                  setWords={setWords}
-                  trigger={
-                      <Button>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-                      </Button>
-                  }
-               />
+                  placeholder="Search by word or topic..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full md:max-w-sm"
+                />
+            </div>
+            <div className="flex items-center justify-end gap-2 flex-wrap">
+              <div className="flex items-center space-x-2">
+                  <Switch
+                      id="view-mode"
+                      checked={viewMode === 'grouped'}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleGroupByTopic();
+                        } else {
+                          setViewMode('list');
+                        }
+                      }}
+                      disabled={isGrouping}
+                  />
+                  <Label htmlFor="view-mode">Group by Topic</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="favorites-only"
+                  checked={showOnlyFavorites}
+                  onCheckedChange={setShowOnlyFavorites}
+                />
+                <Label htmlFor="favorites-only">Favorites</Label>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept=".docx"
+                />
+                <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
+                  {isImporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Import
+                </Button>
+                <AddWordDialog
+                    setWords={setWords}
+                    trigger={
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+                        </Button>
+                    }
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      <Card>
+          <CardContent className="p-0">
+             {renderContent()}
+          </CardContent>
+      </Card>
+
+    </div>
   );
 };
 
