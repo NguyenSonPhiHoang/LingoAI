@@ -108,6 +108,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
+  const { translations, isTranslating, getTranslation } = useTranslation();
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
       const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
@@ -326,19 +327,33 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 
             <ScrollArea className="h-[400px] p-4 rounded-lg border bg-muted/20">
                 <h3 className="font-semibold text-lg mb-3">Generated Content</h3>
-                {currentLesson.content?.map((item) => (
+                {currentLesson.content?.map((item) => {
+                  const translationKey = `content-${item.id}`;
+                  const isBeingTranslated = isTranslating[translationKey];
+                  return (
                     <Card key={item.id} className="mb-4 bg-background">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
-                                {aiTools.find(t => t.id === item.type)?.title}
-                            </CardTitle>
+                        <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base flex items-center gap-2 flex-1">
+                                    {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
+                                    {aiTools.find(t => t.id === item.type)?.title}
+                                </CardTitle>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => getTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
+                                  {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm whitespace-pre-wrap">{item.value}</p>
+                            {translations[translationKey] && (
+                                <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                                    <strong>Dịch:</strong> {translations[translationKey]}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
-                ))}
+                  )
+                })}
                 {!isLoading && (!currentLesson.content || currentLesson.content.length === 0) && (
                     <div className="text-sm text-muted-foreground text-center py-4">
                         Content you generate will appear here.
@@ -610,3 +625,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
 
 
 export default LessonDetailView;
+
+    
