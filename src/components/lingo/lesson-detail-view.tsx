@@ -523,7 +523,7 @@ const InteractiveText: FC<{
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                                 <div className="flex items-center gap-2">
-                                    <div className="font-bold">{vocabWord.pronunciation}</div>
+                                    <div className="font-bold font-sans">{vocabWord.pronunciation}</div>
                                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playTermAudio(vocabWord)} disabled={isPlaying}>
                                         {isPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
@@ -775,7 +775,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                         {showResults && selectedAnswer && !isCorrectSelection && (
                              <div className="mt-4 p-3 rounded-md bg-red-50 border-l-4 border-red-400 text-red-900">
                                 <div className="flex justify-between items-start">
-                                    <h4 className="font-bold mb-1 flex-1">Explanation</h4>
+                                    <div className="font-bold mb-1 flex-1">Explanation</div>
                                      <div className="flex items-center">
                                          {feedback[qIndex] && (
                                             <>
@@ -867,7 +867,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[], pla
             <CardContent className="space-y-4">
                 <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
                    <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                   <span><strong>Hint:</strong> <InteractiveText text={prompt.englishHint} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></span>
+                   <div className="flex-1"><strong>Hint:</strong> <InteractiveText text={prompt.englishHint} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} /></div>
                    <Button variant="ghost" size="icon" className="h-5 w-5 -mr-1 -mt-1 text-yellow-800 hover:bg-yellow-100" onClick={() => playAudio(hintKey, prompt.englishHint, audioUrls)} disabled={isPlaying[hintKey]}>
                       {isPlaying[hintKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                    </Button>
@@ -889,7 +889,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[], pla
                     <div className="space-y-4 pt-4">
                         <div className="p-3 rounded-md bg-blue-50 border-l-4 border-blue-400 text-blue-900">
                              <div className="flex justify-between items-start">
-                                <h4 className="font-bold mb-1 flex-1">AI Feedback</h4>
+                                <div className="font-bold mb-1 flex-1">AI Feedback</div>
                                  <div className="flex items-center">
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playAudio(feedbackKey, feedback.feedback, audioUrls)} disabled={isPlaying[feedbackKey]}>
                                         {isPlaying[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -908,7 +908,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt, vocabulary: Word[], pla
                         </div>
                         <div className="p-3 rounded-md bg-green-50 border-l-4 border-green-400 text-green-900">
                             <div className="flex justify-between items-start">
-                                <h4 className="font-bold mb-1 flex-1">Suggested Answer</h4>
+                                <div className="font-bold mb-1 flex-1">Suggested Answer</div>
                                 <div className="flex items-center">
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playAudio(correctedKey, feedback.correctedText, audioUrls)} disabled={isPlaying[correctedKey]}>
                                         {isPlaying[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}

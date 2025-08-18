@@ -576,7 +576,7 @@ const VocabularyListInternal: FC<{
                           <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
                             <div>
                                 <p className="font-semibold">{word.term}</p>
-                                <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
+                                <p className="text-sm text-muted-foreground font-sans font-normal">{word.pronunciation}</p>
                             </div>
                             <div className="text-sm text-muted-foreground">
                                 <p>{word.definition}</p>
@@ -604,7 +604,7 @@ const VocabularyListInternal: FC<{
                             </Button>
                             <div>
                                 <p className="font-semibold">{word.term}</p>
-                                <p className="text-sm text-muted-foreground font-normal italic">{word.pronunciation}</p>
+                                <p className="text-sm text-muted-foreground font-sans font-normal">{word.pronunciation}</p>
                             </div>
                         </div>
                     </div>
@@ -878,5 +878,3 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
-    
