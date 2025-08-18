@@ -22,6 +22,9 @@ import {
   Clipboard,
   CheckCircle,
   Languages,
+  Circle,
+  CircleDashed,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +57,8 @@ import {
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
 import { Label } from "../ui/label";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "../ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
@@ -103,6 +108,13 @@ const aiTools: AiTool[] = [
   },
 ];
 
+const statusOptions: { value: LessonStatus; label: string; icon: React.ElementType }[] = [
+    { value: 'not-started', label: 'Not Started', icon: Circle },
+    { value: 'in-progress', label: 'In Progress', icon: CircleDashed },
+    { value: 'completed', label: 'Completed', icon: CheckCircle },
+];
+
+
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
   const [isLoading, setIsLoading] = useState<ToolType | Skill | null>(null);
@@ -121,24 +133,34 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 
   const Icon = skillIcons[lesson.skill as Skill] || Sparkles;
 
-  const updateStatusIfNeeded = async (newStatus: LessonStatus) => {
-    if (currentLesson.status !== newStatus && currentLesson.status !== 'completed') {
-        try {
-            await updateLesson(currentLesson.docId, { status: newStatus });
-            setCurrentLesson(prev => ({ ...prev, status: newStatus }));
-        } catch (error) {
-            console.error("Failed to update lesson status:", error);
-            // Don't toast here as it might be annoying for the user.
-        }
+  const handleStatusChange = async (newStatus: LessonStatus) => {
+    if (currentLesson.status === newStatus) return;
+    
+    // Optimistically update UI
+    const previousStatus = currentLesson.status;
+    setCurrentLesson(prev => ({ ...prev, status: newStatus }));
+
+    try {
+        await updateLesson(currentLesson.docId, { status: newStatus });
+        toast({
+            title: "Status Updated",
+            description: `Lesson marked as ${newStatus.replace('-', ' ')}.`,
+        });
+    } catch (error) {
+        // Revert UI on error
+        setCurrentLesson(prev => ({ ...prev, status: previousStatus }));
+        console.error("Failed to update lesson status:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not update lesson status.',
+        });
     }
   };
 
+
   const handleToolClick = async (toolId: ToolType) => {
     setIsLoading(toolId);
-    await updateStatusIfNeeded('in-progress');
-    // This is a mock implementation. In a real app, you'd call different flows.
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     let contentText = "";
     switch(toolId) {
         case "conversation":
@@ -172,7 +194,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   
   const handleStartPractice = async () => {
     setIsLoading(lesson.skill);
-    await updateStatusIfNeeded('in-progress');
     try {
         let newExercise: any;
         const basePayload = { focusPoints: focusPoints || undefined };
@@ -214,11 +235,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   }
 
   const handleMarkAsComplete = async () => {
-    await updateStatusIfNeeded('completed');
-    toast({
-        title: "Lesson Complete!",
-        description: "Great job! This lesson has been marked as complete.",
-    });
+    await handleStatusChange('completed');
   }
   
   const availableTools = aiTools.filter(tool => tool.supportedSkills.includes(lesson.skill as Skill));
@@ -264,6 +281,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
     }
   }
 
+  const currentStatusInfo = statusOptions.find(s => s.value === currentLesson.status) || statusOptions[0];
+
 
   return (
     <div className="space-y-6">
@@ -271,14 +290,29 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
         <Button variant="ghost" onClick={onBack} className="mb-4 -ml-4">
           <ArrowLeft className="mr-2" /> Back to My Lessons
         </Button>
-         <Button 
-            variant="outline"
-            onClick={handleMarkAsComplete}
-            disabled={currentLesson.status === 'completed'}
-         >
-            <CheckCircle className="mr-2 h-4 w-4" />
-            {currentLesson.status === 'completed' ? 'Completed!' : 'Mark as Complete'}
-         </Button>
+         <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                    <currentStatusInfo.icon className="mr-2 h-4 w-4" />
+                    {currentStatusInfo.label}
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {statusOptions.map(option => (
+                     <DropdownMenuItem 
+                        key={option.value}
+                        onClick={() => handleStatusChange(option.value)}
+                        disabled={currentLesson.status === option.value}
+                    >
+                        <option.icon className="mr-2 h-4 w-4" />
+                        {option.label}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+         </DropdownMenu>
       </div>
 
       <div>
