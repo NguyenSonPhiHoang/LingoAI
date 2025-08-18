@@ -274,3 +274,24 @@ export const TranslateTextOutputSchema = z.object({
   translation: z.string().describe('The Vietnamese translation of the text.'),
 });
 export type TranslateTextOutput = z.infer<typeof TranslateTextOutputSchema>;
+
+
+// Schemas for generate-feedback-flow.ts
+export const GenerateFeedbackInputSchema = z.object({
+  passage: z.string().describe('The original reading passage.'),
+  question: z.string().describe('The question the user was asked.'),
+  userAnswer: z.string().describe('The user\'s incorrect answer.'),
+  correctAnswer: z.string().describe('The correct answer.'),
+});
+export type GenerateFeedbackInput = z.infer<typeof GenerateFeedbackInputSchema>;
+
+export const GenerateFeedbackOutputSchema = z.object({
+  explanation: z
+    .string()
+    .describe(
+      'A detailed explanation of why the user\'s answer is incorrect and the correct answer is right.'
+    ),
+});
+export type GenerateFeedbackOutput = z.infer<
+  typeof GenerateFeedbackOutputSchema
+>;

@@ -45,6 +45,7 @@ import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-fl
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
 import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
 import { translateText } from "@/ai/flows/translate-text-flow";
+import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
 import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
@@ -255,9 +256,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
     }
 
     switch(practiceType) {
-        case 'reading': return <ReadingPractice questions={currentExercise.questions} />;
+        case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={currentLesson.content?.find(c => c.type === 'reading-passage')?.value || ''} />;
         case 'writing': return <WritingPractice prompts={currentExercise.prompts} />;
-        case 'listening': return <ListeningPractice exercise={currentExercise} />;
+        case 'listening': return <ListeningPractice exercise={currentExercise} passage={currentExercise.dialogue.map(d => `${d.speaker}: ${d.line}`).join('\n')} />;
         case 'speaking': return <SpeakingPractice exercise={currentExercise} />;
         default: return null;
     }
@@ -461,9 +462,12 @@ const useTranslation = () => {
 
 // --- Practice Components ---
 
-const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ questions }) => {
+const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: string }> = ({ questions, passage }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [showResults, setShowResults] = useState(false);
+    const [feedback, setFeedback] = useState<Record<number, string>>({});
+    const [isChecking, setIsChecking] = useState(false);
+    const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
@@ -473,10 +477,47 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
         setAnswers(prev => ({ ...prev, [qIndex]: option }));
     };
 
+    const handleCheckAnswers = async () => {
+        setIsChecking(true);
+        setShowResults(true);
+
+        const feedbackPromises = questions.map(async (q, qIndex) => {
+            const userAnswer = answers[qIndex];
+            if (userAnswer && userAnswer !== q.correctOption) {
+                try {
+                    const result = await generateFeedbackForIncorrectAnswer({
+                        passage,
+                        question: q.question,
+                        userAnswer,
+                        correctAnswer: q.correctOption
+                    });
+                    return { index: qIndex, feedback: result.explanation };
+                } catch (error) {
+                    console.error(`Error getting feedback for Q${qIndex + 1}:`, error);
+                    toast({ variant: "destructive", title: `Feedback Error Q${qIndex + 1}`, description: "Could not get feedback for this question." });
+                    return { index: qIndex, feedback: "Could not retrieve feedback." };
+                }
+            }
+            return null;
+        });
+
+        const results = await Promise.all(feedbackPromises);
+        const newFeedback = results.reduce((acc, result) => {
+            if (result) {
+                acc[result.index] = result.feedback;
+            }
+            return acc;
+        }, {} as Record<number, string>);
+
+        setFeedback(newFeedback);
+        setIsChecking(false);
+    };
+
     return (
         <div className="p-4 space-y-6">
             {questions.map((q, qIndex) => {
                 const selectedAnswer = answers[qIndex];
+                const isCorrectSelection = selectedAnswer === q.correctOption;
                 const translationKey = `q-${qIndex}`;
                 return (
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
@@ -493,13 +534,13 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
                         )}
                         <div className="space-y-2">
                             {q.options.map((opt, oIndex) => {
-                                const isCorrect = q.correctOption === opt;
-                                const isSelected = selectedAnswer === opt;
+                                const isCorrectOption = q.correctOption === opt;
+                                const isSelectedOption = selectedAnswer === opt;
                                 
                                 const getVariant = () => {
-                                    if (!showResults) return isSelected ? "default" : "outline";
-                                    if (isCorrect) return "default";
-                                    if (isSelected) return "destructive";
+                                    if (!showResults) return isSelectedOption ? "default" : "outline";
+                                    if (isCorrectOption) return "default";
+                                    if (isSelectedOption) return "destructive";
                                     return "outline";
                                 };
 
@@ -510,18 +551,27 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[] }> = ({ qu
                                         className="w-full justify-start text-left h-auto py-2"
                                         onClick={() => handleSelect(qIndex, opt)}
                                     >
-                                       {showResults && isCorrect && <Check className="mr-2 flex-shrink-0" />}
-                                       {showResults && isSelected && !isCorrect && <X className="mr-2 flex-shrink-0" />}
+                                       {showResults && isCorrectOption && <Check className="mr-2 flex-shrink-0" />}
+                                       {showResults && isSelectedOption && !isCorrectOption && <X className="mr-2 flex-shrink-0" />}
                                        {opt}
                                     </Button>
                                 );
                             })}
                         </div>
+                        {showResults && selectedAnswer && !isCorrectSelection && (
+                             <div className="mt-4 p-3 rounded-md bg-red-50 border-l-4 border-red-400 text-red-900">
+                                <h4 className="font-bold mb-1">Explanation</h4>
+                                {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
+                                <p className="text-sm">{feedback[qIndex]}</p>
+                            </div>
+                        )}
                     </div>
                 );
             })}
             <div className="text-center pt-4">
-                <Button onClick={() => setShowResults(true)} disabled={showResults}>Check Answers</Button>
+                <Button onClick={handleCheckAnswers} disabled={showResults || isChecking}>
+                   {isChecking ? <><Loader2 className="mr-2 animate-spin" /> Checking...</> : "Check Answers"}
+                </Button>
             </div>
         </div>
     );
@@ -570,7 +620,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
 };
 
 
-const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ exercise }) => {
+const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string }> = ({ exercise, passage }) => {
     const audioRef = React.useRef<HTMLAudioElement>(null);
     return (
         <div className="p-4 h-full flex flex-col">
@@ -585,7 +635,7 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput }> = ({ 
             <div className="flex-grow relative">
                 <div className="absolute inset-0">
                     <ScrollArea className="h-full w-full">
-                      <ReadingPractice questions={exercise.questions} />
+                      <ReadingPractice questions={exercise.questions} passage={passage} />
                     </ScrollArea>
                 </div>
             </div>
