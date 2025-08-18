@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
 import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles } from "lucide-react";
 import mammoth from "mammoth";
@@ -252,14 +252,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
-  
-  useEffect(() => {
-    words.forEach(word => {
-        if (!word.audioUrl || !word.sentenceAudioUrl) {
-            generateAndSaveAudio(word, setWords, updateWordInFirestore);
-        }
-    })
-  }, [words, setWords]);
 
   const handleDeleteWord = async (word: Word) => {
     try {
@@ -314,11 +306,12 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       const result = await extractVocabularyFromFile({ documentContent: text });
       
       const newWords = await addMultipleWordsToFirestore(result.vocabulary, user.uid);
-      
+       newWords.forEach(word => generateAndSaveAudio(word, setWords, updateWordInFirestore));
+
       setWords(prevWords => [...newWords, ...prevWords]);
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported.`,
+        description: `${newWords.length} words were successfully imported. Audio is generating in the background.`,
       });
     } catch (error) {
       console.error("Error importing file:", error);
