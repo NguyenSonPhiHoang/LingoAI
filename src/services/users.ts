@@ -19,6 +19,7 @@ const usersCollection = collection(db, "users");
 export const getAllUsers = async (): Promise<User[]> => {
   const q = query(
     usersCollection,
+    where("status", "==", "pending"),
     orderBy("createdAt", "desc")
   );
   const snapshot = await getDocs(q);
