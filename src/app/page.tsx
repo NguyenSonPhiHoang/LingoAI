@@ -12,8 +12,10 @@ import VocabularyList from "@/components/lingo/vocabulary-list";
 import ReviewView from "@/components/lingo/review-view";
 import UserManagement from "@/components/lingo/user-management";
 import WaitingForApproval from "@/components/lingo/waiting-for-approval";
+import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import type { Word } from "@/components/lingo/vocabulary-list";
 import { getVocabulary } from "@/services/vocabulary";
+import type { Lesson } from "@/services/lessons";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
@@ -24,12 +26,18 @@ export type View =
   | "ai-suggester"
   | "vocabulary"
   | "review"
-  | "user-management";
+  | "user-management"
+  | "lesson-detail";
+
+export type ViewState = {
+  view: View;
+  lesson?: Lesson;
+};
 
 const Home: FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeView, setActiveView] = useState<View>("overview");
+  const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
   const [words, setWords] = useState<Word[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -105,21 +113,31 @@ const Home: FC = () => {
     
     // Only render the main dashboard if the user is approved.
     if (user.status === 'approved') {
-      switch (activeView) {
+      switch (activeViewState.view) {
         case "overview":
-          return <DashboardOverview setActiveView={setActiveView} />;
+          return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
         case "levels":
           return <LevelView />;
         case "ai-suggester":
-          return <AiSuggester />;
+          return <AiSuggester setActiveViewState={setActiveViewState} />;
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
           return <ReviewView words={favoriteWords} />;
         case "user-management":
           return <UserManagement />;
+        case "lesson-detail":
+           return activeViewState.lesson ? (
+            <LessonDetailView
+              lesson={activeViewState.lesson}
+              onBack={() => setActiveViewState({ view: "ai-suggester" })}
+            />
+          ) : (
+            // Fallback if no lesson is provided
+            <AiSuggester setActiveViewState={setActiveViewState} />
+          );
         default:
-          return <DashboardOverview setActiveView={setActiveView} />;
+          return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
       }
     }
 
@@ -134,7 +152,10 @@ const Home: FC = () => {
   }
 
   return (
-    <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
+    <DashboardLayout
+      activeView={activeViewState.view}
+      setActiveView={(view) => setActiveViewState({ view })}
+    >
       {renderContent()}
     </DashboardLayout>
   );

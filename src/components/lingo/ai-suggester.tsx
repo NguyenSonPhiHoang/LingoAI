@@ -1,9 +1,10 @@
+
 "use client";
 
-import { useState } from "react";
-import type { FC } from "react";
+import { useState, useEffect } from "react";
+import type { FC, Dispatch, SetStateAction } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lightbulb, List, Loader2, Sparkles } from "lucide-react";
+import { Lightbulb, List, Loader2, Sparkles, Headphones, Mic, BookOpen, FilePenLine, ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -38,6 +39,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
+import { addLesson, getLessons, type Lesson } from "@/services/lessons";
+import type { ViewState } from "@/app/page";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   userLevel: z.enum(["beginner", "intermediate", "advanced"], {
@@ -49,10 +54,25 @@ const formSchema = z.object({
   interests: z.string().optional(),
 });
 
-const AiSuggester: FC = () => {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
+
+const skillIcons: Record<Skill, React.ElementType> = {
+    Listening: Headphones,
+    Speaking: Mic,
+    Reading: BookOpen,
+    Writing: FilePenLine,
+};
+
+interface AiSuggesterProps {
+    setActiveViewState: Dispatch<SetStateAction<ViewState>>;
+}
+
+const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState }) => {
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,14 +82,53 @@ const AiSuggester: FC = () => {
     },
   });
 
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+        const userLessons = await getLessons(user.uid);
+        setLessons(userLessons);
+      } catch (error) {
+        console.error("Failed to fetch lessons:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch your saved lessons.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLessons();
+  }, [user, toast]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
-    setSuggestions([]);
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "You must be logged in to generate lessons.",
+        });
+        return;
+    }
+    setIsGenerating(true);
     try {
       const result = await suggestPersonalizedLessons(
         values as SuggestPersonalizedLessonsInput
       );
-      setSuggestions(result.lessonSuggestions);
+      
+      const newLessonPromises = result.lessonSuggestions.map(suggestion => 
+        addLesson(user.uid, suggestion)
+      );
+      const newLessons = await Promise.all(newLessonPromises);
+
+      setLessons(prev => [...newLessons, ...prev]);
+      toast({
+        title: "Success!",
+        description: `${newLessons.length} new lessons have been added.`
+      })
+
     } catch (error) {
       console.error("Failed to get suggestions:", error);
       toast({
@@ -78,9 +137,13 @@ const AiSuggester: FC = () => {
         description: "Could not fetch suggestions. Please try again later.",
       });
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
+
+  const handleStartLesson = (lesson: Lesson) => {
+    setActiveViewState({ view: 'lesson-detail', lesson: lesson });
+  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -164,8 +227,8 @@ const AiSuggester: FC = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" className="w-full" disabled={isGenerating}>
+                  {isGenerating ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
@@ -183,38 +246,42 @@ const AiSuggester: FC = () => {
           <CardHeader>
             <CardTitle>Your AI-Generated Lessons</CardTitle>
             <CardDescription>
-              Here are topics tailored just for you.
+              Here are topics tailored just for you. Select one to start learning.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-5/6" />
-                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-5/6" />
+                <Skeleton className="h-16 w-full" />
               </div>
-            ) : suggestions.length > 0 ? (
+            ) : lessons.length > 0 ? (
               <ul className="space-y-3">
-                {suggestions.map((suggestion, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <Lightbulb className="h-5 w-5 flex-shrink-0 text-primary" />
-                    <span className="flex-grow text-sm font-medium">
-                      {suggestion}
-                    </span>
-                    <Button variant="ghost" size="sm">
-                      Start
-                    </Button>
-                  </li>
-                ))}
+                {lessons.map((lesson) => {
+                  const Icon = skillIcons[lesson.skill as Skill] || Lightbulb;
+                  return (
+                    <li
+                      key={lesson.id}
+                      className="flex items-center gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50"
+                    >
+                      <Icon className="h-6 w-6 flex-shrink-0 text-primary" />
+                      <div className="flex-grow">
+                        <p className="font-medium">{lesson.topic}</p>
+                        <Badge variant="secondary">{lesson.skill}</Badge>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleStartLesson(lesson)}>
+                        Start <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </li>
+                  )
+                })}
               </ul>
             ) : (
               <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 text-center">
                 <List className="h-12 w-12 text-muted-foreground/50" />
                 <h3 className="mt-4 text-lg font-semibold">
-                  No suggestions yet
+                  No lessons yet
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Fill out the form to get your personalized lesson plan.
@@ -224,7 +291,7 @@ const AiSuggester: FC = () => {
           </CardContent>
           <CardFooter>
             <p className="text-xs text-muted-foreground">
-              These suggestions are generated by AI and may not be perfect.
+              These lessons are generated by AI. Click 'Start' to add content and activities.
             </p>
           </CardFooter>
         </Card>

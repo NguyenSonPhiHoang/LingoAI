@@ -1,3 +1,4 @@
+
 "use client";
 import type { FC } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -15,6 +16,7 @@ const viewTitles: Record<View, string> = {
   vocabulary: "My Vocabulary",
   review: "Review",
   "user-management": "User Management",
+  "lesson-detail": "Lesson Details",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView }) => {

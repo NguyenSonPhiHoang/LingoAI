@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
@@ -74,7 +75,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     <>
       <Sidebar>
         <SidebarHeader>
-          <Link href="/" className="block">
+          <Link href="/" className="block" onClick={() => handleViewChange('overview')}>
             <h1 className="text-2xl font-bold text-primary">LingoAI</h1>
           </Link>
         </SidebarHeader>
@@ -84,7 +85,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
               <SidebarMenuItem key={item.id}>
                 <SidebarMenuButton
                   onClick={() => handleViewChange(item.id as View)}
-                  isActive={activeView === item.id}
+                  isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'ai-suggester')}
                   tooltip={item.label}
                 >
                   <item.icon />

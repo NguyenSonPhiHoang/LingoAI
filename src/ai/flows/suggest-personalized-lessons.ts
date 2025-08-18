@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -9,38 +10,12 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const SuggestPersonalizedLessonsInputSchema = z.object({
-  userLevel: z
-    .enum(['beginner', 'intermediate', 'advanced'])
-    .describe('The user\'s current English proficiency level.'),
-  learningGoals: z
-    .string()
-    .describe(
-      'Specific learning goals, e.g., "improve conversational skills", "pass TOEFL", "business English".'
-    ),
-  interests: z
-    .string()
-    .optional()
-    .describe(
-      'The user\'s interests, which could be used to contextualize the lesson recommendations.'
-    ),
-});
-export type SuggestPersonalizedLessonsInput = z.infer<
-  typeof SuggestPersonalizedLessonsInputSchema
->;
-
-const SuggestPersonalizedLessonsOutputSchema = z.object({
-  lessonSuggestions: z
-    .array(z.string())
-    .describe(
-      'A list of personalized lesson suggestions based on the user\'s level and goals.'
-    ),
-});
-export type SuggestPersonalizedLessonsOutput = z.infer<
-  typeof SuggestPersonalizedLessonsOutputSchema
->;
+import {
+  SuggestPersonalizedLessonsInputSchema,
+  SuggestPersonalizedLessonsOutputSchema,
+  type SuggestPersonalizedLessonsInput,
+  type SuggestPersonalizedLessonsOutput,
+} from './schemas';
 
 export async function suggestPersonalizedLessons(
   input: SuggestPersonalizedLessonsInput
@@ -54,11 +29,13 @@ const prompt = ai.definePrompt({
   output: {schema: SuggestPersonalizedLessonsOutputSchema},
   prompt: `You are an AI-powered English language learning assistant. Based on the user's current level, learning goals, and interests, suggest a list of personalized lesson topics.
 
+For each topic, you must categorize it into one of four skills: "Listening", "Speaking", "Reading", or "Writing".
+
 User Level: {{{userLevel}}}
 Learning Goals: {{{learningGoals}}}
 Interests: {{{interests}}}
 
-Suggest a list of lesson topics that will help the user achieve their goals. Provide just a list of topics without extra explanation. If the interests field is provided, contextualize the lessons around those interests.
+Suggest a list of lesson topics that will help the user achieve their goals. If the interests field is provided, contextualize the lessons around those interests.
 `,
 });
 

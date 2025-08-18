@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Shared schemas for Genkit flows.
  * This file does not have a 'use server' directive,
@@ -143,3 +144,41 @@ export const GroupVocabularyOutputSchema = z.object({
   topics: z.array(VocabularyTopicSchema).describe('A list of topics, each containing a list of related vocabulary words.'),
 });
 export type GroupVocabularyOutput = z.infer<typeof GroupVocabularyOutputSchema>;
+
+// Schemas for suggest-personalized-lessons.ts
+export const SuggestPersonalizedLessonsInputSchema = z.object({
+  userLevel: z
+    .enum(['beginner', 'intermediate', 'advanced'])
+    .describe('The user\'s current English proficiency level.'),
+  learningGoals: z
+    .string()
+    .describe(
+      'Specific learning goals, e.g., "improve conversational skills", "pass TOEFL", "business English".'
+    ),
+  interests: z
+    .string()
+    .optional()
+    .describe(
+      'The user\'s interests, which could be used to contextualize the lesson recommendations.'
+    ),
+});
+export type SuggestPersonalizedLessonsInput = z.infer<
+  typeof SuggestPersonalizedLessonsInputSchema
+>;
+
+const LessonSuggestionSchema = z.object({
+    topic: z.string().describe('A concise and engaging topic for the lesson.'),
+    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing']).describe('The core skill this lesson focuses on.'),
+});
+export type LessonSuggestion = z.infer<typeof LessonSuggestionSchema>;
+
+export const SuggestPersonalizedLessonsOutputSchema = z.object({
+  lessonSuggestions: z
+    .array(LessonSuggestionSchema)
+    .describe(
+      'A list of personalized lesson suggestions, each with a topic and a skill category.'
+    ),
+});
+export type SuggestPersonalizedLessonsOutput = z.infer<
+  typeof SuggestPersonalizedLessonsOutputSchema
+>;
