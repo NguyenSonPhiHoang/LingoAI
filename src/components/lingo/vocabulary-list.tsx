@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,10 +34,12 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
-import type { VocabularyEntry } from "@/ai/flows/schemas";
+import { generateWordDetails } from "@/ai/flows/generate-word-details";
+import type { VocabularyEntry, GenerateWordDetailsOutput } from "@/ai/flows/schemas";
 import { Switch } from "@/components/ui/switch";
 import { addWordToFirestore, deleteWordFromFirestore, updateWordInFirestore, addMultipleWordsToFirestore } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export interface Word extends VocabularyEntry {
@@ -57,6 +59,150 @@ interface VocabularyListProps {
   setWords: Dispatch<SetStateAction<Word[]>>;
 }
 
+
+const AddWordDialog: FC<{ 
+  user: any; 
+  setWords: Dispatch<SetStateAction<Word[]>>;
+  isDialogOpen: boolean;
+  setIsDialogOpen: Dispatch<SetStateAction<boolean>>;
+}> = ({ user, setWords, isDialogOpen, setIsDialogOpen }) => {
+    const [term, setTerm] = useState('');
+    const [generatedDetails, setGeneratedDetails] = useState<GenerateWordDetailsOutput | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const { toast } = useToast();
+
+    const handleFocus = async () => {
+        if (!term) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    setTerm(text.trim());
+                }
+            } catch (err) {
+                console.warn('Failed to read clipboard contents: ', err);
+            }
+        }
+    };
+    
+    const handleGenerateDetails = async () => {
+        if (!term) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please enter a term to generate details.' });
+            return;
+        }
+        setIsGenerating(true);
+        setGeneratedDetails(null);
+        try {
+            const result = await generateWordDetails({ term });
+            setGeneratedDetails(result);
+        } catch (error) {
+            console.error('Error generating word details:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not generate details for the word.' });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
+    const handleSaveWord = async () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+            return;
+        }
+        if (!term || !generatedDetails) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please generate details before saving.' });
+            return;
+        }
+
+        const newWordData = {
+            term: term,
+            pronunciation: generatedDetails.pronunciation,
+            definition: generatedDetails.definition,
+            sentence: generatedDetails.sentence,
+            favorite: false,
+            viewCount: 0,
+            userId: user.uid,
+        };
+
+        try {
+            const savedWord = await addWordToFirestore(newWordData);
+            setWords(prevWords => [savedWord, ...prevWords]);
+            handleCloseDialog();
+            toast({ title: 'Success', description: 'Word added to your list.' });
+        } catch (error) {
+            console.error('Error adding word:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save the word.' });
+        }
+    };
+    
+    const handleCloseDialog = () => {
+      setTerm('');
+      setGeneratedDetails(null);
+      setIsGenerating(false);
+      setIsDialogOpen(false);
+    }
+
+    return (
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) handleCloseDialog();
+        else setIsDialogOpen(open);
+      }}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Word
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add New Word with AI</DialogTitle>
+              <DialogDescription>
+                Enter a word, and AI will generate the rest. Click the input box to paste from your clipboard.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="term" className="text-right">Term</Label>
+                <Input
+                  id="term"
+                  value={term}
+                  onChange={(e) => setTerm(e.target.value)}
+                  onFocus={handleFocus}
+                  className="col-span-3"
+                  placeholder="Click to paste or type a word"
+                />
+              </div>
+              <Button onClick={handleGenerateDetails} disabled={isGenerating || !term} className="w-full">
+                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Generate Details
+              </Button>
+              <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
+                {isGenerating ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : generatedDetails ? (
+                  <div className="space-y-2 text-sm">
+                     <p><strong className="text-muted-foreground">Pronunciation:</strong> {generatedDetails.pronunciation}</p>
+                     <p><strong className="text-muted-foreground">Definition:</strong> {generatedDetails.definition}</p>
+                     <p><strong className="text-muted-foreground">Example:</strong> "{generatedDetails.sentence}"</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    AI-generated details will appear here.
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancel</Button>
+              <Button type="button" onClick={handleSaveWord} disabled={!generatedDetails || isGenerating}>Save Word</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    );
+};
+
+
 const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,35 +211,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
-
-  const handleAddWord = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!user) {
-      toast({ variant: "destructive", title: "Error", description: "You must be logged in to add a word." });
-      return;
-    }
-    const formData = new FormData(event.currentTarget);
-    const newWordData = {
-      term: formData.get("term") as string,
-      pronunciation: formData.get("pronunciation") as string,
-      definition: formData.get("definition") as string,
-      sentence: formData.get("sentence") as string,
-      favorite: false,
-      viewCount: 0,
-      userId: user.uid,
-    };
-    if (newWordData.term && newWordData.definition) {
-      try {
-        const savedWord = await addWordToFirestore(newWordData);
-        setWords(prevWords => [savedWord, ...prevWords]);
-        setIsDialogOpen(false);
-        toast({ title: "Success", description: "Word added to your list." });
-      } catch (error) {
-        console.error("Error adding word:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not save the word." });
-      }
-    }
-  };
 
   const handleDeleteWord = async (word: Word) => {
     try {
@@ -270,61 +387,12 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 )}
                 Import from File
               </Button>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Add New Word</DialogTitle>
-                    <DialogDescription>
-                      Save a new word to your personal vocabulary list.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleAddWord}>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="term" className="text-right">
-                          Term
-                        </Label>
-                        <Input id="term" name="term" className="col-span-3" required />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="pronunciation" className="text-right">
-                          Pronunciation
-                        </Label>
-                        <Input id="pronunciation" name="pronunciation" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="definition" className="text-right">
-                          Definition
-                        </Label>
-                        <Input
-                          id="definition"
-                          name="definition"
-                          className="col-span-3"
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="sentence" className="text-right">
-                          Sentence
-                        </Label>
-                        <Input
-                          id="sentence"
-                          name="sentence"
-                          className="col-span-3"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Save Word</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+               <AddWordDialog 
+                 user={user} 
+                 setWords={setWords}
+                 isDialogOpen={isDialogOpen}
+                 setIsDialogOpen={setIsDialogOpen}
+               />
             </div>
           </div>
         </div>

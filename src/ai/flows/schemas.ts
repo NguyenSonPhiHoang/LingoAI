@@ -83,3 +83,22 @@ export const GenerateReviewOutputSchema = z.object({
     .describe('An array of fill-in-the-blank questions.'),
 });
 export type GenerateReviewOutput = z.infer<typeof GenerateReviewOutputSchema>;
+
+// Schemas for generate-word-details.ts
+export const GenerateWordDetailsInputSchema = z.object({
+  term: z.string().describe('The word to generate details for.'),
+});
+export type GenerateWordDetailsInput = z.infer<
+  typeof GenerateWordDetailsInputSchema
+>;
+
+export const GenerateWordDetailsOutputSchema = z.object({
+  pronunciation: z
+    .string()
+    .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
+  definition: z.string().describe('A clear and concise definition of the term.'),
+  sentence: z.string().describe('An example sentence using the term in context.'),
+});
+export type GenerateWordDetailsOutput = z.infer<
+  typeof GenerateWordDetailsOutputSchema
+>;
