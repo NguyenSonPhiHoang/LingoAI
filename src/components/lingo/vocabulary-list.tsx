@@ -341,17 +341,6 @@ const VocabularyListInternal: FC<{
       toast({ variant: "destructive", title: "Error", description: "Could not update favorite status." });
     }
   };
-  
-  const incrementViewCount = async (wordToUpdate: CombinedVocabulary) => {
-    const newViewCount = (wordToUpdate.viewCount || 0) + 1;
-    const updatedWords = allWords.map(w => w.userVocabularyId === wordToUpdate.userVocabularyId ? { ...w, viewCount: newViewCount } : w);
-    setWords(updatedWords);
-    try {
-        await updateUserVocabulary(wordToUpdate.userVocabularyId, { viewCount: newViewCount });
-    } catch (error) {
-        console.error("Error updating view count:", error);
-    }
-  }
 
   const playWithBrowserTTS = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -413,14 +402,6 @@ const VocabularyListInternal: FC<{
       setIsGeneratingAudio(prev => ({...prev, [audioGenKey]: false}));
     }
   }
-  
-  useEffect(() => {
-    const wordToUpdate = allWords.find(word => word.userVocabularyId === accordionValue);
-    if (wordToUpdate) {
-        incrementViewCount(wordToUpdate);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accordionValue]);
 
   const toggleAccordionItem = (id: string) => {
     setAccordionValue(prev => prev === id ? undefined : id);
@@ -460,10 +441,6 @@ const VocabularyListInternal: FC<{
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                             <Badge variant="secondary" className="flex items-center gap-1.5">
-                                <Eye className="h-3 w-3" />
-                                {word.viewCount || 0}
-                             </Badge>
                             <Badge variant="outline">{word.partOfSpeech}</Badge>
                           </div>
                       </div>
@@ -506,12 +483,6 @@ const VocabularyListInternal: FC<{
                         <div className="md:hidden">
                           <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
                           <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
-                           <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary" className="flex items-center gap-1.5">
-                                  <Eye className="h-3 w-3" />
-                                  {word.viewCount || 0}
-                                </Badge>
-                              </div>
                         </div>
                         <div>
                           <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
