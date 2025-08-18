@@ -153,10 +153,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                             onClick={() => handleToolClick(tool.id)}
                             disabled={!!isLoading}
                         >
-                            {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin"/> : <tool.icon className="mr-2"/>}
-                            <div>
-                                <p className="text-sm font-semibold">{tool.title}</p>
-                                <p className="text-xs text-muted-foreground text-left font-normal">{tool.description}</p>
+                            {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-left">{tool.title}</p>
+                                <p className="text-xs text-muted-foreground text-left font-normal whitespace-normal">{tool.description}</p>
                             </div>
                          </Button>
                     ))}
