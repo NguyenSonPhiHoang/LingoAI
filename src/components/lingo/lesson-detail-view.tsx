@@ -219,7 +219,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 break;
         }
         
-        // Ensure newExercise is a plain JavaScript object before saving to Firestore
         const cleanExercise = JSON.parse(JSON.stringify(newExercise));
 
         const updatedExercises = { ...currentLesson.exercises, [lesson.skill.toLowerCase()]: cleanExercise };
@@ -343,17 +342,19 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     {availableTools.map(tool => (
-                         <Button 
-                            key={tool.id} 
-                            className="w-full justify-start h-auto py-3" 
+                         <Button
+                            key={tool.id}
+                            className="w-full justify-start h-auto py-3 group"
                             variant="outline"
                             onClick={() => handleToolClick(tool.id)}
                             disabled={!!isLoading}
                         >
                             {isLoading === tool.id ? <Loader2 className="mr-2 animate-spin flex-shrink-0"/> : <tool.icon className="mr-2 flex-shrink-0"/>}
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-left">{tool.title}</p>
-                                <p className="text-xs text-muted-foreground text-left font-normal whitespace-normal">{tool.description}</p>
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="text-sm font-semibold">{tool.title}</p>
+                                <p className="text-xs text-muted-foreground font-normal whitespace-normal group-hover:text-accent-foreground">
+                                    {tool.description}
+                                </p>
                             </div>
                          </Button>
                     ))}
