@@ -160,9 +160,9 @@ const FillInBlankGame: FC<{
       <CardContent className="space-y-6">
         <div className="flex flex-wrap items-center justify-center text-center text-lg md:text-xl p-4 bg-muted rounded-lg min-h-[6rem]">
           <span>{sentenceParts[0]}</span>
-          <span className="font-bold text-primary mx-2 underline decoration-dashed underline-offset-4">
-            {showResult ? currentQuestion.correctTerm : "_____"}
-          </span>
+          <div className="inline-block align-middle font-bold text-primary mx-2 px-3 py-1 rounded-md border-2 border-dashed border-primary/50 bg-primary/10">
+             {showResult ? currentQuestion.correctTerm : "        "}
+          </div>
           <span>{sentenceParts[1]}</span>
         </div>
         
@@ -355,3 +355,5 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
 };
 
 export default ReviewView;
+
+    
