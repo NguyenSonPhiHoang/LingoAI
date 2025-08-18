@@ -304,14 +304,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
           <ArrowLeft className="mr-2" /> Back to My Lessons
         </Button>
         <div className="flex items-center gap-2">
-            <AddWordDialog
-                setWords={setWords}
-                trigger={
-                    <Button variant="outline">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Word
-                    </Button>
-                }
-            />
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">

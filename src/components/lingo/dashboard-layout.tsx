@@ -69,12 +69,16 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'] },
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
+  ];
+  
+  const managementMenuItems = [
     { id: "profile", label: "My Profile", icon: User, role: ['user', 'admin'] },
     { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
     { id: "word-management", label: "Word Management", icon: Database, role: ['admin'] },
   ];
   
   const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
+  const availableManagementItems = managementMenuItems.filter(item => user && user.role && item.role.includes(user.role));
 
 
   const handleViewChange = (view: View) => {
@@ -107,9 +111,36 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+             {user?.status === 'approved' && (
+                <SidebarMenuItem>
+                    <AddWordDialog
+                        setWords={setWords}
+                        trigger={
+                            <SidebarMenuButton tooltip="Add New Word">
+                                <Plus />
+                                <span>Add New Word</span>
+                            </SidebarMenuButton>
+                        }
+                    />
+                </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
+             <SidebarMenu>
+                {user?.status === 'approved' && availableManagementItems.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      onClick={() => handleViewChange(item.id as View)}
+                      isActive={activeView === item.id}
+                      tooltip={item.label}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+             </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
