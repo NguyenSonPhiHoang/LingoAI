@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
 import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Sparkles } from "lucide-react";
 import mammoth from "mammoth";
@@ -57,6 +57,38 @@ interface VocabularyListProps {
   words: Word[];
   setWords: Dispatch<SetStateAction<Word[]>>;
 }
+
+const generateAndSaveAudio = async (
+  word: Word,
+  setWords: Dispatch<SetStateAction<Word[]>>,
+  updateInFirestore: typeof updateWordInFirestore
+) => {
+  // Generate audio for the term
+  if (!word.audioUrl) {
+    try {
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingAudio: true } : w));
+      const termResult = await generateAudio(word.term);
+      await updateInFirestore(word.docId, { audioUrl: termResult.audioUrl });
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: termResult.audioUrl, isGeneratingAudio: false } : w));
+    } catch (e) {
+      console.error("Error generating term audio", e);
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingAudio: false } : w));
+    }
+  }
+
+  // Generate audio for the sentence
+  if (!word.sentenceAudioUrl) {
+    try {
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingSentenceAudio: true } : w));
+      const sentenceResult = await generateAudio(word.sentence);
+      await updateInFirestore(word.docId, { sentenceAudioUrl: sentenceResult.audioUrl });
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, sentenceAudioUrl: sentenceResult.audioUrl, isGeneratingSentenceAudio: false } : w));
+    } catch (e) {
+      console.error("Error generating sentence audio", e);
+      setWords(prev => prev.map(w => w.id === word.id ? { ...w, isGeneratingSentenceAudio: false } : w));
+    }
+  }
+};
 
 
 const AddWordDialog: FC<{ 
@@ -129,6 +161,8 @@ const AddWordDialog: FC<{
             setWords(prevWords => [savedWord, ...prevWords]);
             handleCloseDialog();
             toast({ title: 'Success', description: 'Word added to your list.' });
+            // Pre-generate audio in the background
+            generateAndSaveAudio(savedWord, setWords, updateWordInFirestore);
         } catch (error) {
             console.error('Error adding word:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save the word.' });
@@ -218,6 +252,14 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    words.forEach(word => {
+        if (!word.audioUrl || !word.sentenceAudioUrl) {
+            generateAndSaveAudio(word, setWords, updateWordInFirestore);
+        }
+    })
+  }, [words, setWords]);
 
   const handleDeleteWord = async (word: Word) => {
     try {
@@ -299,7 +341,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
   }
   
   const incrementViewCount = async (word: Word) => {
-    const newViewCount = word.viewCount + 1;
+    const newViewCount = (word.viewCount || 0) + 1;
     setWords(prev => prev.map(w => w.id === word.id ? { ...w, viewCount: newViewCount } : w));
     try {
         await updateWordInFirestore(word.docId, { viewCount: newViewCount });
@@ -309,47 +351,19 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
     }
   }
 
-  const handlePlayAudio = async (wordId: string, type: 'term' | 'sentence') => {
-    const word = words.find(w => w.id === wordId);
-    if (!word) return;
-  
+  const handlePlayAudio = (word: Word, type: 'term' | 'sentence') => {
     incrementViewCount(word);
-    const textToSpeak = type === 'term' ? word.term : word.sentence;
-    let audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
-    const isGenerating = type === 'term' ? word.isGeneratingAudio : word.isGeneratingSentenceAudio;
+    const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
   
     if (audioUrl && audioRef.current) {
       audioRef.current.src = audioUrl;
       audioRef.current.play();
-      return;
-    }
-  
-    if (isGenerating) return;
-  
-    try {
-      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, isGeneratingAudio: true } : { ...w, isGeneratingSentenceAudio: true }) : w));
-      const result = await generateAudio(textToSpeak);
-      audioUrl = result.audioUrl;
-      
-      const updateData = type === 'term' ? { audioUrl: audioUrl, isGeneratingAudio: false } : { sentenceAudioUrl: audioUrl, isGeneratingSentenceAudio: false };
-      
-      setWords(prev => prev.map(w => w.id === wordId ? { ...w, ...updateData } : w));
-      await updateWordInFirestore(word.docId, type === 'term' ? { audioUrl } : { sentenceAudioUrl: audioUrl });
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.play();
-      }
-  
-    } catch (error) {
-       console.error("Error generating audio:", error);
-       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not generate audio. Please try again.",
-      });
-       const updateData = type === 'term' ? { isGeneratingAudio: false } : { isGeneratingSentenceAudio: false };
-       setWords(prev => prev.map(w => w.id === wordId ? { ...w, ...updateData } : w));
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Audio not ready",
+            description: "Audio is being generated in the background. Please try again in a moment."
+        })
     }
   }
 
@@ -424,8 +438,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word.id, 'term'); }}
-                                            disabled={word.isGeneratingAudio}
+                                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
+                                            disabled={word.isGeneratingAudio || !word.audioUrl}
                                             className="h-8 w-8 flex-shrink-0"
                                         >
                                             {word.isGeneratingAudio ? (
@@ -453,7 +467,7 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                             <Star className={`h-5 w-5 ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`} />
                             <span className="sr-only">Favorite</span>
                             </Button>
-                            <div className="text-center font-medium">{word.viewCount} views</div>
+                            <div className="text-center font-medium">{word.viewCount || 0} views</div>
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -471,8 +485,8 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={(e) => { e.stopPropagation(); handlePlayAudio(word.id, 'sentence'); }}
-                                disabled={word.isGeneratingSentenceAudio}
+                                onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
+                                disabled={word.isGeneratingSentenceAudio || !word.sentenceAudioUrl}
                                 className="h-8 w-8 flex-shrink-0"
                             >
                                 {word.isGeneratingSentenceAudio ? (
