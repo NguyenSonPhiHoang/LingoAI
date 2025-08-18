@@ -658,6 +658,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
     };
 
     const answerKey = `answer-${prompt.vietnamesePrompt}`;
+    const feedbackKey = `feedback-${prompt.vietnamesePrompt}`;
+    const correctedKey = `corrected-${prompt.vietnamesePrompt}`;
 
     return (
         <Card className="bg-background">
@@ -686,12 +688,32 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
                 {feedback && (
                     <div className="space-y-4 pt-4">
                         <div className="p-3 rounded-md bg-blue-50 border-l-4 border-blue-400 text-blue-900">
-                             <h4 className="font-bold mb-1">AI Feedback</h4>
+                             <div className="flex justify-between items-start">
+                                <h4 className="font-bold mb-1 flex-1">AI Feedback</h4>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => toggleTranslation(feedbackKey, feedback.feedback)} disabled={isTranslating[feedbackKey]}>
+                                    {isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                </Button>
+                             </div>
                              <p className="text-sm">{feedback.feedback}</p>
+                             {translations[feedbackKey] && (
+                                <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                                    <strong>Dịch:</strong> {translations[feedbackKey]}
+                                </div>
+                            )}
                         </div>
                         <div className="p-3 rounded-md bg-green-50 border-l-4 border-green-400 text-green-900">
-                            <h4 className="font-bold mb-1">Suggested Answer</h4>
+                            <div className="flex justify-between items-start">
+                                <h4 className="font-bold mb-1 flex-1">Suggested Answer</h4>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => toggleTranslation(correctedKey, feedback.correctedText)} disabled={isTranslating[correctedKey]}>
+                                    {isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                </Button>
+                            </div>
                             <p className="text-sm font-semibold">"{feedback.correctedText}"</p>
+                            {translations[correctedKey] && (
+                                <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                                    <strong>Dịch:</strong> {translations[correctedKey]}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -802,3 +824,5 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
 
 
 export default LessonDetailView;
+
+    
