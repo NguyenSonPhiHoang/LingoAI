@@ -40,6 +40,8 @@ interface Word extends VocabularyEntry {
   id: number;
   audioUrl?: string;
   isGeneratingAudio?: boolean;
+  sentenceAudioUrl?: string;
+  isGeneratingSentenceAudio?: boolean;
 }
 
 const initialWords: Word[] = [
@@ -142,29 +144,33 @@ const VocabularyList: FC = () => {
     fileInputRef.current?.click();
   }
   
-  const handlePlayAudio = async (wordId: number) => {
+  const handlePlayAudio = async (wordId: number, type: 'term' | 'sentence') => {
     const word = words.find(w => w.id === wordId);
     if (!word) return;
-
-    if (word.audioUrl && audioRef.current) {
-      audioRef.current.src = word.audioUrl;
+  
+    const textToSpeak = type === 'term' ? word.term : word.sentence;
+    const audioUrl = type === 'term' ? word.audioUrl : word.sentenceAudioUrl;
+    const isGenerating = type === 'term' ? word.isGeneratingAudio : word.isGeneratingSentenceAudio;
+  
+    if (audioUrl && audioRef.current) {
+      audioRef.current.src = audioUrl;
       audioRef.current.play();
       return;
     }
-
-    if (word.isGeneratingAudio) return;
-
+  
+    if (isGenerating) return;
+  
     try {
-      setWords(prev => prev.map(w => w.id === wordId ? { ...w, isGeneratingAudio: true } : w));
-      const result = await generateAudio(word.term);
+      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, isGeneratingAudio: true } : { ...w, isGeneratingSentenceAudio: true }) : w));
+      const result = await generateAudio(textToSpeak);
       
-      setWords(prev => prev.map(w => w.id === wordId ? { ...w, audioUrl: result.audioUrl, isGeneratingAudio: false } : w));
-
+      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, audioUrl: result.audioUrl, isGeneratingAudio: false } : { ...w, sentenceAudioUrl: result.audioUrl, isGeneratingSentenceAudio: false }) : w));
+  
       if (audioRef.current) {
         audioRef.current.src = result.audioUrl;
         audioRef.current.play();
       }
-
+  
     } catch (error) {
        console.error("Error generating audio:", error);
        toast({
@@ -172,7 +178,7 @@ const VocabularyList: FC = () => {
         title: "Lỗi",
         description: "Không thể tạo âm thanh. Vui lòng thử lại.",
       });
-      setWords(prev => prev.map(w => w.id === wordId ? { ...w, isGeneratingAudio: false } : w));
+      setWords(prev => prev.map(w => w.id === wordId ? (type === 'term' ? { ...w, isGeneratingAudio: false } : { ...w, isGeneratingSentenceAudio: false }) : w));
     }
   }
 
@@ -278,7 +284,7 @@ const VocabularyList: FC = () => {
                        <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handlePlayAudio(word.id)}
+                        onClick={() => handlePlayAudio(word.id, 'term')}
                         disabled={word.isGeneratingAudio}
                         className="h-8 w-8"
                       >
@@ -287,7 +293,7 @@ const VocabularyList: FC = () => {
                         ) : (
                           <Volume2 className="h-4 w-4" />
                         )}
-                        <span className="sr-only">Phát âm</span>
+                        <span className="sr-only">Phát âm từ</span>
                       </Button>
                       <div>
                         <p>{word.term}</p>
@@ -297,9 +303,25 @@ const VocabularyList: FC = () => {
                   </TableCell>
                   <TableCell>
                     <p>{word.definition}</p>
-                    <p className="text-sm text-muted-foreground italic">
-                      "{word.sentence}"
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePlayAudio(word.id, 'sentence')}
+                        disabled={word.isGeneratingSentenceAudio}
+                        className="h-8 w-8"
+                      >
+                        {word.isGeneratingSentenceAudio ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">Phát âm câu</span>
+                      </Button>
+                      <p className="text-sm text-muted-foreground italic">
+                        "{word.sentence}"
+                      </p>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
