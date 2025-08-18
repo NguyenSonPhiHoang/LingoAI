@@ -17,6 +17,7 @@ const viewTitles: Record<View, string> = {
   vocabulary: "My Vocabulary",
   review: "Review",
   "user-management": "User Management",
+  "word-management": "Word Management",
   "lesson-detail": "Lesson Details",
 };
 

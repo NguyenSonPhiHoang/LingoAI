@@ -11,6 +11,7 @@ import AiSuggester from "@/components/lingo/ai-suggester";
 import VocabularyList from "@/components/lingo/vocabulary-list";
 import ReviewView from "@/components/lingo/review-view";
 import UserManagement from "@/components/lingo/user-management";
+import WordManagement from "@/components/lingo/word-management";
 import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import MyLessonsView from "@/components/lingo/my-lessons-view";
@@ -29,6 +30,7 @@ export type View =
   | "vocabulary"
   | "review"
   | "user-management"
+  | "word-management"
   | "lesson-detail";
 
 export type ViewState = {
@@ -130,6 +132,8 @@ const Home: FC = () => {
           return <ReviewView words={favoriteWords} />;
         case "user-management":
           return <UserManagement />;
+        case "word-management":
+            return <WordManagement />;
         case "lesson-detail":
            return activeViewState.lesson ? (
             <LessonDetailView
@@ -169,5 +173,3 @@ const Home: FC = () => {
 };
 
 export default Home;
-
-    

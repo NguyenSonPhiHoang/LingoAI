@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
   BookMarked,
   Plus,
+  Database,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -69,6 +70,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
     { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
+    { id: "word-management", label: "Word Management", icon: Database, role: ['admin'] },
   ];
   
   const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
@@ -178,5 +180,3 @@ const DashboardLayout: FC<Omit<DashboardLayoutProps, 'user'>> = (props) => {
 };
 
 export default DashboardLayout;
-
-    
