@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signup, user, loading } = useAuth();
+  const { signup } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,12 +50,6 @@ export default function SignupPage() {
       displayName: "",
     },
   });
-  
-  useEffect(() => {
-    if (!loading && user) {
-      router.push("/");
-    }
-  }, [user, loading, router]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -73,14 +67,6 @@ export default function SignupPage() {
         setIsSubmitting(false);
     }
   };
-  
-  if (loading || user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
