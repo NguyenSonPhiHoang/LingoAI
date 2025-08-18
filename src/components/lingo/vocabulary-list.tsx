@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { FC } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, PlayCircle } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2 } from "lucide-react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import {
