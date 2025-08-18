@@ -13,6 +13,7 @@ import {
   where,
   Timestamp,
   writeBatch,
+  deleteDoc,
 } from "firebase/firestore";
 import type { LessonSuggestion, UserLevel } from "@/ai/flows/schemas";
 
@@ -109,3 +110,15 @@ export const updateLessonContent = async (docId: string, content: LessonContent[
     }
     await updateDoc(lessonDoc, updates);
 }
+
+export const updateLesson = async (docId: string, updates: Partial<Pick<Lesson, 'topic' | 'level'>>) => {
+    const lessonDoc = doc(db, "lessons", docId);
+    await updateDoc(lessonDoc, updates);
+};
+
+export const deleteLesson = async (docId: string) => {
+    const lessonDoc = doc(db, "lessons", docId);
+    await deleteDoc(lessonDoc);
+};
+
+    

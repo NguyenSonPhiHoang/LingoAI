@@ -3,17 +3,25 @@
 
 import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateAction } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getLessons, type Lesson } from '@/services/lessons';
+import { getLessons, type Lesson, deleteLesson, updateLesson } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ViewState } from '@/app/page';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import type { UserLevel } from '@/ai/flows/schemas';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
 
@@ -30,6 +38,103 @@ const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
 interface MyLessonsViewProps {
     setActiveViewState: Dispatch<SetStateAction<ViewState>>;
 }
+
+const editLessonSchema = z.object({
+  topic: z.string().min(3, "Topic must be at least 3 characters."),
+  level: z.enum(levels),
+});
+
+const EditLessonDialog: FC<{ lesson: Lesson, onLessonUpdate: (updatedLesson: Lesson) => void }> = ({ lesson, onLessonUpdate }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const { toast } = useToast();
+    
+    const form = useForm<z.infer<typeof editLessonSchema>>({
+        resolver: zodResolver(editLessonSchema),
+        defaultValues: {
+            topic: lesson.topic,
+            level: lesson.level,
+        },
+    });
+
+    const onSubmit = async (values: z.infer<typeof editLessonSchema>) => {
+        try {
+            await updateLesson(lesson.docId, values);
+            const updatedLesson = { ...lesson, ...values };
+            onLessonUpdate(updatedLesson);
+            toast({ title: "Success", description: "Lesson updated successfully." });
+            setIsOpen(false);
+        } catch (error) {
+            console.error("Error updating lesson:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not update the lesson.",
+            });
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <DialogTrigger className="w-full flex items-center">
+                    <Edit className="mr-2 h-4 w-4" /> Edit
+                </DialogTrigger>
+            </DropdownMenuItem>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Lesson</DialogTitle>
+                    <DialogDescription>
+                        Make changes to your lesson details here. Click save when you're done.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="topic"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Topic</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="level"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Level</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a level" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {levels.map(l => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const { user } = useAuth();
@@ -88,6 +193,26 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const handleStartLesson = (lesson: Lesson) => {
         setActiveViewState({ view: 'lesson-detail', lesson });
     };
+
+    const handleLessonUpdate = (updatedLesson: Lesson) => {
+        setLessons(prev => prev.map(l => l.id === updatedLesson.id ? updatedLesson : l));
+    };
+
+    const handleLessonDelete = async (lessonToDelete: Lesson) => {
+        try {
+            await deleteLesson(lessonToDelete.docId);
+            setLessons(prev => prev.filter(l => l.id !== lessonToDelete.id));
+            toast({ title: "Success", description: "Lesson deleted." });
+        } catch (error) {
+             console.error("Failed to delete lesson:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not delete the lesson.",
+            });
+        }
+    };
+
 
     if (isLoading) {
         return (
@@ -177,15 +302,45 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                         const Icon = skillIcons[lesson.skill as Skill];
                         return (
                             <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">{lesson.skill}</Badge>
-                                            <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
-                                        </div>
-                                        <Icon className="h-6 w-6 text-muted-foreground" />
+                                <CardHeader className="relative">
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <EditLessonDialog lesson={lesson} onLessonUpdate={handleLessonUpdate} />
+                                            <DropdownMenuSeparator />
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the lesson
+                                                            <span className="font-semibold"> "{lesson.topic}"</span>.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleLessonDelete(lesson)}>
+                                                            Continue
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="secondary">{lesson.skill}</Badge>
+                                        <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
                                     </div>
-                                    <CardTitle className="pt-2">{lesson.topic}</CardTitle>
+                                    <CardTitle className="pt-2 pr-8">{lesson.topic}</CardTitle>
                                 </CardHeader>
                                 <CardContent className="flex-grow">
                                     <CardDescription>
@@ -215,3 +370,5 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
+
+    
