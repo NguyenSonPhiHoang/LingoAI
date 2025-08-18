@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { FC } from "react";
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import {
   CircleDashed,
   ChevronDown,
   Bot,
+  Volume2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
 import { generateWritingFeedback } from "@/ai/flows/generate-writing-feedback-flow";
+import { generateAudio } from "@/ai/flows/generate-audio";
 import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
@@ -125,6 +127,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { translations, isTranslating, toggleTranslation } = useTranslation();
+  const { audioRef, isPlaying, playAudio } = useAudioPlayback();
+
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
       const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
@@ -288,6 +292,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
 
   return (
     <div className="space-y-6">
+       <audio ref={audioRef} className="hidden" />
       <div className="flex justify-between items-start">
         <Button variant="ghost" onClick={onBack} className="mb-4 -ml-4">
           <ArrowLeft className="mr-2" /> Back to My Lessons
@@ -369,6 +374,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                 {currentLesson.content?.map((item) => {
                   const translationKey = `content-${item.id}`;
                   const isBeingTranslated = isTranslating[translationKey];
+                  const isBeingSpoken = isPlaying[translationKey];
                   return (
                     <Card key={item.id} className="mb-4 bg-background">
                         <CardHeader className="pb-2">
@@ -377,9 +383,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, onBack }) => {
                                     {React.createElement(aiTools.find(t => t.id === item.type)?.icon || Sparkles, { className: "h-5 w-5 text-primary"})}
                                     {aiTools.find(t => t.id === item.type)?.title}
                                 </CardTitle>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
-                                  {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                </Button>
+                                <div className="flex items-center">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, item.value)} disabled={isBeingSpoken}>
+                                        {isBeingSpoken ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, item.value)} disabled={isBeingTranslated}>
+                                        {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -497,6 +508,35 @@ const useTranslation = () => {
     return { translations: visibleTranslations, isTranslating, toggleTranslation };
 };
 
+// --- Audio Playback Helper ---
+const useAudioPlayback = () => {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
+    const { toast } = useToast();
+
+    const playAudio = async (key: string, text: string) => {
+        setIsPlaying(prev => ({ ...prev, [key]: true }));
+        try {
+            const result = await generateAudio(text);
+            if (audioRef.current) {
+                audioRef.current.src = result.audioUrl;
+                audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+            }
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Audio Generation Failed",
+                description: error.message || "Please try again later.",
+            });
+        } finally {
+            setIsPlaying(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
+    return { audioRef, isPlaying, playAudio };
+};
+
+
 
 // --- Practice Components ---
 
@@ -507,6 +547,8 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
     const [isChecking, setIsChecking] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
+    const { isPlaying, playAudio } = useAudioPlayback();
+
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
 
@@ -561,9 +603,14 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                     <div key={qIndex} className="bg-background p-4 rounded-lg border">
                         <div className="flex justify-between items-start">
                             <p className="font-semibold mb-3 flex-1">{qIndex + 1}. {q.question}</p>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
-                                {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                            </Button>
+                            <div className="flex items-center">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(translationKey, q.question)} disabled={isPlaying[translationKey]}>
+                                    {isPlaying[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
+                                    {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                </Button>
+                            </div>
                         </div>
                         {translations[translationKey] && (
                             <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mb-3 rounded-r-md">
@@ -600,11 +647,18 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                              <div className="mt-4 p-3 rounded-md bg-red-50 border-l-4 border-red-400 text-red-900">
                                 <div className="flex justify-between items-start">
                                     <h4 className="font-bold mb-1 flex-1">Explanation</h4>
-                                    {feedback[qIndex] && (
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex])} disabled={isTranslating[`feedback-${qIndex}`]}>
-                                            {isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                        </Button>
-                                    )}
+                                     <div className="flex items-center">
+                                         {feedback[qIndex] && (
+                                            <>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playAudio(`feedback-${qIndex}`, feedback[qIndex])} disabled={isPlaying[`feedback-${qIndex}`]}>
+                                                {isPlaying[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex])} disabled={isTranslating[`feedback-${qIndex}`]}>
+                                                {isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                            </Button>
+                                            </>
+                                        )}
+                                     </div>
                                 </div>
                                 {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
                                 <p className="text-sm">{feedback[qIndex]}</p>
@@ -634,6 +688,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
     const [isGettingFeedback, setIsGettingFeedback] = useState(false);
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
+    const { isPlaying, playAudio } = useAudioPlayback();
+
 
     const handleGetFeedback = async () => {
         if (!userText) {
@@ -657,6 +713,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
         }
     };
 
+    const promptKey = `prompt-${prompt.vietnamesePrompt}`;
+    const hintKey = `hint-${prompt.vietnamesePrompt}`;
     const answerKey = `answer-${prompt.vietnamesePrompt}`;
     const feedbackKey = `feedback-${prompt.vietnamesePrompt}`;
     const correctedKey = `corrected-${prompt.vietnamesePrompt}`;
@@ -664,13 +722,25 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
     return (
         <Card className="bg-background">
             <CardHeader>
-                <p className="text-muted-foreground">Prompt:</p>
-                <p className="font-semibold">"{prompt.vietnamesePrompt}"</p>
+                <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                        <p className="text-muted-foreground">Prompt:</p>
+                        <p className="font-semibold">"{prompt.vietnamesePrompt}"</p>
+                    </div>
+                     <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(promptKey, prompt.vietnamesePrompt)} disabled={isPlaying[promptKey]}>
+                           {isPlaying[promptKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </Button>
+                     </div>
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
                    <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
                    <span><strong>Hint:</strong> {prompt.englishHint}</span>
+                   <Button variant="ghost" size="icon" className="h-5 w-5 -mr-1 -mt-1 text-yellow-800 hover:bg-yellow-100" onClick={() => playAudio(hintKey, prompt.englishHint)} disabled={isPlaying[hintKey]}>
+                      {isPlaying[hintKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                   </Button>
                 </div>
                  <Textarea 
                     placeholder="Write your English sentence here..." 
@@ -690,9 +760,14 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
                         <div className="p-3 rounded-md bg-blue-50 border-l-4 border-blue-400 text-blue-900">
                              <div className="flex justify-between items-start">
                                 <h4 className="font-bold mb-1 flex-1">AI Feedback</h4>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => toggleTranslation(feedbackKey, feedback.feedback)} disabled={isTranslating[feedbackKey]}>
-                                    {isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                </Button>
+                                 <div className="flex items-center">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playAudio(feedbackKey, feedback.feedback)} disabled={isPlaying[feedbackKey]}>
+                                        {isPlaying[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => toggleTranslation(feedbackKey, feedback.feedback)} disabled={isTranslating[feedbackKey]}>
+                                        {isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    </Button>
+                                 </div>
                              </div>
                              <p className="text-sm">{feedback.feedback}</p>
                              {translations[feedbackKey] && (
@@ -704,9 +779,14 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
                         <div className="p-3 rounded-md bg-green-50 border-l-4 border-green-400 text-green-900">
                             <div className="flex justify-between items-start">
                                 <h4 className="font-bold mb-1 flex-1">Suggested Answer</h4>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => toggleTranslation(correctedKey, feedback.correctedText)} disabled={isTranslating[correctedKey]}>
-                                    {isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                </Button>
+                                <div className="flex items-center">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playAudio(correctedKey, feedback.correctedText)} disabled={isPlaying[correctedKey]}>
+                                        {isPlaying[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => toggleTranslation(correctedKey, feedback.correctedText)} disabled={isTranslating[correctedKey]}>
+                                        {isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    </Button>
+                                </div>
                             </div>
                             <p className="text-sm font-semibold">"{feedback.correctedText}"</p>
                             {translations[correctedKey] && (
@@ -721,9 +801,14 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt }> = ({ prompt }) => {
             <CardFooter className="flex-col items-start gap-2">
                 <div className="flex justify-between w-full">
                     <p className="text-xs text-muted-foreground flex-1">Example answer: "{prompt.exampleAnswer}"</p>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={isTranslating[answerKey]}>
-                        {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                    </Button>
+                     <div className="flex items-center">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playAudio(answerKey, prompt.exampleAnswer)} disabled={isPlaying[answerKey]}>
+                            {isPlaying[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={isTranslating[answerKey]}>
+                            {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                        </Button>
+                     </div>
                 </div>
                 {translations[answerKey] && (
                     <div className="text-xs w-full text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 rounded-r-md">
@@ -747,7 +832,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] }> = ({ prompts }) => {
 };
 
 
-const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string }> = ({ exercise, passage }) => {
+const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string }> = ({ exercise }) => {
     const audioRef = React.useRef<HTMLAudioElement>(null);
     return (
         <div className="p-4 h-full flex flex-col">
@@ -774,6 +859,8 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ exercise }) => {
     const { toast } = useToast();
     const { translations, isTranslating, toggleTranslation } = useTranslation();
+    const { isPlaying, playAudio } = useAudioPlayback();
+
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -802,6 +889,9 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput }> = ({ ex
                                                <Clipboard className="h-4 w-4" />
                                            </Button>
                                        )}
+                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playAudio(translationKey, line.line)} disabled={isPlaying[translationKey]}>
+                                            {isPlaying[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                        </Button>
                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, line.line)} disabled={isTranslating[translationKey]}>
                                             {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                        </Button>
