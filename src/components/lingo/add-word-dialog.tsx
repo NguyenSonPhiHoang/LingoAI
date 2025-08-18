@@ -41,21 +41,12 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
-  const handleOpenChange = async (open: boolean) => {
-      if (open) {
-          try {
-              const text = await navigator.clipboard.readText();
-              if (text) {
-                setTerm(text.trim());
-              }
-          } catch (err) {
-              console.warn("Failed to read clipboard contents: ", err);
-          }
-      } else {
-          handleCloseDialog();
-      }
-      setIsDialogOpen(open);
-  }
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      handleCloseDialog();
+    }
+    setIsDialogOpen(open);
+  };
 
   const handleGenerateDetails = async () => {
     if (!term) {
@@ -142,8 +133,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Word with AI</DialogTitle>
           <DialogDescription>
-            Enter a word, phrase or sentence, and AI will generate the rest. The
-            input field is pre-filled from your clipboard if possible.
+            Enter a word, phrase or sentence, and AI will generate the rest.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
