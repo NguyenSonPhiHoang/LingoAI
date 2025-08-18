@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { extractVocabularyFromFile } from "@/ai/flows/extract-vocabulary";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
+import { Switch } from "@/components/ui/switch";
 
 interface Word extends VocabularyEntry {
   id: number;
@@ -80,6 +81,7 @@ const VocabularyList: FC = () => {
   const [words, setWords] = useState<Word[]>(initialWords);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -202,88 +204,104 @@ const VocabularyList: FC = () => {
     }
   }
 
+  const filteredWords = showOnlyFavorites
+    ? words.filter((word) => word.favorite)
+    : words;
+
 
   return (
     <Card>
       <audio ref={audioRef} className="hidden" />
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Từ vựng của tôi</CardTitle>
-          <CardDescription>
-            Một danh sách cá nhân hóa các từ bạn đang học.
-          </CardDescription>
-        </div>
-        <div className="flex gap-2">
-          <Input 
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".docx"
-          />
-           <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
-            {isImporting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="mr-2 h-4 w-4" />
-            )}
-            Nhập từ tệp
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" /> Thêm từ
+      <CardHeader>
+        <div className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Từ vựng của tôi</CardTitle>
+            <CardDescription>
+              Một danh sách cá nhân hóa các từ bạn đang học.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="favorites-only"
+                checked={showOnlyFavorites}
+                onCheckedChange={setShowOnlyFavorites}
+              />
+              <Label htmlFor="favorites-only">Chỉ hiển thị mục yêu thích</Label>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".docx"
+              />
+              <Button onClick={triggerFileSelect} disabled={isImporting} variant="outline">
+                {isImporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                Nhập từ tệp
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Thêm từ mới</DialogTitle>
-                <DialogDescription>
-                  Lưu một từ mới vào danh sách từ vựng cá nhân của bạn.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAddWord}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="term" className="text-right">
-                      Từ
-                    </Label>
-                    <Input id="term" name="term" className="col-span-3" required />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pronunciation" className="text-right">
-                      Phiên âm
-                    </Label>
-                    <Input id="pronunciation" name="pronunciation" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="definition" className="text-right">
-                      Định nghĩa
-                    </Label>
-                    <Input
-                      id="definition"
-                      name="definition"
-                      className="col-span-3"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="sentence" className="text-right">
-                      Câu
-                    </Label>
-                    <Input
-                      id="sentence"
-                      name="sentence"
-                      className="col-span-3"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Lưu từ</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Thêm từ
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Thêm từ mới</DialogTitle>
+                    <DialogDescription>
+                      Lưu một từ mới vào danh sách từ vựng cá nhân của bạn.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddWord}>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="term" className="text-right">
+                          Từ
+                        </Label>
+                        <Input id="term" name="term" className="col-span-3" required />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="pronunciation" className="text-right">
+                          Phiên âm
+                        </Label>
+                        <Input id="pronunciation" name="pronunciation" className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="definition" className="text-right">
+                          Định nghĩa
+                        </Label>
+                        <Input
+                          id="definition"
+                          name="definition"
+                          className="col-span-3"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="sentence" className="text-right">
+                          Câu
+                        </Label>
+                        <Input
+                          id="sentence"
+                          name="sentence"
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Lưu từ</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -298,8 +316,8 @@ const VocabularyList: FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {words.length > 0 ? (
-              words.map((word) => (
+            {filteredWords.length > 0 ? (
+              filteredWords.map((word) => (
                 <TableRow key={word.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -367,7 +385,9 @@ const VocabularyList: FC = () => {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  Danh sách từ vựng của bạn trống. Thêm một từ mới để bắt đầu!
+                   {showOnlyFavorites
+                    ? "Bạn chưa có từ yêu thích nào. Hãy đánh dấu một vài từ!"
+                    : "Danh sách từ vựng của bạn trống. Thêm một từ mới để bắt đầu!"}
                 </TableCell>
               </TableRow>
             )}
