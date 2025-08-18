@@ -21,45 +21,44 @@ import { useToast } from "@/hooks/use-toast";
 import { generateWordDetails } from "@/ai/flows/generate-word-details";
 import type { GenerateWordDetailsOutput } from "@/ai/flows/schemas";
 import { addWordToVocabulary } from "@/services/vocabulary";
-import type { UserVocabulary, Word } from "@/services/vocabulary";
+import type { UserVocabulary, VocabularyEntry } from "@/services/vocabulary";
+import { useAuth } from "@/context/auth-context";
 
 interface AddWordDialogProps {
-  user: any;
   setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
   trigger: React.ReactNode;
 }
 
 const AddWordDialog: FC<AddWordDialogProps> = ({
-  user,
   setWords,
   trigger,
 }) => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [term, setTerm] = useState("");
   const [generatedDetails, setGeneratedDetails] =
     useState<GenerateWordDetailsOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const handleDialogOpen = async () => {
+    // Reset state when opening
+    setTerm("");
+    setGeneratedDetails(null);
+    setIsGenerating(false);
+    setIsOpen(true);
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
         setTerm(text.trim());
       }
     } catch (error) {
-      // This can happen if the user hasn't granted permission to the clipboard API
-      // or if they are in an insecure context (not HTTPS). We can ignore this error
-      // and just open the dialog without pre-filling.
       console.warn("Could not read from clipboard:", error);
     }
-    setIsOpen(true);
   };
   
   const handleCloseDialog = () => {
-    setTerm("");
-    setGeneratedDetails(null);
-    setIsGenerating(false);
     setIsOpen(false);
   };
 
@@ -107,22 +106,29 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
       });
       return;
     }
-
-    const newWordData: Word = {
+    setIsSaving(true);
+    const newWordData: VocabularyEntry = {
       term: term,
-      pronunciation: generatedDetails.pronunciation,
-      definition: generatedDetails.definition,
-      sentence: generatedDetails.sentence,
-      partOfSpeech: generatedDetails.partOfSpeech,
-      vietnameseDefinition: generatedDetails.vietnameseDefinition,
-      vietnameseSentence: generatedDetails.vietnameseSentence,
+      ...generatedDetails,
     };
 
     try {
       const savedWord = await addWordToVocabulary(user.uid, newWordData);
-      setWords((prevWords) => [savedWord, ...prevWords]);
+      
+      setWords((prevWords) => {
+        const existingWordIndex = prevWords.findIndex(w => w.id === savedWord.id);
+        if (existingWordIndex !== -1) {
+          // Update existing word
+          const newWords = [...prevWords];
+          newWords[existingWordIndex] = savedWord;
+          return newWords;
+        } else {
+          // Add new word
+          return [savedWord, ...prevWords];
+        }
+      });
       handleCloseDialog();
-      toast({ title: "Success", description: "Word added to your list." });
+      toast({ title: "Success", description: `"${savedWord.term}" saved to your list.` });
     } catch (error) {
       console.error("Error adding word:", error);
       toast({
@@ -130,14 +136,16 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
         title: "Error",
         description: "Could not save the word.",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-      <div onClick={handleDialogOpen}>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-      </div>
+        <DialogTrigger asChild onClick={handleDialogOpen}>
+            {trigger}
+        </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Word with AI</DialogTitle>
@@ -225,8 +233,9 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
           <Button
             type="button"
             onClick={handleSaveWord}
-            disabled={!generatedDetails || isGenerating}
+            disabled={!generatedDetails || isGenerating || isSaving}
           >
+             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Save Word
           </Button>
         </DialogFooter>

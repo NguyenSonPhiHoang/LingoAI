@@ -544,10 +544,16 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
       
       const newWords = await addMultipleWordsToVocabulary(result.vocabulary, user.uid);
 
-      setWords(prevWords => [...newWords, ...prevWords]);
+      setWords(prevWords => {
+          const newWordsMap = new Map(newWords.map(w => [w.id, w]));
+          const updatedPrevWords = prevWords.map(pw => newWordsMap.get(pw.id) || pw);
+          const trulyNewWords = newWords.filter(nw => !prevWords.some(pw => pw.id === nw.id));
+          return [...trulyNewWords, ...updatedPrevWords];
+      });
+
       toast({
         title: "Success",
-        description: `${newWords.length} words were successfully imported.`,
+        description: `${newWords.length} words were successfully imported or updated.`,
       });
       
     } catch (error) {
@@ -693,7 +699,6 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
                 Import
               </Button>
                <AddWordDialog
-                  user={user}
                   setWords={setWords}
                   trigger={
                       <Button>
@@ -713,5 +718,3 @@ const VocabularyList: FC<VocabularyListProps> = ({ words, setWords }) => {
 };
 
 export default VocabularyList;
-
-    

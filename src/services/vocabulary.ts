@@ -17,9 +17,12 @@ import {
   getDoc,
   limit
 } from "firebase/firestore";
-import type { VocabularyEntry } from "@/ai/flows/schemas";
+import type { VocabularyEntry as VocabularyEntrySchema } from "@/ai/flows/schemas";
 
-// User-specific data for a word. All data is self-contained.
+// This is the base type from AI, without any user or DB data
+export type VocabularyEntry = VocabularyEntrySchema;
+
+// This is the full type for a word in the user's list, including all details.
 export interface UserVocabulary extends VocabularyEntry {
   id: string; // Document ID from 'userVocabulary' collection
   userId: string;
@@ -31,7 +34,6 @@ export interface UserVocabulary extends VocabularyEntry {
   sentenceAudioUrl?: string;
 }
 
-export type Word = Omit<UserVocabulary, 'id' | 'userId' | 'favorite' | 'viewCount' | 'createdAt'>;
 
 const userVocabularyCollection = collection(db, "userVocabulary");
 
@@ -102,6 +104,7 @@ export const addWordToVocabulary = async (userId: string, wordData: VocabularyEn
 
 export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], userId: string): Promise<UserVocabulary[]> => {
   const addedWords: UserVocabulary[] = [];
+  // Use a batch for efficiency, but process one-by-one logic inside the loop for existence checks
   for (const word of words) {
     const savedWord = await addWordToVocabulary(userId, word);
     addedWords.push(savedWord);

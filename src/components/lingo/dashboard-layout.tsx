@@ -48,7 +48,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 interface DashboardLayoutProps {
   children: ReactNode;
   activeView: View;
-  setActiveView: Dispatch<SetStateAction<View>>;
+  setActiveView: (view: View) => void;
   setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
 }
 
@@ -144,7 +144,6 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         </main>
          {user?.status === 'approved' && (
              <AddWordDialog
-                user={user}
                 setWords={setWords}
                 trigger={
                     <TooltipProvider>
