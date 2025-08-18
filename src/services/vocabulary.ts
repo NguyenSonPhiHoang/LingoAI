@@ -15,27 +15,37 @@ import {
   Timestamp,
   writeBatch,
   getDoc,
-  limit
+  limit,
 } from "firebase/firestore";
 import type { VocabularyEntry as VocabularyEntrySchema } from "@/ai/flows/schemas";
 
-// This is the base type from AI, without any user or DB data
-export type VocabularyEntry = VocabularyEntrySchema;
+// This is the base type from AI, stored in the 'words' collection.
+export interface Word extends VocabularyEntrySchema {
+  id: string; // Document ID from 'words' collection
+  term_normalized: string;
+  createdAt: any;
+  audioUrl?: string;
+  sentenceAudioUrl?: string;
+}
 
-// This is the full type for a word in the user's list.
-// It includes all word details plus user-specific data.
-export interface UserVocabulary extends VocabularyEntry {
+// This is the user-specific data, stored in 'userVocabulary'.
+export interface UserVocabulary {
   id: string; // Document ID from 'userVocabulary' collection
   userId: string;
+  wordId: string; // Foreign key to the 'words' collection
   favorite: boolean;
   viewCount: number;
   topic?: string;
   createdAt: any;
-  audioUrl?: string;
-  sentenceAudioUrl?: string;
-  term_normalized: string;
 }
 
+// This is the combined, denormalized type used in the application UI.
+export interface CombinedVocabulary extends Word, Omit<UserVocabulary, 'id' | 'createdAt'> {
+    userVocabularyId: string; // The ID from the user's personal list
+}
+
+
+const wordsCollection = collection(db, "words");
 const userVocabularyCollection = collection(db, "userVocabulary");
 
 // Helper function to remove undefined properties from an object
@@ -43,64 +53,115 @@ const cleanObject = (obj: any) => {
   return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
 }
 
-// GET all of a user's vocabulary.
-export const getVocabulary = async (userId: string): Promise<UserVocabulary[]> => {
+// GET all of a user's vocabulary, combining data from both collections.
+export const getVocabulary = async (userId: string): Promise<CombinedVocabulary[]> => {
   const userVocabQuery = query(
     userVocabularyCollection,
     where("userId", "==", userId),
     orderBy("createdAt", "desc")
   );
   const userVocabSnapshot = await getDocs(userVocabQuery);
-  return userVocabSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-  })) as UserVocabulary[];
+
+  if (userVocabSnapshot.empty) {
+      return [];
+  }
+
+  const combinedVocabList: CombinedVocabulary[] = [];
+
+  for (const userVocabDoc of userVocabSnapshot.docs) {
+      const userVocabData = userVocabDoc.data() as Omit<UserVocabulary, 'id'>;
+      
+      const wordDocRef = doc(db, "words", userVocabData.wordId);
+      const wordDocSnap = await getDoc(wordDocRef);
+
+      if (wordDocSnap.exists()) {
+          const wordData = wordDocSnap.data() as Omit<Word, 'id'>;
+          combinedVocabList.push({
+              id: wordDocSnap.id,
+              ...wordData,
+              userVocabularyId: userVocabDoc.id,
+              wordId: userVocabData.wordId,
+              userId: userVocabData.userId,
+              favorite: userVocabData.favorite,
+              viewCount: userVocabData.viewCount,
+              topic: userVocabData.topic,
+          });
+      }
+  }
+  
+  return combinedVocabList;
 };
 
-// ADD a new word to the user's personal vocabulary list.
-export const addWordToVocabulary = async (userId: string, wordData: VocabularyEntry): Promise<UserVocabulary> => {
+// ADD a new word. This function handles both the global 'words' collection
+// and the user-specific 'userVocabulary' collection.
+export const addWordToVocabulary = async (userId: string, wordData: VocabularyEntrySchema): Promise<CombinedVocabulary> => {
     const normalizedTerm = wordData.term.toLowerCase();
+    
+    // 1. Check if the word exists in the global 'words' collection.
+    const wordQuery = query(wordsCollection, where("term_normalized", "==", normalizedTerm), limit(1));
+    const wordSnap = await getDocs(wordQuery);
 
-    // 1. Check if the user already has this word in their personal list.
+    let wordDoc: Word;
+
+    if (wordSnap.empty) {
+        // 2a. If word doesn't exist globally, create it.
+        const newWordPayload = {
+            ...wordData,
+            term_normalized: normalizedTerm,
+            createdAt: Timestamp.now(),
+        };
+        const wordDocRef = await addDoc(wordsCollection, newWordPayload);
+        wordDoc = { id: wordDocRef.id, ...newWordPayload };
+    } else {
+        // 2b. If word exists, use the existing document.
+        const doc = wordSnap.docs[0];
+        wordDoc = { id: doc.id, ...doc.data() } as Word;
+    }
+
+    // 3. Check if the user already has this word in their personal list.
     const userVocabQuery = query(
         userVocabularyCollection,
         where("userId", "==", userId),
-        where("term_normalized", "==", normalizedTerm),
+        where("wordId", "==", wordDoc.id),
         limit(1)
     );
     const userVocabSnap = await getDocs(userVocabQuery);
-
-    if (!userVocabSnap.empty) {
-        // 2a. If user already has it, update it with the new details (in case it was incomplete).
-        const userVocabDoc = userVocabSnap.docs[0];
-        const updatedData = { ...userVocabDoc.data(), ...wordData };
-        await updateDoc(doc(db, "userVocabulary", userVocabDoc.id), wordData);
-        return {
-          id: userVocabDoc.id,
-          ...updatedData
-        } as UserVocabulary;
-    } else {
-        // 2b. If user doesn't have it, create a new document in `userVocabulary`.
+    
+    let userVocabDoc: UserVocabulary;
+    
+    if (userVocabSnap.empty) {
+        // 4a. If user doesn't have it, create a new link in `userVocabulary`.
         const newUserVocabularyPayload = {
-            ...wordData,
             userId,
-            term_normalized: normalizedTerm,
+            wordId: wordDoc.id,
             favorite: false,
             viewCount: 0,
             topic: null,
             createdAt: Timestamp.now(),
         };
         const userVocabDocRef = await addDoc(userVocabularyCollection, newUserVocabularyPayload);
-        
-        return {
-            id: userVocabDocRef.id,
-            ...newUserVocabularyPayload,
-        } as UserVocabulary;
+        userVocabDoc = { id: userVocabDocRef.id, ...newUserVocabularyPayload };
+    } else {
+        // 4b. If user already has it, use the existing document.
+         const doc = userVocabSnap.docs[0];
+         userVocabDoc = { id: doc.id, ...doc.data() } as UserVocabulary;
     }
+    
+    // 5. Return the combined data for immediate UI update.
+    return {
+        ...wordDoc,
+        userVocabularyId: userVocabDoc.id,
+        wordId: userVocabDoc.wordId,
+        userId: userVocabDoc.userId,
+        favorite: userVocabDoc.favorite,
+        viewCount: userVocabDoc.viewCount,
+        topic: userVocabDoc.topic,
+    };
 };
 
-export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], userId: string): Promise<UserVocabulary[]> => {
-  const addedOrUpdatedWords: UserVocabulary[] = [];
+
+export const addMultipleWordsToVocabulary = async (words: VocabularyEntrySchema[], userId: string): Promise<CombinedVocabulary[]> => {
+  const addedOrUpdatedWords: CombinedVocabulary[] = [];
   for (const word of words) {
     const savedWord = await addWordToVocabulary(userId, word);
     addedOrUpdatedWords.push(savedWord);
@@ -108,13 +169,14 @@ export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], use
   return addedOrUpdatedWords;
 };
 
+// Deletes the entry from the user's personal list, not the global word.
 export const deleteUserVocabulary = async (userVocabularyId: string) => {
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   await deleteDoc(userVocabDoc);
 };
 
-// Updates fields in the `userVocabulary` collection.
-export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id'>>) => {
+// Updates fields in the `userVocabulary` collection (e.g., favorite, viewCount).
+export const updateUserVocabulary = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id' | 'wordId' | 'userId'>>) => {
   const userVocabDoc = doc(db, "userVocabulary", userVocabularyId);
   const cleanUpdates = cleanObject(updates);
   if (Object.keys(cleanUpdates).length > 0) {
@@ -122,8 +184,11 @@ export const updateUserVocabulary = async (userVocabularyId: string, updates: Pa
   }
 };
 
-// This function is now an alias for updateUserVocabulary for simplicity.
-export const updateWord = async (userVocabularyId: string, updates: Partial<Omit<UserVocabulary, 'id'>>) => {
-    await updateUserVocabulary(userVocabularyId, updates);
+// Updates fields in the global `words` collection (e.g., adding an audioUrl).
+export const updateWord = async (wordId: string, updates: Partial<Omit<Word, 'id'>>) => {
+    const wordDoc = doc(db, "words", wordId);
+    const cleanUpdates = cleanObject(updates);
+    if(Object.keys(cleanUpdates).length > 0) {
+        await updateDoc(wordDoc, cleanUpdates);
+    }
 };
-

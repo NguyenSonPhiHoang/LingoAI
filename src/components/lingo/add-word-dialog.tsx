@@ -21,11 +21,11 @@ import { useToast } from "@/hooks/use-toast";
 import { generateWordDetails } from "@/ai/flows/generate-word-details";
 import type { GenerateWordDetailsOutput } from "@/ai/flows/schemas";
 import { addWordToVocabulary } from "@/services/vocabulary";
-import type { UserVocabulary } from "@/services/vocabulary";
+import type { CombinedVocabulary } from "@/services/vocabulary";
 import { useAuth } from "@/context/auth-context";
 
 interface AddWordDialogProps {
-  setWords: Dispatch<SetStateAction<UserVocabulary[]>>;
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
   trigger: React.ReactNode;
 }
 
@@ -109,24 +109,24 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
     setIsSaving(true);
     
     try {
-      const savedUserVocabulary = await addWordToVocabulary(user.uid, { term, ...generatedDetails });
+      const savedCombinedVocabulary = await addWordToVocabulary(user.uid, { term, ...generatedDetails });
       
       setWords((prevWords) => {
-        // Check if the word already exists in the local state by its ID.
-        const existingWordIndex = prevWords.findIndex(w => w.id === savedUserVocabulary.id);
+        // Check if the word already exists in the local state by its user-specific ID.
+        const existingWordIndex = prevWords.findIndex(w => w.userVocabularyId === savedCombinedVocabulary.userVocabularyId);
         if (existingWordIndex !== -1) {
           // If it exists, update it. This is crucial for UI consistency.
           const newWords = [...prevWords];
-          newWords[existingWordIndex] = savedUserVocabulary;
+          newWords[existingWordIndex] = savedCombinedVocabulary;
           return newWords;
         } else {
           // If it's a new word for the user, add it to the top of the list.
-          return [savedUserVocabulary, ...prevWords];
+          return [savedCombinedVocabulary, ...prevWords];
         }
       });
 
       handleCloseDialog();
-      toast({ title: "Success", description: `"${savedUserVocabulary.term}" saved to your list.` });
+      toast({ title: "Success", description: `"${savedCombinedVocabulary.term}" saved to your list.` });
     } catch (error) {
       console.error("Error adding word:", error);
       toast({
