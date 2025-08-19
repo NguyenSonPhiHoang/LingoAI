@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateActi
 import { useAuth } from '@/context/auth-context';
 import { getLessons, type Lesson, deleteLesson, updateLesson, LessonStatus } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -298,6 +298,16 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         setTopicFilters(prev => ({...prev, [topic]: !prev[topic] }));
     }
 
+    const handleSelectAllTopics = (select: boolean) => {
+        setTopicFilters(prev => {
+            const newFilters: Record<string, boolean> = {};
+            for (const topic in prev) {
+                newFilters[topic] = select;
+            }
+            return newFilters;
+        });
+    };
+
     const uniqueTopics = useMemo(() => [...new Set(lessons.map(l => l.topic))].sort(), [lessons]);
 
     const filteredLessons = useMemo(() => {
@@ -505,6 +515,15 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 <DropdownMenuContent>
                                     <DropdownMenuLabel>Show Topics</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
+                                     <DropdownMenuItem onSelect={() => handleSelectAllTopics(true)}>
+                                        <Check className="mr-2 h-4 w-4" />
+                                        Select All
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleSelectAllTopics(false)}>
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Deselect All
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     {uniqueTopics.map(topic => (
                                         <DropdownMenuCheckboxItem
                                             key={topic}
@@ -587,5 +606,3 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
-
-    
