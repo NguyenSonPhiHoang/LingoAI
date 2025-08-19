@@ -51,10 +51,15 @@ const PlacementTestHistory: FC = () => {
         fetchResults();
     }, [user]);
     
-    const chartData = results.map(result => ({
-        date: format(new Date(result.takenAt), 'MMM d'),
-        percentage: Number(result.percentage.toFixed(1)),
-    })).reverse();
+    // The results are already sorted newest to oldest from Firestore.
+    // Take the 10 most recent results for the chart and reverse them for chronological display.
+    const chartData = results
+        .slice(0, 10)
+        .map(result => ({
+            date: format(new Date(result.takenAt), 'MMM d'),
+            percentage: Number(result.percentage.toFixed(1)),
+        }))
+        .reverse();
 
 
     if (isLoading) {
@@ -306,4 +311,3 @@ const ProfileView: FC = () => {
 
 export default ProfileView;
 
-    
