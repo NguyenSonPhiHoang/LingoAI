@@ -17,6 +17,7 @@ import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import MyLessonsView from "@/components/lingo/my-lessons-view";
 import ProfileView from "@/components/lingo/profile-view";
 import SettingsView from "@/components/lingo/settings-view";
+import PlacementTest from "@/components/lingo/placement-test";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -24,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import StorybookPage from "./storybook/page";
+import type { UserLevel } from "@/ai/flows/schemas";
+
 
 export type View =
   | "overview"
@@ -37,11 +40,13 @@ export type View =
   | "lesson-detail"
   | "profile"
   | "settings"
+  | "placement-test"
   | "storybook";
 
 export type ViewState = {
   view: View;
   lesson?: Lesson;
+  recommendedLevel?: UserLevel;
 };
 
 const Home: FC = () => {
@@ -124,7 +129,7 @@ const Home: FC = () => {
         case "levels":
           return <LevelView />;
         case "ai-suggester":
-          return <AiSuggester setActiveView={(view) => setActiveViewState({view})} />;
+          return <AiSuggester setActiveViewState={setActiveViewState} recommendedLevel={activeViewState.recommendedLevel}/>;
         case "my-lessons":
           return <MyLessonsView setActiveViewState={setActiveViewState} />;
         case "vocabulary":
@@ -139,6 +144,8 @@ const Home: FC = () => {
             return <ProfileView />;
         case "settings":
             return <SettingsView />;
+        case "placement-test":
+            return <PlacementTest setActiveViewState={setActiveViewState} />;
         case "storybook":
             // This is now handled by its own page, but we keep a fallback
             return <StorybookPage />;

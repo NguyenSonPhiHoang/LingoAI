@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -18,6 +18,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   Form,
@@ -64,10 +65,11 @@ const formSchema = z.object({
 
 
 interface AiSuggesterProps {
-    setActiveView: Dispatch<SetStateAction<ViewState>>;
+    setActiveViewState: Dispatch<SetStateAction<ViewState>>;
+    recommendedLevel?: UserLevel;
 }
 
-const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
+const AiSuggester: FC<AiSuggesterProps> = ({ setActiveViewState, recommendedLevel }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -79,6 +81,18 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
       interests: "",
     },
   });
+
+  useEffect(() => {
+    if (recommendedLevel) {
+        // Find the first CEFR level that maps to the recommended UserLevel
+        const recommendedCefr = Object.keys(levelMapping).find(
+            key => levelMapping[key].value === recommendedLevel
+        );
+        if (recommendedCefr) {
+            form.setValue('cefrLevel', recommendedCefr);
+        }
+    }
+  }, [recommendedLevel, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
@@ -110,7 +124,7 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
         description: `${result.lessonSuggestions.length} new lessons have been added to 'My Lessons'.`
       })
       
-      setActiveView({view: 'my-lessons'});
+      setActiveViewState({view: 'my-lessons'});
 
     } catch (error) {
       console.error("Failed to get suggestions:", error);
@@ -123,9 +137,26 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
       setIsGenerating(false);
     }
   };
+  
+  const handleTakeTest = () => {
+    setActiveViewState({ view: 'placement-test' });
+  };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-6">
+        <Card className="bg-primary/5 border-primary/20">
+            <CardHeader>
+                <CardTitle>Unsure about your level?</CardTitle>
+                <CardDescription>Take our quick placement test to get an accurate recommendation.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+                 <Button onClick={handleTakeTest} variant="outline" className="w-full">
+                    <Pencil className="mr-2" />
+                    Take a placement test
+                 </Button>
+            </CardFooter>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>AI Lesson Suggester</CardTitle>
@@ -133,6 +164,12 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
               Tell us about yourself, and our AI will create a custom learning
               plan for you. The generated lessons will be saved in "My Lessons".
             </CardDescription>
+            {recommendedLevel && (
+                <div className="!mt-4 p-3 rounded-md bg-green-50 border border-green-200 text-green-800 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5"/>
+                    <p className="text-sm">We've pre-selected a level for you based on your test results.</p>
+                </div>
+            )}
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -149,6 +186,7 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>

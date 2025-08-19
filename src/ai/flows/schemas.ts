@@ -406,3 +406,18 @@ export const GenerateStorybookOutputSchema = z.object({
     storyContent: z.string(),
 });
 export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSchema>;
+
+
+// Schemas for generate-placement-test.ts
+export const PlacementTestQuestionSchema = z.object({
+    question: z.string().describe('The test question.'),
+    options: z.array(z.string()).length(4).describe('Four possible answers.'),
+    correctOption: z.string().describe('The correct answer from the options.'),
+    level: UserLevelSchema.describe('The difficulty level of the question.'),
+});
+export type PlacementTestQuestion = z.infer<typeof PlacementTestQuestionSchema>;
+
+export const GeneratePlacementTestOutputSchema = z.object({
+    questions: z.array(PlacementTestQuestionSchema).describe('A list of placement test questions.'),
+});
+export type GeneratePlacementTestOutput = z.infer<typeof GeneratePlacementTestOutputSchema>;

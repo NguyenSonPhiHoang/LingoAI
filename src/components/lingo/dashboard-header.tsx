@@ -36,6 +36,7 @@ const viewTitles: Record<View, string> = {
   "profile": "My Profile",
   "settings": "Settings",
   "storybook": "AI Storybook",
+  "placement-test": "Placement Test",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }) => {
