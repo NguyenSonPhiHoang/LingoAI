@@ -58,6 +58,7 @@ const PlacementTestHistory: FC = () => {
         .map(result => ({
             date: format(new Date(result.takenAt), 'MMM d'),
             percentage: Number(result.percentage.toFixed(1)),
+            trend: Number(result.percentage.toFixed(1)), // Add a separate key for the line
         }))
         .reverse();
 
@@ -104,19 +105,22 @@ const PlacementTestHistory: FC = () => {
                     <ChartTooltip 
                         cursor={false}
                         content={<ChartTooltipContent 
-                            formatter={(value, name) => (
-                                <div className="flex items-center gap-2">
-                                  <div className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{backgroundColor: name === 'percentage' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'}} />
-                                    <div className="flex flex-1 justify-between">
-                                        <span className="text-muted-foreground">{name === 'percentage' ? 'Score' : 'Trend'}</span>
-                                        <span className="font-bold">{value}%</span>
+                            formatter={(value, name) => {
+                                const isTrend = name === 'trend';
+                                return (
+                                    <div className="flex items-center gap-2">
+                                    <div className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{backgroundColor: isTrend ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}} />
+                                        <div className="flex flex-1 justify-between">
+                                            <span className="text-muted-foreground">{isTrend ? 'Trend' : 'Score'}</span>
+                                            <span className="font-bold">{value}%</span>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )
+                            }}
                         />} 
                     />
                     <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
-                    <Line dataKey="percentage" name="trend" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
+                    <Line dataKey="trend" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
                 </ComposedChart>
             </ChartContainer>
 
