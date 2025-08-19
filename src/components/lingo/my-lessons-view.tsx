@@ -242,18 +242,25 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     
-    const [skillFilters, setSkillFilters] = useState<Record<Skill, boolean>>({
+    const initialSkillFilters = {
         Listening: true,
         Speaking: true,
         Reading: true,
         Writing: true,
         Pronunciation: true,
-    });
-    const [levelFilters, setLevelFilters] = useState<Record<UserLevel, boolean>>({
+    };
+    const [skillFilters, setSkillFilters] = useState<Record<Skill, boolean>>(initialSkillFilters);
+    const [tempSkillFilters, setTempSkillFilters] = useState<Record<Skill, boolean>>(initialSkillFilters);
+    const [isSkillFilterOpen, setIsSkillFilterOpen] = useState(false);
+
+    const initialLevelFilters = {
         beginner: true,
         intermediate: true,
         advanced: true,
-    });
+    };
+    const [levelFilters, setLevelFilters] = useState<Record<UserLevel, boolean>>(initialLevelFilters);
+    const [tempLevelFilters, setTempLevelFilters] = useState<Record<UserLevel, boolean>>(initialLevelFilters);
+    const [isLevelFilterOpen, setIsLevelFilterOpen] = useState(false);
 
     const [topicGroupFilters, setTopicGroupFilters] = useState<Record<string, boolean>>({});
     const [tempTopicGroupFilters, setTempTopicGroupFilters] = useState<Record<string, boolean>>({});
@@ -289,28 +296,18 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         fetchLessons();
     }, [user, toast]);
     
-    const handleSkillFilterChange = (skill: Skill) => {
-        setSkillFilters(prev => ({ ...prev, [skill]: !prev[skill] }));
-    }
-    
-    const handleLevelFilterChange = (level: UserLevel) => {
-        setLevelFilters(prev => ({ ...prev, [level]: !prev[level] }));
-    }
-    
+    // --- Topic Group Filter Handlers ---
     const handleTempTopicGroupFilterChange = (topicGroup: string) => {
         setTempTopicGroupFilters(prev => ({...prev, [topicGroup]: !prev[topicGroup] }));
     }
-
     const applyTopicGroupFilters = () => {
         setTopicGroupFilters(tempTopicGroupFilters);
         setIsGroupFilterOpen(false);
     };
-
     const cancelTopicGroupFilters = () => {
         setTempTopicGroupFilters(topicGroupFilters);
         setIsGroupFilterOpen(false);
     };
-    
     const handleSelectAllTopics = (select: boolean) => {
         setTempTopicGroupFilters(prev => {
             const newFilters: Record<string, boolean> = {};
@@ -320,6 +317,33 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
             return newFilters;
         });
     };
+    
+    // --- Level Filter Handlers ---
+    const handleTempLevelFilterChange = (level: UserLevel) => {
+        setTempLevelFilters(prev => ({...prev, [level]: !prev[level] }));
+    }
+    const applyLevelFilters = () => {
+        setLevelFilters(tempLevelFilters);
+        setIsLevelFilterOpen(false);
+    };
+    const cancelLevelFilters = () => {
+        setTempLevelFilters(levelFilters);
+        setIsLevelFilterOpen(false);
+    };
+
+    // --- Skill Filter Handlers ---
+    const handleTempSkillFilterChange = (skill: Skill) => {
+        setTempSkillFilters(prev => ({...prev, [skill]: !prev[skill] }));
+    }
+    const applySkillFilters = () => {
+        setSkillFilters(tempSkillFilters);
+        setIsSkillFilterOpen(false);
+    };
+    const cancelSkillFilters = () => {
+        setTempSkillFilters(skillFilters);
+        setIsSkillFilterOpen(false);
+    };
+
 
     const uniqueTopicGroups = useMemo(() => [...new Set(lessons.map(l => l.topicGroup))].sort(), [lessons]);
 
@@ -327,10 +351,16 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         const activeTopicGroupFilters = Object.entries(topicGroupFilters)
             .filter(([, isActive]) => isActive)
             .map(([topicGroup]) => topicGroup);
+        const activeSkillFilters = Object.entries(skillFilters)
+            .filter(([, isActive]) => isActive)
+            .map(([skill]) => skill);
+        const activeLevelFilters = Object.entries(levelFilters)
+            .filter(([, isActive]) => isActive)
+            .map(([level]) => level);
         
         return lessons
-            .filter(lesson => skillFilters[lesson.skill as Skill])
-            .filter(lesson => levelFilters[lesson.level])
+            .filter(lesson => activeSkillFilters.includes(lesson.skill))
+            .filter(lesson => activeLevelFilters.includes(lesson.level))
             .filter(lesson => activeTopicGroupFilters.includes(lesson.topicGroup))
             .filter(lesson => 
                 lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -524,7 +554,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                             <DropdownMenu open={isGroupFilterOpen} onOpenChange={setIsGroupFilterOpen}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
-                                        <Folder className="mr-2" />
+                                        <Folder className="mr-2 h-4 w-4" />
                                         Group
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -557,47 +587,59 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                     </div>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                             <DropdownMenu>
+                             <DropdownMenu open={isLevelFilterOpen} onOpenChange={setIsLevelFilterOpen}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
-                                        <GraduationCap className="mr-2" />
+                                        <GraduationCap className="mr-2 h-4 w-4" />
                                         Level
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent>
+                                <DropdownMenuContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={() => cancelLevelFilters()}>
                                     <DropdownMenuLabel>Show Levels</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     {levels.map(level => (
                                         <DropdownMenuCheckboxItem
                                             key={level}
-                                            checked={levelFilters[level]}
-                                            onCheckedChange={() => handleLevelFilterChange(level)}
+                                            checked={tempLevelFilters[level]}
+                                            onCheckedChange={() => handleTempLevelFilterChange(level)}
+                                            onSelect={(e) => e.preventDefault()}
                                             className="capitalize"
                                         >
                                             {level}
                                         </DropdownMenuCheckboxItem>
                                     ))}
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end gap-2 p-2">
+                                        <Button variant="ghost" size="sm" onClick={cancelLevelFilters}>Cancel</Button>
+                                        <Button size="sm" onClick={applyLevelFilters}>Apply</Button>
+                                    </div>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <DropdownMenu>
+                            <DropdownMenu open={isSkillFilterOpen} onOpenChange={setIsSkillFilterOpen}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
-                                        <ListFilter className="mr-2" />
+                                        <ListFilter className="mr-2 h-4 w-4" />
                                         Skill
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent>
+                                <DropdownMenuContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={() => cancelSkillFilters()}>
                                     <DropdownMenuLabel>Show Skills</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     {Object.keys(skillFilters).map(skill => (
                                         <DropdownMenuCheckboxItem
                                             key={skill}
-                                            checked={skillFilters[skill as Skill]}
-                                            onCheckedChange={() => handleSkillFilterChange(skill as Skill)}
+                                            checked={tempSkillFilters[skill as Skill]}
+                                            onCheckedChange={() => handleTempSkillFilterChange(skill as Skill)}
+                                            onSelect={(e) => e.preventDefault()}
                                         >
                                             {skill}
                                         </DropdownMenuCheckboxItem>
                                     ))}
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end gap-2 p-2">
+                                        <Button variant="ghost" size="sm" onClick={cancelSkillFilters}>Cancel</Button>
+                                        <Button size="sm" onClick={applySkillFilters}>Apply</Button>
+                                    </div>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
