@@ -181,10 +181,11 @@ const UserActivityDetails: FC<{ userId: string }> = ({ userId }) => {
 const UserRow: FC<{
     u: User;
     totalActivity: number;
+    isOpen: boolean;
+    onToggle: () => void;
     onStatusChange: (uid: string, status: 'approved' | 'rejected' | 'pending') => void;
-}> = ({ u, totalActivity, onStatusChange }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
+}> = ({ u, totalActivity, isOpen, onToggle, onStatusChange }) => {
+    
     const getStatusBadge = (status: User['status']) => {
         switch (status) {
             case 'approved':
@@ -199,59 +200,46 @@ const UserRow: FC<{
     }
 
     return (
-        <Collapsible asChild open={isOpen} onOpenChange={setIsOpen}>
-            <>
-                <TableRow>
-                    <TableCell>
-                        <CollapsibleTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-8 w-8">
-                                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                             </Button>
-                        </CollapsibleTrigger>
-                    </TableCell>
-                    <TableCell>{u.displayName}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2">
-                            <Timer className="h-4 w-4 text-muted-foreground" />
-                            {formatTotalDuration(totalActivity || 0)}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        {u.createdAt ? format(new Date(u.createdAt as any), 'PPpp') : 'N/A'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(u.status)}</TableCell>
-                    <TableCell className="text-right">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">Change Status</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'approved')} disabled={u.status === 'approved'}>
-                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                    Approve
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'pending')} disabled={u.status === 'pending'}>
-                                    <Clock className="mr-2 h-4 w-4 text-yellow-500" />
-                                    Set to Pending
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'rejected')} disabled={u.status === 'rejected'}>
-                                     <XCircle className="mr-2 h-4 w-4 text-red-500" />
-                                    Reject
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                </TableRow>
-                <CollapsibleContent asChild>
-                    <TableRow>
-                        <TableCell colSpan={7} className="p-0">
-                           {isOpen && <UserActivityDetails userId={u.uid} />}
-                        </TableCell>
-                    </TableRow>
-                </CollapsibleContent>
-            </>
-        </Collapsible>
+        <TableRow>
+            <TableCell>
+                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                 </Button>
+            </TableCell>
+            <TableCell>{u.displayName}</TableCell>
+            <TableCell>{u.email}</TableCell>
+            <TableCell>
+                <div className="flex items-center gap-2">
+                    <Timer className="h-4 w-4 text-muted-foreground" />
+                    {formatTotalDuration(totalActivity || 0)}
+                </div>
+            </TableCell>
+            <TableCell>
+                {u.createdAt ? format(new Date(u.createdAt as any), 'PPpp') : 'N/A'}
+            </TableCell>
+            <TableCell>{getStatusBadge(u.status)}</TableCell>
+            <TableCell className="text-right">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">Change Status</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'approved')} disabled={u.status === 'approved'}>
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                            Approve
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'pending')} disabled={u.status === 'pending'}>
+                            <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                            Set to Pending
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'rejected')} disabled={u.status === 'rejected'}>
+                             <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                            Reject
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </TableCell>
+        </TableRow>
     );
 };
 
@@ -261,6 +249,7 @@ const UserManagement: FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [activity, setActivity] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
     const fetchData = async () => {
@@ -308,6 +297,10 @@ const UserManagement: FC = () => {
             });
         }
     };
+    
+    const handleToggleCollapsible = (uid: string) => {
+        setOpenCollapsibles(prev => ({ ...prev, [uid]: !prev[uid] }));
+    };
 
     if (user?.role !== 'admin') {
         return (
@@ -351,12 +344,22 @@ const UserManagement: FC = () => {
                     </TableHeader>
                     <TableBody>
                         {users.map((u) => (
-                           <UserRow 
-                            key={u.uid} 
-                            u={u} 
-                            totalActivity={activity[u.uid]}
-                            onStatusChange={handleStatusChange} 
-                           />
+                           <React.Fragment key={u.uid}>
+                             <UserRow 
+                                u={u} 
+                                totalActivity={activity[u.uid] || 0}
+                                onStatusChange={handleStatusChange}
+                                isOpen={!!openCollapsibles[u.uid]}
+                                onToggle={() => handleToggleCollapsible(u.uid)}
+                             />
+                             {openCollapsibles[u.uid] && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="p-0">
+                                       <UserActivityDetails userId={u.uid} />
+                                    </TableCell>
+                                </TableRow>
+                             )}
+                           </React.Fragment>
                         ))}
                     </TableBody>
                 </Table>
