@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import type { FC } from "react";
-import { Loader2, ArrowLeft, Check, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, X, Timer } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,16 +31,42 @@ interface ReviewTestViewProps {
   onBack: () => void;
 }
 
+const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
-
+  
   const allQuestions = [
       ...test.vocabularyQuestions.map(q => ({ ...q, type: 'vocab' })),
       ...test.readingQuestions.map(q => ({ ...q, type: 'reading' }))
   ];
+
+  const [timeLeft, setTimeLeft] = useState(allQuestions.length * 45); // 45 seconds per question
+  const [initialDuration, setInitialDuration] = useState(allQuestions.length * 45);
+
+  useEffect(() => {
+    if (showResults || timeLeft <= 0) return;
+    const timerId = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    return () => clearInterval(timerId);
+  }, [showResults, timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && !showResults) {
+        toast({
+            title: "Time's up!",
+            description: "Your review test has been automatically submitted.",
+        });
+        handleFinishTest();
+    }
+  }, [timeLeft, showResults]);
+
 
   const handleSelectAnswer = (qKey: string, option: string) => {
     if (showResults) return;
@@ -64,12 +90,16 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to save results.'});
         return;
     };
+    
+    const durationTaken = initialDuration - timeLeft;
+
     try {
         await addTestResult(user.uid, {
             correctAnswers: totalCorrect,
             totalQuestions: allQuestions.length,
             percentage: scorePercentage,
-            testType: 'Review Test'
+            testType: 'Review Test',
+            durationSeconds: durationTaken,
         });
         toast({ title: 'Success', description: 'Your review test result has been saved.'});
     } catch (error) {
@@ -86,8 +116,18 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
         </Button>
         <Card>
              <CardHeader>
-                <CardTitle>Review Test</CardTitle>
-                <CardDescription>Check your understanding of the material from your completed lessons.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Review Test</CardTitle>
+                        <CardDescription>Check your understanding of the material from your completed lessons.</CardDescription>
+                    </div>
+                    {!showResults && (
+                        <div className="flex items-center gap-2 font-mono text-lg font-semibold text-primary p-2 bg-primary/10 rounded-md">
+                            <Timer className="h-6 w-6"/>
+                            <span>{formatTime(timeLeft)}</span>
+                        </div>
+                    )}
+                </div>
              </CardHeader>
              <CardContent className="space-y-8">
                 {allQuestions.map((q, index) => {

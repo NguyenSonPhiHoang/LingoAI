@@ -24,6 +24,7 @@ export interface TestResult {
   percentage: number;
   recommendedLevel?: UserLevel;
   testType: 'Placement Test' | 'Review Test';
+  durationSeconds?: number;
 }
 
 export interface NewTestResultPayload {
@@ -32,6 +33,7 @@ export interface NewTestResultPayload {
   percentage: number;
   recommendedLevel?: UserLevel;
   testType: 'Placement Test' | 'Review Test';
+  durationSeconds?: number;
 }
 
 export const addTestResult = async (

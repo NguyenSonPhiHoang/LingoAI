@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { Loader2, ArrowRight, BookCheck } from 'lucide-react';
+import { Loader2, ArrowRight, BookCheck, Timer } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,6 +38,12 @@ interface PlacementTestProps {
 
 type TestState = 'selection' | 'running' | 'finished';
 
+const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -48,11 +54,38 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [finalScore, setFinalScore] = useState({ correct: 0, total: 0 });
     const [recommendedLevel, setRecommendedLevel] = useState<UserLevel>('beginner');
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [initialDuration, setInitialDuration] = useState(0);
 
-    
+    useEffect(() => {
+        if (testState !== 'running' || timeLeft <= 0) {
+            return;
+        }
+
+        const timerId = setInterval(() => {
+            setTimeLeft(prevTime => prevTime - 1);
+        }, 1000);
+
+        return () => clearInterval(timerId);
+    }, [testState, timeLeft]);
+
+     useEffect(() => {
+        if (timeLeft === 0 && testState === 'running') {
+            toast({
+                title: "Time's up!",
+                description: "Your test has been automatically submitted.",
+            });
+            finishTest();
+        }
+    }, [timeLeft, testState]);
+
+
     const startTest = async (numberOfQuestions: number) => {
         setIsLoading(true);
         setTestState('running');
+        const duration = numberOfQuestions * 45; // 45 seconds per question
+        setInitialDuration(duration);
+        setTimeLeft(duration);
         try {
             const result = await generatePlacementTest({ numberOfQuestions });
             const shuffledQuestions = result.questions.map(q => ({
@@ -60,6 +93,9 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                 options: [...q.options].sort(() => Math.random() - 0.5)
             }));
             setQuestions(shuffledQuestions);
+            setCurrentQuestionIndex(0);
+            setAnswers({});
+
         } catch (error) {
             console.error("Failed to generate placement test:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not start the test. Please try again.'});
@@ -116,6 +152,7 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
             recLevel = 'beginner';
         }
         setRecommendedLevel(recLevel);
+        const durationTaken = initialDuration - timeLeft;
 
         try {
             await addTestResult(user.uid, {
@@ -123,7 +160,8 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                 totalQuestions: questions.length,
                 percentage: (totalCorrect / questions.length) * 100,
                 recommendedLevel: recLevel,
-                testType: 'Placement Test'
+                testType: 'Placement Test',
+                durationSeconds: durationTaken,
             });
             toast({ title: 'Success', description: 'Your test result has been saved.' });
         } catch (error) {
@@ -167,8 +205,16 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
         return (
             <Card className="w-full max-w-2xl">
                 <CardHeader>
-                    <CardTitle>English Placement Test</CardTitle>
-                    <CardDescription>Answer the questions to the best of your ability.</CardDescription>
+                    <div className="flex justify-between items-center">
+                        <div>
+                             <CardTitle>English Placement Test</CardTitle>
+                             <CardDescription>Answer the questions to the best of your ability.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-lg font-semibold text-primary p-2 bg-primary/10 rounded-md">
+                            <Timer className="h-6 w-6"/>
+                            <span>{formatTime(timeLeft)}</span>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">

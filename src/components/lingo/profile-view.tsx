@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star } from 'lucide-react';
+import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star, Timer } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, ComposedChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -29,6 +29,13 @@ import {
 const profileFormSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
+
+const formatDuration = (seconds: number) => {
+    if (isNaN(seconds) || seconds < 0) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+}
 
 const PlacementTestHistory: FC = () => {
     const { user } = useAuth();
@@ -58,7 +65,7 @@ const PlacementTestHistory: FC = () => {
         .map(result => ({
             date: format(new Date(result.takenAt), 'MMM d'),
             percentage: Number(result.percentage.toFixed(1)),
-            trend: Number(result.percentage.toFixed(1)), // Add a separate key for the line
+            trend: Number(result.percentage.toFixed(1)),
         }))
         .reverse();
 
@@ -105,7 +112,7 @@ const PlacementTestHistory: FC = () => {
                     <ChartTooltip 
                         cursor={false}
                         content={<ChartTooltipContent 
-                            formatter={(value, name) => {
+                             formatter={(value, name) => {
                                 const isTrend = name === 'trend';
                                 return (
                                     <div className="flex items-center gap-2">
@@ -130,7 +137,7 @@ const PlacementTestHistory: FC = () => {
                         <TableHead>Date</TableHead>
                         <TableHead>Test Type</TableHead>
                         <TableHead>Score</TableHead>
-                        <TableHead>Percentage</TableHead>
+                        <TableHead>Duration</TableHead>
                         <TableHead>Recommended Level</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -144,8 +151,8 @@ const PlacementTestHistory: FC = () => {
                                     {result.testType}
                                 </Badge>
                             </TableCell>
-                            <TableCell>{result.correctAnswers}/{result.totalQuestions}</TableCell>
-                            <TableCell>{result.percentage.toFixed(1)}%</TableCell>
+                            <TableCell>{result.correctAnswers}/{result.totalQuestions} ({result.percentage.toFixed(1)}%)</TableCell>
+                            <TableCell>{formatDuration(result.durationSeconds ?? 0)}</TableCell>
                             <TableCell className="capitalize">{result.recommendedLevel || 'N/A'}</TableCell>
                         </TableRow>
                     ))}
