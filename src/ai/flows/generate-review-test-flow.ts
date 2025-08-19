@@ -27,8 +27,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert English assessment creator. Your task is to create a review test based on the content of previously completed lessons.
 
 The test should consist of two sections:
-1.  **Vocabulary Review (10 questions):** Create 10 multiple-choice, fill-in-the-blank questions using the provided vocabulary list. Each question should have a sentence with a blank, and four options (one correct, three plausible distractors).
-2.  **Reading Comprehension (5 questions):** Based on the provided reading passages from the completed lessons, create 5 multiple-choice comprehension questions. Each question should have four options and one clear correct answer.
+1.  **Vocabulary Review (10 questions):** Create exactly 10 multiple-choice, fill-in-the-blank questions using the provided vocabulary list. Each question should have a sentence with a blank, and four options (one correct, three plausible distractors).
+2.  **Reading Comprehension (5 questions):** Based on the provided reading passages from the completed lessons, create exactly 5 multiple-choice comprehension questions. Each question should have four options and one clear correct answer.
 
 Ensure the questions accurately reflect the provided content.
 

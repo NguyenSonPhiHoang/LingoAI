@@ -55,7 +55,7 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
       return acc;
   }, 0);
 
-  const scorePercentage = (totalCorrect / allQuestions.length) * 100;
+  const scorePercentage = allQuestions.length > 0 ? (totalCorrect / allQuestions.length) * 100 : 0;
 
 
   return (

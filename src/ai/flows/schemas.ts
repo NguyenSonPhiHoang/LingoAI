@@ -443,7 +443,7 @@ export const GenerateReviewTestInputSchema = z.object({
 export type GenerateReviewTestInput = z.infer<typeof GenerateReviewTestInputSchema>;
 
 export const GenerateReviewTestOutputSchema = z.object({
-  vocabularyQuestions: z.array(FillInTheBlankQuestionSchema).describe('An array of fill-in-the-blank vocabulary questions.'),
-  readingQuestions: z.array(ReadingComprehensionQuestionSchema).describe('An array of reading comprehension questions.'),
+  vocabularyQuestions: z.array(FillInTheBlankQuestionSchema).describe('An array of 10 fill-in-the-blank vocabulary questions.'),
+  readingQuestions: z.array(ReadingComprehensionQuestionSchema).describe('An array of 5 reading comprehension questions.'),
 });
 export type GenerateReviewTestOutput = z.infer<typeof GenerateReviewTestOutputSchema>;
