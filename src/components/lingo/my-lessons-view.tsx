@@ -315,17 +315,15 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
             .filter(([, isActive]) => isActive)
             .map(([topicGroup]) => topicGroup);
         
-        const hasActiveTopicGroupFilter = activeTopicGroupFilters.length > 0 && activeTopicGroupFilters.length < uniqueTopicGroups.length;
-
         return lessons
             .filter(lesson => skillFilters[lesson.skill as Skill])
             .filter(lesson => levelFilters[lesson.level])
-            .filter(lesson => hasActiveTopicGroupFilter ? activeTopicGroupFilters.includes(lesson.topicGroup) : true)
+            .filter(lesson => activeTopicGroupFilters.includes(lesson.topicGroup))
             .filter(lesson => 
                 lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()) || 
                 lesson.topicGroup.toLowerCase().includes(searchTerm.toLowerCase())
             );
-    }, [lessons, searchTerm, skillFilters, levelFilters, topicGroupFilters, uniqueTopicGroups.length]);
+    }, [lessons, searchTerm, skillFilters, levelFilters, topicGroupFilters]);
     
     const groupedLessons = useMemo(() => {
         return filteredLessons.reduce((acc, lesson) => {
@@ -611,3 +609,5 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
+
+    
