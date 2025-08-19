@@ -6,7 +6,7 @@ import { useAuth } from '@/context/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
+import { format, formatDistanceToNowStrict } from 'date-fns';
 import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star, Timer } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, ComposedChart } from "recharts";
 
@@ -19,6 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/services/users';
 import { getTestResults, type TestResult } from '@/services/test-results';
+import { getTotalUserActivity } from '@/services/activity';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import {
   ChartContainer,
@@ -36,6 +37,15 @@ const formatDuration = (seconds: number) => {
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds}s`;
 }
+
+const formatTotalDuration = (totalSeconds: number): string => {
+    if (isNaN(totalSeconds) || totalSeconds < 0) return 'N/A';
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+    return `${hours}h ${minutes}m`;
+};
 
 const PlacementTestHistory: FC = () => {
     const { user } = useAuth();
@@ -127,7 +137,7 @@ const PlacementTestHistory: FC = () => {
                         />} 
                     />
                     <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
-                    <Line dataKey="trend" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
+                    <Line dataKey="trend" type="monotone" name="trend" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
                 </ComposedChart>
             </ChartContainer>
 
@@ -167,6 +177,8 @@ const ProfileView: FC = () => {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [totalActivity, setTotalActivity] = useState(0);
+    const [isActivityLoading, setIsActivityLoading] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<z.infer<typeof profileFormSchema>>({
@@ -175,6 +187,15 @@ const ProfileView: FC = () => {
             displayName: user?.displayName || '',
         },
     });
+
+    useEffect(() => {
+        if (!user) return;
+        setIsActivityLoading(true);
+        getTotalUserActivity(user.uid)
+            .then(setTotalActivity)
+            .catch(err => console.error("Failed to get user activity", err))
+            .finally(() => setIsActivityLoading(false));
+    }, [user]);
 
     if (!user) {
         return (
@@ -310,6 +331,15 @@ const ProfileView: FC = () => {
                                 <div className="font-semibold">Member Since</div>
                                 <div className="text-muted-foreground">
                                     {user.createdAt ? format(new Date(user.createdAt as any), 'PPP') : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                            <Timer className="h-5 w-5 text-muted-foreground" />
+                             <div>
+                                <div className="font-semibold">Total Time Spent</div>
+                                <div className="text-muted-foreground">
+                                    {isActivityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatTotalDuration(totalActivity)}
                                 </div>
                             </div>
                         </div>

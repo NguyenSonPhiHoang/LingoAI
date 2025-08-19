@@ -1,10 +1,12 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Timer } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { getAllUsers, updateUserStatus } from '@/services/users';
+import { getAllUsersTotalActivity } from '@/services/activity';
 import type { User } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -30,26 +32,39 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
-import { format } from 'date-fns';
+import { format, formatDistanceToNowStrict } from 'date-fns';
+
+const formatTotalDuration = (totalSeconds: number): string => {
+    if (isNaN(totalSeconds) || totalSeconds < 0) return 'N/A';
+    return formatDistanceToNowStrict(new Date(Date.now() - totalSeconds * 1000), {
+        unit: 'hour',
+        roundingMethod: 'round'
+    });
+};
 
 
 const UserManagement: FC = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
+    const [activity, setActivity] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
-    const fetchUsers = async () => {
+    const fetchData = async () => {
         setIsLoading(true);
         try {
-            const fetchedUsers = await getAllUsers();
+            const [fetchedUsers, fetchedActivity] = await Promise.all([
+                getAllUsers(),
+                getAllUsersTotalActivity()
+            ]);
             setUsers(fetchedUsers);
+            setActivity(fetchedActivity);
         } catch (error) {
-            console.error("Error fetching users:", error);
+            console.error("Error fetching user data:", error);
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "Could not fetch users.",
+                description: "Could not fetch user data.",
             });
         } finally {
             setIsLoading(false);
@@ -58,7 +73,7 @@ const UserManagement: FC = () => {
     
     useEffect(() => {
         if (user?.role === 'admin') {
-            fetchUsers();
+            fetchData();
         }
     }, [user]);
 
@@ -118,7 +133,7 @@ const UserManagement: FC = () => {
         <Card>
             <CardHeader>
                 <CardTitle>User Management</CardTitle>
-                <CardDescription>Approve or reject new user registrations.</CardDescription>
+                <CardDescription>Approve or reject new user registrations and view their activity.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -126,7 +141,7 @@ const UserManagement: FC = () => {
                         <TableRow>
                             <TableHead>Display Name</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
+                            <TableHead>Total Usage</TableHead>
                             <TableHead>Registered</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -137,7 +152,12 @@ const UserManagement: FC = () => {
                             <TableRow key={u.uid}>
                                 <TableCell>{u.displayName}</TableCell>
                                 <TableCell>{u.email}</TableCell>
-                                <TableCell><Badge variant="outline">{u.role}</Badge></TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Timer className="h-4 w-4 text-muted-foreground" />
+                                        {formatTotalDuration(activity[u.uid] || 0)}
+                                    </div>
+                                </TableCell>
                                 <TableCell>
                                     {u.createdAt ? format(new Date(u.createdAt as any), 'PPpp') : 'N/A'}
                                 </TableCell>

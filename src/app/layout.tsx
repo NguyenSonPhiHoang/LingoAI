@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
 import { SettingsProvider } from "@/context/settings-context";
+import { ActivityTracker } from "@/context/activity-tracker";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -29,10 +30,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
+          <ActivityTracker>
             <SettingsProvider>
               {children}
               <Toaster />
             </SettingsProvider>
+          </ActivityTracker>
         </AuthProvider>
       </body>
     </html>
