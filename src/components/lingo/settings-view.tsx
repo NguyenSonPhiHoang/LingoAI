@@ -7,13 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Volume2 } from 'lucide-react';
+import { Volume2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+const themes = [
+    { name: 'default', color: 'hsl(49, 100%, 50%)' },
+    { name: 'orange', color: 'hsl(19, 90%, 50%)' },
+    { name: 'blue', color: 'hsl(221, 83%, 53%)' },
+    { name: 'green', color: 'hsl(142, 71%, 45%)' },
+    { name: 'rose', color: 'hsl(347, 90%, 58%)' },
+];
 
 const SettingsView: FC = () => {
-    const { speechRate, setSpeechRate } = useSettings();
-    // Local state for the slider to provide real-time feedback before saving.
+    const { speechRate, setSpeechRate, theme, setTheme } = useSettings();
     const [localRate, setLocalRate] = useState(speechRate);
+    const [localTheme, setLocalTheme] = useState(theme);
     const { toast } = useToast();
 
     const handleRateChange = (value: number[]) => {
@@ -22,9 +31,10 @@ const SettingsView: FC = () => {
 
     const handleSave = () => {
         setSpeechRate(localRate);
+        setTheme(localTheme);
         toast({
             title: "Settings Saved",
-            description: `Speech rate set to ${localRate}x.`,
+            description: "Your new settings have been applied.",
         });
     };
 
@@ -42,6 +52,8 @@ const SettingsView: FC = () => {
             });
         }
     };
+    
+    const isDirty = speechRate !== localRate || theme !== localTheme;
 
 
     return (
@@ -75,7 +87,29 @@ const SettingsView: FC = () => {
                             </Button>
                         </div>
                     </div>
-                     <Button onClick={handleSave} disabled={speechRate === localRate}>
+                     <div className="space-y-4 p-4 border rounded-lg">
+                        <Label className="text-base font-medium">Theme Color</Label>
+                         <p className="text-sm text-muted-foreground">
+                            Choose a primary color for the application interface.
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                            {themes.map((t) => (
+                                <button
+                                    key={t.name}
+                                    className={cn(
+                                        "h-10 w-10 rounded-full border-2 transition-all",
+                                        localTheme === t.name ? 'border-ring' : 'border-transparent hover:border-muted-foreground/50'
+                                    )}
+                                    style={{ backgroundColor: t.color }}
+                                    onClick={() => setLocalTheme(t.name)}
+                                    aria-label={`Select ${t.name} theme`}
+                                >
+                                    {localTheme === t.name && <Check className="h-6 w-6 text-white mx-auto" />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                     <Button onClick={handleSave} disabled={!isDirty}>
                         Save Settings
                     </Button>
                 </CardContent>

@@ -42,6 +42,36 @@ body {
     --sidebar-border: 49 20% 88%;
     --sidebar-ring: 49 100% 50%;
   }
+
+  .theme-orange {
+    --primary: 19 90% 50%;
+    --primary-foreground: 19 90% 98%;
+    --ring: 19 90% 50%;
+    --chart-1: 19 90% 50%;
+  }
+
+  .theme-blue {
+      --primary: 221 83% 53%;
+      --primary-foreground: 221 83% 98%;
+      --ring: 221 83% 53%;
+      --chart-1: 221 83% 53%;
+  }
+
+  .theme-green {
+      --primary: 142 71% 45%;
+      --primary-foreground: 142 71% 95%;
+      --ring: 142 71% 45%;
+      --chart-1: 142 71% 45%;
+  }
+
+  .theme-rose {
+      --primary: 347 90% 58%;
+      --primary-foreground: 347 90% 98%;
+      --ring: 347 90% 58%;
+      --chart-1: 347 90% 58%;
+  }
+
+
   .dark {
     --background: 49 15% 10%;
     --foreground: 49 20% 95%;
