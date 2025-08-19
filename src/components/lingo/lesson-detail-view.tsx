@@ -435,11 +435,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         <CardContent>
           <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-               {hasContentForPractice && (
-                 <AccordionTrigger className="justify-center py-2 text-sm">
-                   <ChevronDown className="h-4 w-4" />
-                 </AccordionTrigger>
-               )}
+               <AccordionTrigger className="justify-center py-2 text-sm">
+                 <ChevronDown className="h-4 w-4" />
+               </AccordionTrigger>
               <AccordionContent className="pt-4">
                 <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
                   {isLoading === 'content' ? (
@@ -663,12 +661,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             playAudioUrl(result.audioUrl);
         } catch (error: any) {
              // Priority 3: Fallback to browser TTS
-             toast({
-                variant: "destructive",
-                title: "AI Audio Failed",
-                description: "Using standard browser voice as a fallback.",
-            });
-            playWithBrowserTTS(text);
+             playWithBrowserTTS(text);
         } finally {
             setIsPlaying(prev => ({ ...prev, [key]: false }));
         }
@@ -696,12 +689,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
 
         } catch (error: any) {
              // Priority 3: Fallback to browser TTS
-             toast({
-                variant: "destructive",
-                title: "AI Audio Failed",
-                description: "Using standard browser voice as a fallback.",
-            });
-            playWithBrowserTTS(word.term);
+             playWithBrowserTTS(word.term);
         } finally {
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
@@ -1144,5 +1132,3 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput,
 
 
 export default LessonDetailView;
-
-    
