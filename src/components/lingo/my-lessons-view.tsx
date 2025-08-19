@@ -410,28 +410,50 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         );
     }
     
-    const renderGridView = () => (
-        <Accordion type="multiple" defaultValue={Object.keys(groupedLessons)} className="space-y-6">
-            {Object.entries(groupedLessons).map(([topicGroup, groupLessons]) => (
-                <AccordionItem value={topicGroup} key={topicGroup}>
-                    <AccordionTrigger className="text-xl font-bold hover:no-underline">
-                        <div className="flex items-center gap-2">
-                           <Folder className="h-6 w-6 text-primary/80" />
-                           {topicGroup} ({groupLessons.length})
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-4">
-                        <LessonGrid 
-                            lessons={groupLessons}
-                            onStartLesson={handleStartLesson}
-                            onLessonUpdate={handleLessonUpdate}
-                            onLessonDelete={handleLessonDelete}
-                        />
-                    </AccordionContent>
-                </AccordionItem>
-            ))}
-        </Accordion>
-    );
+    const renderGridView = () => {
+        return (
+            <Accordion type="multiple" defaultValue={Object.keys(groupedLessons)} className="space-y-6">
+                {Object.entries(groupedLessons).map(([topicGroup, groupLessons]) => {
+                    const stats = groupLessons.reduce((acc, lesson) => {
+                        acc[lesson.status] = (acc[lesson.status] || 0) + 1;
+                        return acc;
+                    }, {} as Record<LessonStatus, number>);
+
+                    return (
+                        <AccordionItem value={topicGroup} key={topicGroup}>
+                            <AccordionTrigger className="text-xl font-bold hover:no-underline">
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                        <Folder className="h-6 w-6 text-primary/80" />
+                                        {topicGroup}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground ml-2 border-l pl-4">
+                                        <div className="flex items-center gap-1.5" title="Not Started">
+                                            <Circle className="h-3 w-3 text-muted-foreground/60" /> {stats['not-started'] || 0}
+                                        </div>
+                                        <div className="flex items-center gap-1.5" title="In Progress">
+                                            <CircleDashed className="h-3 w-3 text-yellow-500" /> {stats['in-progress'] || 0}
+                                        </div>
+                                        <div className="flex items-center gap-1.5" title="Completed">
+                                            <CheckCircle className="h-3 w-3 text-green-500" /> {stats['completed'] || 0}
+                                        </div>
+                                    </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-4">
+                                <LessonGrid 
+                                    lessons={groupLessons}
+                                    onStartLesson={handleStartLesson}
+                                    onLessonUpdate={handleLessonUpdate}
+                                    onLessonDelete={handleLessonDelete}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    );
+                })}
+            </Accordion>
+        );
+    };
 
     const renderListView = () => (
         <Card>
@@ -670,3 +692,5 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
+
+    
