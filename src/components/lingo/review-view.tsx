@@ -42,39 +42,6 @@ const shuffleArray = <T,>(array: T[]): T[] => {
     .map(({ value }) => value);
 };
 
-const MarkdownRenderer: FC<{ text: string, vocabulary: CombinedVocabulary[], playbackHook: ReturnType<typeof useAudioPlayback>, activePlaybackKey: string | null }> = ({ text, ...props }) => {
-    const parts = useMemo(() => {
-        if (!text) return [];
-        
-        // This regex will split the text by markdown bold (**) and italic (*) markers, keeping the markers.
-        const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
-        return text.split(regex);
-    }, [text]);
-
-    return (
-        <>
-            {parts.map((part, index) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                    return (
-                        <strong key={index}>
-                            <InteractiveText text={part.slice(2, -2)} {...props} />
-                        </strong>
-                    );
-                }
-                if (part.startsWith('*') && part.endsWith('*')) {
-                     return (
-                        <em key={index}>
-                            <InteractiveText text={part.slice(1, -1)} {...props} />
-                        </em>
-                    );
-                }
-                return <InteractiveText key={index} text={part} {...props} />;
-            })}
-        </>
-    );
-};
-
-
 const MatchingGame: FC<{
   questions: MatchingQuestion[];
   onRegenerate: () => void;
@@ -310,7 +277,7 @@ const FillInBlankGame: FC<{
                                 </div>
                            </div>
                            <div className="text-sm text-red-900">
-                             <MarkdownRenderer
+                             <InteractiveText
                                 text={feedback.vocabularyAnalysis} 
                                 vocabulary={words}
                                 playbackHook={playbackHook}
@@ -337,7 +304,7 @@ const FillInBlankGame: FC<{
                                 </div>
                            </div>
                            <div className="text-sm text-red-900">
-                             <MarkdownRenderer
+                             <InteractiveText
                                 text={feedback.grammarAnalysis} 
                                 vocabulary={words}
                                 playbackHook={playbackHook}
