@@ -2,7 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   experimental: {
     serverComponentsExternalPackages: ['@opentelemetry/api', '@opentelemetry/context-async-hooks', '@opentelemetry/instrumentation', '@opentelemetry/resources', '@opentelemetry/sdk-trace-base', '@opentelemetry/sdk-trace-node'],
   },
