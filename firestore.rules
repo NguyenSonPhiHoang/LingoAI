@@ -42,7 +42,9 @@ service cloud.firestore {
     
     // USER ACTIVITY: Users can create/update their own activity. Admins can list all activity.
     match /user_activity/{activityId} {
-        allow read, write: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+        allow update: if isSignedIn() && isOwner(resource.data.userId);
+        allow read: if isSignedIn() && isOwner(resource.data.userId);
         allow list: if isAdmin();
     }
     
