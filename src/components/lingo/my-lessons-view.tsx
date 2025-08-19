@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateAction } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getLessons, type Lesson, deleteLesson, updateLesson, LessonStatus } from '@/services/lessons';
+import { getLessons, type Lesson, deleteLesson, updateLesson, type LessonStatus } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban } from 'lucide-react';
 import { Input } from '@/components/ui/input';
