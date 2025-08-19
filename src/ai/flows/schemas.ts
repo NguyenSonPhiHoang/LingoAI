@@ -133,6 +133,13 @@ export const GenerateWordDetailsOutputSchema = z.object({
   vietnameseSentence: z
     .string()
     .describe('The Vietnamese translation of the example sentence.'),
+  synonyms: z.array(z.string()).optional().describe('A list of synonyms for the term.'),
+  antonyms: z.array(z.string()).optional().describe('A list of antonyms for the term.'),
+  irregularForms: z.object({
+    v1: z.string().describe('The base form of the verb (Infinitive).'),
+    v2: z.string().describe('The past simple form of the verb.'),
+    v3: z.string().describe('The past participle form of the verb.'),
+  }).optional().describe('The irregular forms of the verb (V1, V2, V3), if applicable.'),
 });
 export type GenerateWordDetailsOutput = z.infer<
   typeof GenerateWordDetailsOutputSchema

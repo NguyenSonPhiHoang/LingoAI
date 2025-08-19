@@ -25,6 +25,7 @@ import { addWordToVocabulary, addMultipleWordsToVocabulary, type CombinedVocabul
 import { useAuth } from "@/context/auth-context";
 import Image from 'next/image';
 import VocabularyImportPreview from "./vocabulary-import-preview";
+import { Badge } from "../ui/badge";
 
 
 interface AddWordDialogProps {
@@ -195,7 +196,7 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
     
     try {
       const fullWordData = { term, ...generatedDetails };
-      const savedCombinedVocabulary = await addWordToVocabulary(user.uid, fullWordData);
+      const savedCombinedVocabulary = await addWordToVocabulary(user.uid, fullWordData as VocabularyEntry);
       
       setWords((prevWords) => {
         // Use a Map to handle adding or updating the word efficiently.
@@ -273,14 +274,16 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
                     <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : generatedDetails ? (
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <strong className="text-muted-foreground">Part of Speech:</strong>{" "}
-                      {generatedDetails.partOfSpeech}
-                    </div>
-                    <div>
-                      <strong className="text-muted-foreground">Pronunciation:</strong>{" "}
-                      <span className="font-sans">{generatedDetails.pronunciation}</span>
+                  <div className="space-y-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <strong className="text-muted-foreground">Part of Speech:</strong>{" "}
+                            {generatedDetails.partOfSpeech}
+                        </div>
+                         <div>
+                            <strong className="text-muted-foreground">Pronunciation:</strong>{" "}
+                            <span className="font-sans">{generatedDetails.pronunciation}</span>
+                        </div>
                     </div>
                     <div>
                       <strong className="text-muted-foreground">Definition (EN):</strong>{" "}
@@ -298,6 +301,32 @@ const AddWordDialog: FC<AddWordDialogProps> = ({
                       <strong className="text-muted-foreground">Example (VI):</strong> "
                       {generatedDetails.vietnameseSentence}"
                     </div>
+                    {generatedDetails.synonyms && generatedDetails.synonyms.length > 0 && (
+                        <div>
+                            <strong className="text-muted-foreground">Synonyms:</strong>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {generatedDetails.synonyms.map((s, i) => <Badge key={i} variant="secondary">{s}</Badge>)}
+                            </div>
+                        </div>
+                    )}
+                    {generatedDetails.antonyms && generatedDetails.antonyms.length > 0 && (
+                        <div>
+                            <strong className="text-muted-foreground">Antonyms:</strong>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {generatedDetails.antonyms.map((a, i) => <Badge key={i} variant="outline">{a}</Badge>)}
+                            </div>
+                        </div>
+                    )}
+                    {generatedDetails.irregularForms && (
+                        <div>
+                            <strong className="text-muted-foreground">Irregular Verb Forms:</strong>
+                             <div className="flex flex-wrap gap-4 mt-1">
+                                <div>V1: <Badge variant="secondary">{generatedDetails.irregularForms.v1}</Badge></div>
+                                <div>V2: <Badge variant="secondary">{generatedDetails.irregularForms.v2}</Badge></div>
+                                <div>V3: <Badge variant="secondary">{generatedDetails.irregularForms.v3}</Badge></div>
+                            </div>
+                        </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground text-center py-4">

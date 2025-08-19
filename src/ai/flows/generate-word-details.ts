@@ -30,11 +30,14 @@ const prompt = ai.definePrompt({
 
 For the term "{{term}}", provide:
 1.  A clear and concise definition in English.
-2.  Its part of speech (e.g., Noun, Verb, Phrase, Sentence).
+2.  Its part of speech (e.g., Noun, Verb, Adjective, Phrase).
 3.  Its International Phonetic Alphabet (IPA) pronunciation. If it's a phrase or sentence, provide pronunciation for the key words.
 4.  A contextual example sentence.
 5.  A clear and concise definition in Vietnamese.
 6.  The example sentence translated into Vietnamese.
+7.  A list of common synonyms, if any.
+8.  A list of common antonyms, if any.
+9.  If the term is a verb, provide its irregular forms (V1, V2, V3). If it is a regular verb, do not provide this field.
 `,
 });
 
