@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import type { FC } from "react";
-import { AlertTriangle, Lightbulb, Repeat, Loader2, Check, X, Bot, Volume2, Languages } from "lucide-react";
+import { AlertTriangle, Lightbulb, Repeat, Loader2, Check, X, Bot, Volume2, Languages, BookCopy, Pilcrow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +26,7 @@ import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import type {
   MatchingQuestion,
   FillInTheBlankQuestion,
+  GenerateVocabularyFeedbackOutput,
 } from "@/ai/flows/schemas";
 import { useToast } from "@/hooks/use-toast";
 
@@ -121,10 +122,10 @@ const FillInBlankGame: FC<{
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<GenerateVocabularyFeedbackOutput | null>(null);
   const [isGettingFeedback, setIsGettingFeedback] = useState(false);
-  const [translation, setTranslation] = useState<string | null>(null);
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [translation, setTranslation] = useState<Record<string, string | null>>({});
+  const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
   
   const { toast } = useToast();
   const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
@@ -141,13 +142,13 @@ const FillInBlankGame: FC<{
     setSelectedOption(null);
     setShowResult(false);
     setFeedback(null);
-    setTranslation(null);
+    setTranslation({});
   }, [currentQuestionIndex, questions]);
 
   const getAIFeedback = async (userAnswer: string) => {
       setIsGettingFeedback(true);
       setFeedback(null);
-      setTranslation(null);
+      setTranslation({});
       const correctWordInfo = words.find(w => w.term === currentQuestion.correctTerm);
       try {
           const result = await generateVocabularyFeedback({
@@ -156,7 +157,7 @@ const FillInBlankGame: FC<{
               correctAnswerTerm: currentQuestion.correctTerm,
               correctAnswerDefinition: correctWordInfo?.definition || 'No definition available.'
           });
-          setFeedback(result.feedback);
+          setFeedback(result);
       } catch (error) {
           console.error("Error getting AI feedback:", error);
           toast({ variant: "destructive", title: "Feedback Error", description: "Could not get feedback from AI." });
@@ -174,20 +175,20 @@ const FillInBlankGame: FC<{
     }
   };
 
-  const handleToggleTranslation = async () => {
-    if (!feedback) return;
-    if (translation) {
-        setTranslation(null);
+  const handleToggleTranslation = async (key: 'vocab' | 'grammar', text: string) => {
+    if (!text) return;
+    if (translation[key]) {
+        setTranslation(prev => ({...prev, [key]: null}));
         return;
     }
-    setIsTranslating(true);
+    setIsTranslating(prev => ({...prev, [key]: true}));
     try {
-        const result = await translateText({ text: feedback });
-        setTranslation(result.translation);
+        const result = await translateText({ text });
+        setTranslation(prev => ({...prev, [key]: result.translation}));
     } catch (error) {
         toast({ variant: "destructive", title: "Translation Failed" });
     } finally {
-        setIsTranslating(false);
+        setIsTranslating(prev => ({...prev, [key]: false}));
     }
   };
   
@@ -195,7 +196,7 @@ const FillInBlankGame: FC<{
     setSelectedOption(null);
     setShowResult(false);
     setFeedback(null);
-    setTranslation(null);
+    setTranslation({});
     setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
   };
 
@@ -255,33 +256,55 @@ const FillInBlankGame: FC<{
         </div>
 
         {showResult && !isCorrect && (
-            <div className="p-3 rounded-md bg-red-50 border border-red-200">
-                <div className="flex justify-between items-start">
-                    <h4 className="font-semibold text-red-800 flex items-center gap-2"><Bot /> AI Feedback</h4>
-                    <div className="flex items-center">
-                        {feedback && (
-                            <>
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-${currentQuestionIndex}`, feedback)} disabled={isPlaying[`feedback-${currentQuestionIndex}`]}>
-                                {isPlaying[`feedback-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={handleToggleTranslation} disabled={isTranslating}>
-                                {isTranslating ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                            </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
+            <div className="p-3 rounded-md bg-red-50 border border-red-200 space-y-4">
+                <div className="flex items-center gap-2 font-semibold text-red-800"><Bot /> AI Feedback</div>
                  {isGettingFeedback ? (
                     <div className="flex items-center gap-2 text-red-700"><Loader2 className="h-4 w-4 animate-spin" /> Analyzing your answer...</div>
                  ) : feedback ? (
-                    <p className="text-sm text-red-900 mt-1">{feedback}</p>
+                    <div className="space-y-4">
+                        {/* Vocabulary Analysis */}
+                        <div className="p-3 rounded bg-white border border-red-100">
+                           <div className="flex justify-between items-start">
+                                <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><BookCopy className="h-4 w-4"/> Vocabulary Analysis</h5>
+                                <div className="flex items-center -mt-1 -mr-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-vocab-${currentQuestionIndex}`, feedback.vocabularyAnalysis)} disabled={isPlaying[`feedback-vocab-${currentQuestionIndex}`]}>
+                                        {isPlaying[`feedback-vocab-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('vocab', feedback.vocabularyAnalysis)} disabled={isTranslating['vocab']}>
+                                        {isTranslating['vocab'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                           </div>
+                           <p className="text-sm text-red-900">{feedback.vocabularyAnalysis}</p>
+                           {translation['vocab'] && (
+                                <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
+                                    <strong>Dịch:</strong> {translation['vocab']}
+                                </div>
+                           )}
+                        </div>
+                         {/* Grammar Analysis */}
+                        <div className="p-3 rounded bg-white border border-red-100">
+                           <div className="flex justify-between items-start">
+                                <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><Pilcrow className="h-4 w-4"/> Grammar Analysis</h5>
+                                <div className="flex items-center -mt-1 -mr-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-grammar-${currentQuestionIndex}`, feedback.grammarAnalysis)} disabled={isPlaying[`feedback-grammar-${currentQuestionIndex}`]}>
+                                        {isPlaying[`feedback-grammar-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('grammar', feedback.grammarAnalysis)} disabled={isTranslating['grammar']}>
+                                        {isTranslating['grammar'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                           </div>
+                           <p className="text-sm text-red-900">{feedback.grammarAnalysis}</p>
+                            {translation['grammar'] && (
+                                <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
+                                    <strong>Dịch:</strong> {translation['grammar']}
+                                </div>
+                           )}
+                        </div>
+                    </div>
                  ) : (
                     <p className="text-sm text-red-900 mt-1">Could not load feedback.</p>
-                 )}
-                 {translation && (
-                    <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
-                        <strong>Dịch:</strong> {translation}
-                    </div>
                  )}
             </div>
         )}
