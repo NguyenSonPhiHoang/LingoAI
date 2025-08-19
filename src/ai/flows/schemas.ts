@@ -447,3 +447,17 @@ export const GenerateReviewTestOutputSchema = z.object({
   readingQuestions: z.array(ReadingComprehensionQuestionSchema).describe('An array of 5 reading comprehension questions.'),
 });
 export type GenerateReviewTestOutput = z.infer<typeof GenerateReviewTestOutputSchema>;
+
+// Schemas for generate-vocabulary-feedback-flow.ts
+export const GenerateVocabularyFeedbackInputSchema = z.object({
+  sentenceWithBlank: z.string().describe('The sentence with a blank (e.g., "___").'),
+  userAnswerTerm: z.string().describe("The user's incorrect word choice."),
+  correctAnswerTerm: z.string().describe('The correct word for the blank.'),
+  correctAnswerDefinition: z.string().describe('The definition of the correct word.'),
+});
+export type GenerateVocabularyFeedbackInput = z.infer<typeof GenerateVocabularyFeedbackInputSchema>;
+
+export const GenerateVocabularyFeedbackOutputSchema = z.object({
+  feedback: z.string().describe("A clear explanation of why the user's answer is incorrect and the correct answer is better in context."),
+});
+export type GenerateVocabularyFeedbackOutput = z.infer<typeof GenerateVocabularyFeedbackOutputSchema>;

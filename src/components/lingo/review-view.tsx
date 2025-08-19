@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import type { FC } from "react";
-import { AlertTriangle, Lightbulb, Repeat, Loader2, Check, X } from "lucide-react";
+import { AlertTriangle, Lightbulb, Repeat, Loader2, Check, X, Bot, Volume2, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,11 +15,14 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import type { UserVocabulary } from "@/services/vocabulary";
+import type { CombinedVocabulary } from "@/services/vocabulary";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   generateReviewExercises,
 } from "@/ai/flows/generate-review-flow";
+import { generateVocabularyFeedback } from "@/ai/flows/generate-vocabulary-feedback-flow";
+import { translateText } from "@/ai/flows/translate-text-flow";
+import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import type {
   MatchingQuestion,
   FillInTheBlankQuestion,
@@ -26,7 +30,7 @@ import type {
 import { useToast } from "@/hooks/use-toast";
 
 interface ReviewViewProps {
-  words: UserVocabulary[];
+  words: CombinedVocabulary[];
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -111,11 +115,20 @@ const MatchingGame: FC<{
 
 const FillInBlankGame: FC<{
   questions: FillInTheBlankQuestion[];
+  words: CombinedVocabulary[];
   onRegenerate: () => void;
-}> = ({ questions, onRegenerate }) => {
+}> = ({ questions, words, onRegenerate }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [isGettingFeedback, setIsGettingFeedback] = useState(false);
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  
+  const { toast } = useToast();
+  const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
+
 
   const currentQuestion = questions[currentQuestionIndex];
   const sentenceParts = useMemo(() => {
@@ -127,17 +140,62 @@ const FillInBlankGame: FC<{
   useEffect(() => {
     setSelectedOption(null);
     setShowResult(false);
+    setFeedback(null);
+    setTranslation(null);
   }, [currentQuestionIndex, questions]);
+
+  const getAIFeedback = async (userAnswer: string) => {
+      setIsGettingFeedback(true);
+      setFeedback(null);
+      setTranslation(null);
+      const correctWordInfo = words.find(w => w.term === currentQuestion.correctTerm);
+      try {
+          const result = await generateVocabularyFeedback({
+              sentenceWithBlank: currentQuestion.sentence,
+              userAnswerTerm: userAnswer,
+              correctAnswerTerm: currentQuestion.correctTerm,
+              correctAnswerDefinition: correctWordInfo?.definition || 'No definition available.'
+          });
+          setFeedback(result.feedback);
+      } catch (error) {
+          console.error("Error getting AI feedback:", error);
+          toast({ variant: "destructive", title: "Feedback Error", description: "Could not get feedback from AI." });
+      } finally {
+          setIsGettingFeedback(false);
+      }
+  };
 
   const handleSelectOption = (option: string) => {
     if (showResult) return;
     setSelectedOption(option);
     setShowResult(true);
+    if (option !== currentQuestion.correctTerm) {
+        getAIFeedback(option);
+    }
+  };
+
+  const handleToggleTranslation = async () => {
+    if (!feedback) return;
+    if (translation) {
+        setTranslation(null);
+        return;
+    }
+    setIsTranslating(true);
+    try {
+        const result = await translateText({ text: feedback });
+        setTranslation(result.translation);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Translation Failed" });
+    } finally {
+        setIsTranslating(false);
+    }
   };
   
   const goToNextQuestion = () => {
     setSelectedOption(null);
     setShowResult(false);
+    setFeedback(null);
+    setTranslation(null);
     setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
   };
 
@@ -153,6 +211,7 @@ const FillInBlankGame: FC<{
 
   return (
     <Card className="max-w-2xl mx-auto">
+      <audio ref={audioRef} className="hidden" />
       <CardHeader>
         <CardTitle>Fill in the Blank</CardTitle>
         <CardDescription>
@@ -195,16 +254,36 @@ const FillInBlankGame: FC<{
             })}
         </div>
 
-        {showResult && (
-          <div
-            className={`p-3 rounded-md text-center ${
-              isCorrect
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {isCorrect ? "Correct!" : "Not quite! Try the next one."}
-          </div>
+        {showResult && !isCorrect && (
+            <div className="p-3 rounded-md bg-red-50 border border-red-200">
+                <div className="flex justify-between items-start">
+                    <h4 className="font-semibold text-red-800 flex items-center gap-2"><Bot /> AI Feedback</h4>
+                    <div className="flex items-center">
+                        {feedback && (
+                            <>
+                             <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-${currentQuestionIndex}`, feedback)} disabled={isPlaying[`feedback-${currentQuestionIndex}`]}>
+                                {isPlaying[`feedback-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={handleToggleTranslation} disabled={isTranslating}>
+                                {isTranslating ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                            </Button>
+                            </>
+                        )}
+                    </div>
+                </div>
+                 {isGettingFeedback ? (
+                    <div className="flex items-center gap-2 text-red-700"><Loader2 className="h-4 w-4 animate-spin" /> Analyzing your answer...</div>
+                 ) : feedback ? (
+                    <p className="text-sm text-red-900 mt-1">{feedback}</p>
+                 ) : (
+                    <p className="text-sm text-red-900 mt-1">Could not load feedback.</p>
+                 )}
+                 {translation && (
+                    <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
+                        <strong>Dịch:</strong> {translation}
+                    </div>
+                 )}
+            </div>
         )}
 
         <div className="flex justify-center gap-4">
@@ -346,7 +425,7 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
       </TabsContent>
       <TabsContent value="fill-in-the-blank" className="pt-6">
          {fillInTheBlankQuestions.length > 0 ? (
-            <FillInBlankGame questions={fillInTheBlankQuestions} onRegenerate={fetchExercises} />
+            <FillInBlankGame questions={fillInTheBlankQuestions} words={words} onRegenerate={fetchExercises} />
          ) : (
             <div className="text-center text-muted-foreground p-8">
                 <p>Could not generate fill-in-the-blank exercises with the selected words.</p>
