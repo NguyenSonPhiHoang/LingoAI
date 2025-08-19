@@ -34,23 +34,15 @@ export const recordActivity = async (userId: string, seconds: number) => {
   const activityDocRef = doc(activityCollection, docId);
 
   try {
-    const docSnap = await getDoc(activityDocRef);
-
-    if (docSnap.exists()) {
-      // Document for today exists, just increment the duration
-      await setDoc(activityDocRef, {
-        durationSeconds: increment(seconds),
-        lastActive: serverTimestamp(),
-      }, { merge: true });
-    } else {
-      // No document for today, create a new one
-      await setDoc(activityDocRef, {
-        userId,
-        date: Timestamp.fromDate(new Date(`${today}T00:00:00.000Z`)), // Store date as UTC timestamp
-        durationSeconds: seconds,
-        lastActive: serverTimestamp(),
-      });
-    }
+    // This single command will create the document if it doesn't exist,
+    // or update it if it does. This is more efficient and requires simpler security rules.
+    await setDoc(activityDocRef, {
+      userId,
+      date: Timestamp.fromDate(new Date(`${today}T00:00:00.000Z`)), // Store date as UTC timestamp
+      durationSeconds: increment(seconds),
+      lastActive: serverTimestamp(),
+    }, { merge: true });
+    
   } catch (error) {
     console.error("Error recording user activity:", error);
   }
