@@ -46,7 +46,7 @@ export const recordActivity = async (userId: string, seconds: number) => {
       // No document for today, create a new one
       await setDoc(activityDocRef, {
         userId,
-        date: Timestamp.fromDate(new Date(today)),
+        date: Timestamp.fromDate(new Date(`${today}T00:00:00.000Z`)), // Store date as UTC timestamp
         durationSeconds: seconds,
         lastActive: serverTimestamp(),
       });
@@ -88,8 +88,9 @@ export const getAllUsersTotalActivity = async (): Promise<Record<string, number>
 
 // Gets a user's activity for a specific month and year.
 export const getUserActivityForMonth = async (userId: string, year: number, month: number): Promise<DailyActivity[]> => {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 1); // First day of the next month
+    // Create dates in UTC to avoid timezone issues.
+    const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(year, month, 1, 0, 0, 0));
 
     const q = query(
         activityCollection,
