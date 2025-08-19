@@ -45,6 +45,14 @@ const skillStyles: Record<Skill, string> = {
     Pronunciation: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
 };
 
+const levelMapping: Record<string, { label: string, value: UserLevel }> = {
+    'a1': { label: 'Level 1 (A1 – Beginner)', value: 'beginner' },
+    'a2': { label: 'Level 2 (A2 – Elementary)', value: 'beginner' },
+    'b1': { label: 'Level 3 (B1 – Intermediate)', value: 'intermediate' },
+    'b2': { label: 'Level 4 (B2 – Upper Intermediate)', value: 'intermediate' },
+    'c1': { label: 'Level 5 (C1 – Advanced)', value: 'advanced' },
+    'c2': { label: 'Level 6 (C2 – Proficiency)', value: 'advanced' },
+};
 
 const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
 
@@ -253,13 +261,13 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const [tempSkillFilters, setTempSkillFilters] = useState<Record<Skill, boolean>>(initialSkillFilters);
     const [isSkillFilterOpen, setIsSkillFilterOpen] = useState(false);
 
-    const initialLevelFilters = {
-        beginner: true,
-        intermediate: true,
-        advanced: true,
-    };
-    const [levelFilters, setLevelFilters] = useState<Record<UserLevel, boolean>>(initialLevelFilters);
-    const [tempLevelFilters, setTempLevelFilters] = useState<Record<UserLevel, boolean>>(initialLevelFilters);
+    const initialLevelFilters = Object.keys(levelMapping).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+    }, {} as Record<string, boolean>);
+
+    const [levelFilters, setLevelFilters] = useState<Record<string, boolean>>(initialLevelFilters);
+    const [tempLevelFilters, setTempLevelFilters] = useState<Record<string, boolean>>(initialLevelFilters);
     const [isLevelFilterOpen, setIsLevelFilterOpen] = useState(false);
 
     const [topicGroupFilters, setTopicGroupFilters] = useState<Record<string, boolean>>({});
@@ -319,8 +327,8 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     };
     
     // --- Level Filter Handlers ---
-    const handleTempLevelFilterChange = (level: UserLevel) => {
-        setTempLevelFilters(prev => ({...prev, [level]: !prev[level] }));
+    const handleTempLevelFilterChange = (levelKey: string) => {
+        setTempLevelFilters(prev => ({...prev, [levelKey]: !prev[levelKey] }));
     }
     const applyLevelFilters = () => {
         setLevelFilters(tempLevelFilters);
@@ -354,13 +362,15 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         const activeSkillFilters = Object.entries(skillFilters)
             .filter(([, isActive]) => isActive)
             .map(([skill]) => skill);
-        const activeLevelFilters = Object.entries(levelFilters)
+        
+        const activeLevels = Object.entries(levelFilters)
             .filter(([, isActive]) => isActive)
-            .map(([level]) => level);
+            .map(([levelKey]) => levelMapping[levelKey].value);
+        const activeUserLevels = [...new Set(activeLevels)];
         
         return lessons
             .filter(lesson => activeSkillFilters.includes(lesson.skill))
-            .filter(lesson => activeLevelFilters.includes(lesson.level))
+            .filter(lesson => activeUserLevels.includes(lesson.level))
             .filter(lesson => activeTopicGroupFilters.includes(lesson.topicGroup))
             .filter(lesson => 
                 lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -617,15 +627,15 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 <DropdownMenuContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={() => cancelLevelFilters()}>
                                     <DropdownMenuLabel>Show Levels</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    {levels.map(level => (
+                                    {Object.entries(levelMapping).map(([key, { label }]) => (
                                         <DropdownMenuCheckboxItem
-                                            key={level}
-                                            checked={tempLevelFilters[level]}
-                                            onCheckedChange={() => handleTempLevelFilterChange(level)}
+                                            key={key}
+                                            checked={tempLevelFilters[key]}
+                                            onCheckedChange={() => handleTempLevelFilterChange(key)}
                                             onSelect={(e) => e.preventDefault()}
                                             className="capitalize"
                                         >
-                                            {level}
+                                            {label}
                                         </DropdownMenuCheckboxItem>
                                     ))}
                                     <DropdownMenuSeparator />
@@ -690,3 +700,5 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
+
+    
