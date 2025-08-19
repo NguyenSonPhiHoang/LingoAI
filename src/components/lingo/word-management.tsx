@@ -6,7 +6,7 @@ import type { FC } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Search, Pencil } from 'lucide-react';
+import { Loader2, Search, Pencil, Volume2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { getAllWords, updateWord, type Word } from '@/services/vocabulary';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +37,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
+import { useAudioPlayback } from '@/hooks/use-audio-playback';
 
 const editWordSchema = z.object({
   term: z.string().min(1, "Term cannot be empty."),
@@ -136,6 +136,8 @@ const WordManagement: FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
+    const { audioRef, isPlaying, playGlobalWordAudio } = useAudioPlayback({ setWords });
+
 
     useEffect(() => {
         const fetchWords = async () => {
@@ -192,6 +194,7 @@ const WordManagement: FC = () => {
 
     return (
         <Card>
+             <audio ref={audioRef} className="hidden" />
             <CardHeader>
                 <CardTitle>Word Management</CardTitle>
                 <CardDescription>View and edit the global vocabulary list. Changes made here will affect all users.</CardDescription>
@@ -211,6 +214,7 @@ const WordManagement: FC = () => {
                         <TableRow>
                             <TableHead>Term</TableHead>
                             <TableHead>Pronunciation (IPA)</TableHead>
+                            <TableHead>Audio</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -219,6 +223,17 @@ const WordManagement: FC = () => {
                             <TableRow key={word.id}>
                                 <TableCell className="font-medium">{word.term}</TableCell>
                                 <TableCell className="font-sans">{word.pronunciation}</TableCell>
+                                <TableCell>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => playGlobalWordAudio(word)}
+                                        disabled={isPlaying[word.id]}
+                                        className={word.audioUrl ? 'text-primary' : 'text-muted-foreground'}
+                                    >
+                                        {isPlaying[word.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                </TableCell>
                                 <TableCell className="text-right">
                                     <EditWordDialog word={word} onWordUpdate={handleWordUpdate} />
                                 </TableCell>

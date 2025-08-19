@@ -2,11 +2,13 @@
 import { useState, useRef, useCallback, type Dispatch, type SetStateAction } from "react";
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
-import { updateWord, updateUserVocabulary, type CombinedVocabulary } from "@/services/vocabulary";
+import { updateWord, type Word, type CombinedVocabulary } from "@/services/vocabulary";
 import { useSettings } from "@/context/settings-context";
 
+type SetWordsAction = Dispatch<SetStateAction<any[]>>;
+
 // --- Audio Playback Helper ---
-export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateAction<CombinedVocabulary[]>> }) => {
+export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
@@ -83,6 +85,29 @@ export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateActi
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
     }, [setWords, toast, speechRate]);
+    
+    const playGlobalWordAudio = useCallback(async (word: Word) => {
+        const audioKey = word.id;
+         if (word.audioUrl) {
+            playAudioUrl(word.audioUrl);
+            return;
+        }
 
-    return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio };
+        setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
+        try {
+            const result = await generateAudio({ text: word.term });
+            const newAudioUrl = result.audioUrl;
+            playAudioUrl(newAudioUrl);
+            
+            await updateWord(word.id, { audioUrl: newAudioUrl });
+            setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
+        } catch (error: any) {
+             playWithBrowserTTS(word.term);
+        } finally {
+             setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
+        }
+    }, [setWords, speechRate]);
+
+
+    return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio, playGlobalWordAudio };
 };
