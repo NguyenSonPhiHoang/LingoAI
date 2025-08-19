@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -42,9 +43,12 @@ service cloud.firestore {
     
     // USER ACTIVITY: Users can create/update their own activity. Admins can list all activity.
     match /user_activity/{activityId} {
-        allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-        allow update: if isSignedIn() && isOwner(resource.data.userId);
-        allow read: if isSignedIn() && isOwner(resource.data.userId);
+        // Allow write (create and update) if the user is signed in and:
+        // 1. For CREATE: the userId in the new document is their own uid.
+        // 2. For UPDATE: the userId in the document is not being changed.
+        allow write: if isSignedIn() && 
+                      (request.resource.data.userId == request.auth.uid) &&
+                      (resource == null || resource.data.userId == request.resource.data.userId);
         allow list: if isAdmin();
     }
     
