@@ -31,7 +31,7 @@ Your task is to provide a two-part feedback. Populate the 'vocabularyAnalysis' a
 1.  **For 'vocabularyAnalysis'**: Explain why the user's choice is wrong in the context of the sentence and why the correct word is a better fit.
 2.  **For 'grammarAnalysis'**: First, provide the grammatical structure of the complete, correct sentence (e.g., "Subject + Verb + Object"). Then, explain the main components (subject, verb, object) and how they work together. If there are clauses or complex structures, briefly explain them.
 
-Keep the explanations clear, concise, and helpful.
+Keep the explanations clear, concise, and helpful. Do not use any markdown formatting (e.g., bolding, italics). Return plain text only.
 
 Sentence with blank: "{{sentenceWithBlank}}"
 User's Incorrect Word: "{{userAnswerTerm}}"
