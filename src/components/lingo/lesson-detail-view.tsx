@@ -30,6 +30,7 @@ import {
   PlusCircle,
   BrainCircuit,
   List,
+  Voicemail,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-fl
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
 import { generateSpeakingExercise } from "@/ai/flows/generate-speaking-exercise-flow";
+import { generatePronunciationExercise } from "@/ai/flows/generate-pronunciation-exercise-flow";
 import { generateLessonContent } from "@/ai/flows/generate-lesson-content";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
@@ -63,6 +65,7 @@ import {
   type WritingPrompt,
   type GenerateListeningExerciseOutput,
   type GenerateSpeakingExerciseOutput,
+  type GeneratePronunciationExerciseOutput,
   type GenerateWritingFeedbackOutput,
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
@@ -81,13 +84,14 @@ interface LessonDetailViewProps {
   setWords: React.Dispatch<React.SetStateAction<CombinedVocabulary[]>>;
 }
 
-type Skill = "Listening" | "Speaking" | "Reading" | "Writing";
+type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
 
 const skillIcons: Record<Skill, React.ElementType> = {
   Listening: Headphones,
   Speaking: Mic,
   Reading: BookOpen,
   Writing: FilePenLine,
+  Pronunciation: Voicemail,
 };
 
 const statusOptions: { value: LessonStatus; label: string; icon: React.ElementType }[] = [
@@ -106,7 +110,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const { translations, isTranslating, toggleTranslation } = useTranslation();
   const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio } = useAudioPlayback({ setWords });
 
-  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | null>(() => {
+  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | "pronunciation" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
       const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
       if (lesson.exercises && lesson.exercises[skillKey]) {
@@ -215,6 +219,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             case "Speaking":
                 newExercise = await generateSpeakingExercise({ ...basePayload, topic: lesson.topic });
                 break;
+            case "Pronunciation":
+                 newExercise = await generatePronunciationExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
+                 break;
         }
         
         const cleanExercise = JSON.parse(JSON.stringify(newExercise));
@@ -262,7 +269,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                      <div className="flex justify-between items-start">
                         <div className="text-base flex items-center gap-2 flex-1">
                            {item.type === 'vocabulary' && <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>}
-                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />Grammar Focus</>}
+                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />{lesson.skill === 'Pronunciation' ? 'Pronunciation Focus' : 'Grammar Focus'}</>}
                            {item.type === 'passage' && <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>}
                         </div>
                         {item.type === 'passage' && renderToolbar(data.body)}
@@ -342,9 +349,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 
     switch(practiceType) {
         case 'reading': return <ReadingPractice questions={currentExercise.questions} passage={passageText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
-        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
-        case 'listening': return <ListeningPractice exercise={currentExercise} passage={passageText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
-        case 'speaking': return <SpeakingPractice exercise={currentExercise} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
+        case 'writing': return <WritingPractice prompts={currentExercise.prompts} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />;
+        case 'listening': return <ListeningPractice exercise={currentExercise} passage={passageText} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />;
+        case 'speaking': return <SpeakingPractice exercise={currentExercise} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />;
+        case 'pronunciation': return <PronunciationPractice exercise={currentExercise} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isPlaying} />;
         default: return null;
     }
   }
@@ -1073,7 +1081,58 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput, vocabular
     );
 };
 
+const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput, vocabulary: CombinedVocabulary[], playTermAudio: (word: CombinedVocabulary) => void, isTermPlaying: Record<string, boolean> }> = ({ exercise, vocabulary, playTermAudio, isTermPlaying }) => {
+    const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
+    
+    return (
+        <div className="p-4 space-y-8">
+             <audio ref={audioRef} className="hidden" />
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Minimal Pairs</h3>
+                <p className="text-sm text-muted-foreground mb-4">Listen carefully to the difference between these words.</p>
+                <div className="space-y-4">
+                    {exercise.minimalPairs.map((pair, index) => (
+                        <Card key={index} className="bg-background">
+                            <CardContent className="p-4 grid grid-cols-2 divide-x divide-border">
+                                <div className="flex items-center justify-center flex-col gap-1">
+                                    <div className="font-bold text-xl">{pair.word1}</div>
+                                    <div className="font-sans text-muted-foreground">{pair.pronunciation1}</div>
+                                    <Button size="icon" variant="ghost" onClick={() => playAudio(`pair-${index}-1`, pair.word1)} disabled={isPlaying[`pair-${index}-1`]}>
+                                       {isPlaying[`pair-${index}-1`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                    </Button>
+                                </div>
+                                <div className="flex items-center justify-center flex-col gap-1">
+                                    <div className="font-bold text-xl">{pair.word2}</div>
+                                    <div className="font-sans text-muted-foreground">{pair.pronunciation2}</div>
+                                    <Button size="icon" variant="ghost" onClick={() => playAudio(`pair-${index}-2`, pair.word2)} disabled={isPlaying[`pair-${index}-2`]}>
+                                       {isPlaying[`pair-${index}-2`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Challenging Sentences</h3>
+                 <p className="text-sm text-muted-foreground mb-4">Try saying these sentences out loud. Click to hear the correct pronunciation.</p>
+                <div className="space-y-3">
+                    {exercise.challengingSentences.map((sentence, index) => (
+                         <Card key={index} className="bg-background">
+                             <CardContent className="p-4 flex items-center gap-4">
+                                <Button size="icon" variant="ghost" onClick={() => playAudio(`sentence-${index}`, sentence)} disabled={isPlaying[`sentence-${index}`]}>
+                                   {isPlaying[`sentence-${index}`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                </Button>
+                                <p className="italic flex-1">"<InteractiveText text={sentence} vocabulary={vocabulary} playTermAudio={playTermAudio} isTermPlaying={isTermPlaying} />"</p>
+                            </CardContent>
+                         </Card>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 export default LessonDetailView;
-
-    

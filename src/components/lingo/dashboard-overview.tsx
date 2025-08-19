@@ -8,6 +8,7 @@ import {
   Headphones,
   Mic,
   ClipboardCheck,
+  Voicemail,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,13 @@ const skillData = [
     icon: FilePenLine,
     color: "text-purple-500",
     bgColor: "bg-purple-100",
+  },
+  {
+    name: "Pronunciation",
+    progress: 55,
+    icon: Voicemail,
+    color: "text-red-500",
+    bgColor: "bg-red-100",
   },
 ];
 
@@ -129,7 +137,7 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
               Track your improvement in each core skill.
             </p>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {skillData.map((skill) => (
               <Card
                 key={skill.name}

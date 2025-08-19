@@ -11,6 +11,7 @@ import '@/ai/flows/generate-reading-exercise-flow.ts';
 import '@/ai/flows/generate-writing-exercise-flow.ts';
 import '@/ai/flows/generate-listening-exercise-flow.ts';
 import '@/ai/flows/generate-speaking-exercise-flow.ts';
+import '@/ai/flows/generate-pronunciation-exercise-flow.ts';
 import '@/ai/flows/translate-text-flow.ts';
 import '@/ai/flows/generate-feedback-flow.ts';
 import '@/ai/flows/generate-writing-feedback-flow.ts';

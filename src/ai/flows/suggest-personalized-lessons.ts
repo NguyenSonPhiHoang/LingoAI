@@ -29,7 +29,7 @@ const prompt = ai.definePrompt({
   output: {schema: SuggestPersonalizedLessonsOutputSchema},
   prompt: `You are an AI-powered English language learning assistant. Based on the user's current level, learning goals, and interests, suggest a list of personalized lesson topics.
 
-For each topic, you must categorize it into one of four skills: "Listening", "Speaking", "Reading", or "Writing".
+For each topic, you must categorize it into one of five skills: "Listening", "Speaking", "Reading", "Writing", or "Pronunciation".
 The difficulty level for all suggested lessons must be "{{userLevel}}".
 
 User Level: {{{userLevel}}}

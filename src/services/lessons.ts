@@ -43,6 +43,7 @@ export interface Lesson extends LessonSuggestion {
       writing?: Exercise;
       listening?: Exercise;
       speaking?: Exercise;
+      pronunciation?: Exercise;
   };
 }
 

@@ -182,7 +182,7 @@ export type SuggestPersonalizedLessonsInput = z.infer<
 
 const LessonSuggestionSchema = z.object({
     topic: z.string().describe('A concise and engaging topic for the lesson.'),
-    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing']).describe('The core skill this lesson focuses on.'),
+    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation']).describe('The core skill this lesson focuses on.'),
     level: UserLevelSchema.describe('The difficulty level of the lesson.'),
 });
 export type LessonSuggestion = z.infer<typeof LessonSuggestionSchema>;
@@ -328,24 +328,52 @@ export type GenerateWritingFeedbackOutput = z.infer<typeof GenerateWritingFeedba
 // Schemas for generate-lesson-content.ts
 export const GenerateLessonContentInputSchema = z.object({
     topic: z.string().describe("The lesson's main topic."),
-    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing']).describe("The skill focus of the lesson."),
+    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation']).describe("The skill focus of the lesson."),
     level: UserLevelSchema.describe("The user's proficiency level."),
 });
 export type GenerateLessonContentInput = z.infer<typeof GenerateLessonContentInputSchema>;
 
+const VocabularySuggestionSchema = z.object({
+    word: z.string().describe("The vocabulary word or phrase."),
+    definition: z.string().describe("A simple English definition."),
+});
+
+const GrammarFocusSchema = z.object({
+    title: z.string().describe("The name of the grammar or pronunciation point (e.g., 'Past Perfect Tense', 'The /?/ vs /??/ sound')."),
+    explanation: z.string().describe("A concise explanation of the rule."),
+    example: z.string().describe("An example sentence or list of words demonstrating the rule."),
+});
+
+const PassageSchema = z.object({
+    title: z.string().describe("A title for the passage, dialogue, or word list."),
+    body: z.string().describe("The full text of the reading passage, dialogue script, or example words list."),
+});
+
 export const GenerateLessonContentOutputSchema = z.object({
-    vocabularySuggestions: z.array(z.object({
-        word: z.string().describe("The vocabulary word or phrase."),
-        definition: z.string().describe("A simple English definition."),
-    })).describe("A list of suggested vocabulary relevant to the topic."),
-    grammarFocus: z.object({
-        title: z.string().describe("The name of the grammar point (e.g., 'Past Perfect Tense')."),
-        explanation: z.string().describe("A concise explanation of the grammar rule."),
-        example: z.string().describe("An example sentence demonstrating the rule."),
-    }).describe("An explanation of a relevant grammar point."),
-    passage: z.object({
-        title: z.string().describe("A title for the passage or dialogue."),
-        body: z.string().describe("The full text of the reading passage or dialogue script."),
-    }).describe("A reading passage or dialogue script related to the topic."),
+    vocabularySuggestions: z.array(VocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
+    grammarFocus: GrammarFocusSchema.describe("An explanation of a relevant grammar or pronunciation point."),
+    passage: PassageSchema.describe("A reading passage, dialogue script, or word list related to the topic."),
 });
 export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;
+
+
+// Schemas for generate-pronunciation-exercise.ts
+export const GeneratePronunciationExerciseInputSchema = z.object({
+    topic: z.string().describe('The lesson topic.'),
+    userLevel: UserLevelSchema.describe('The user\'s proficiency level.'),
+    focusPoints: z.string().optional().describe('Specific sounds or phonetic patterns the user should practice.'),
+});
+export type GeneratePronunciationExerciseInput = z.infer<typeof GeneratePronunciationExerciseInputSchema>;
+
+const MinimalPairSchema = z.object({
+    word1: z.string().describe('The first word in the pair.'),
+    pronunciation1: z.string().describe('The IPA pronunciation for the first word.'),
+    word2: z.string().describe('The second word in the pair.'),
+    pronunciation2: z.string().describe('The IPA pronunciation for the second word.'),
+});
+
+export const GeneratePronunciationExerciseOutputSchema = z.object({
+    minimalPairs: z.array(MinimalPairSchema).length(3).describe('A list of three minimal pairs.'),
+    challengingSentences: z.array(z.string()).length(2).describe('A list of two challenging sentences for pronunciation practice.'),
+});
+export type GeneratePronunciationExerciseOutput = z.infer<typeof GeneratePronunciationExerciseOutputSchema>;

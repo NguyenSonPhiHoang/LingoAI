@@ -28,10 +28,13 @@ const prompt = ai.definePrompt({
 
 You must generate three distinct sections:
 1.  **Vocabulary Suggestions**: Provide a list of 5-7 essential vocabulary words or phrases highly relevant to the lesson topic. For each item, provide a simple English definition.
-2.  **Grammar Focus**: Explain a single, crucial grammar point that is directly applicable to the lesson's skill and topic. The explanation should be clear, concise, and include a good example sentence.
-3.  **Passage/Dialogue**:
+2.  **Grammar/Pronunciation Focus**:
+    *   If the skill is 'Reading', 'Writing', 'Listening', or 'Speaking', explain a single, crucial grammar point that is directly applicable to the lesson's skill and topic. The explanation should be clear, concise, and include a good example sentence.
+    *   If the skill is 'Pronunciation', explain a key pronunciation concept (e.g., 'The difference between /iː/ and /ɪ/', 'Voiced vs. Unvoiced Consonants'). The explanation should be clear and include example words.
+3.  **Passage/Dialogue/Word List**:
     *   If the skill is 'Reading' or 'Writing', generate a short reading passage (a few paragraphs) about the topic.
     *   If the skill is 'Listening' or 'Speaking', generate a short, natural-sounding dialogue between two speakers (e.g., Alex, Ben) on the topic.
+    *   If the skill is 'Pronunciation', generate a list of 5-7 example words that use the pronunciation point being taught.
 
 Lesson Topic: "{{topic}}"
 Focus Skill: "{{skill}}"
