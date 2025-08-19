@@ -29,7 +29,7 @@ const prompt = ai.definePrompt({
 Your task is to provide a two-part feedback. Populate the 'vocabularyAnalysis' and 'grammarAnalysis' fields in the output.
 
 1.  **For 'vocabularyAnalysis'**: Explain why the user's choice is wrong in the context of the sentence and why the correct word is a better fit.
-2.  **For 'grammarAnalysis'**: Analyze the grammatical structure of the complete, correct sentence. Identify the main components (subject, verb, object) and explain how they work together. If there are clauses or complex structures, briefly explain them.
+2.  **For 'grammarAnalysis'**: First, provide the grammatical structure of the complete, correct sentence (e.g., "Subject + Verb + Object"). Then, explain the main components (subject, verb, object) and how they work together. If there are clauses or complex structures, briefly explain them.
 
 Keep the explanations clear, concise, and helpful.
 
