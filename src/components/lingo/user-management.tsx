@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, type FC } from 'react';
+import { useState, useEffect, useMemo, type FC } from 'react';
 import { Loader2, CheckCircle, XCircle, Clock, Timer, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { getAllUsers, updateUserStatus } from '@/services/users';
@@ -31,9 +31,8 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
-import { format, formatDistanceToNowStrict } from 'date-fns';
+import { format } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { cn } from '@/lib/utils';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
@@ -200,7 +199,7 @@ const UserRow: FC<{
     }
 
     return (
-        <Collapsible asChild>
+        <Collapsible asChild open={isOpen} onOpenChange={setIsOpen}>
             <>
                 <TableRow>
                     <TableCell>
@@ -247,7 +246,7 @@ const UserRow: FC<{
                 <CollapsibleContent asChild>
                     <TableRow>
                         <TableCell colSpan={7} className="p-0">
-                           <UserActivityDetails userId={u.uid} />
+                           {isOpen && <UserActivityDetails userId={u.uid} />}
                         </TableCell>
                     </TableRow>
                 </CollapsibleContent>
