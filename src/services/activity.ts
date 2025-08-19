@@ -13,10 +13,17 @@ import {
   query,
   where,
   Timestamp,
+  orderBy,
 } from "firebase/firestore";
 import { format } from 'date-fns';
 
 const activityCollection = collection(db, "user_activity");
+
+export interface DailyActivity {
+    date: string; // YYYY-MM-DD
+    durationSeconds: number;
+}
+
 
 // Records an incremental amount of active time for a user on a specific day.
 export const recordActivity = async (userId: string, seconds: number) => {
@@ -77,4 +84,28 @@ export const getAllUsersTotalActivity = async (): Promise<Record<string, number>
     });
     
     return userTotals;
+};
+
+// Gets a user's activity for a specific month and year.
+export const getUserActivityForMonth = async (userId: string, year: number, month: number): Promise<DailyActivity[]> => {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1); // First day of the next month
+
+    const q = query(
+        activityCollection,
+        where("userId", "==", userId),
+        where("date", ">=", Timestamp.fromDate(startDate)),
+        where("date", "<", Timestamp.fromDate(endDate)),
+        orderBy("date", "asc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            date: format((data.date as Timestamp).toDate(), 'yyyy-MM-dd'),
+            durationSeconds: data.durationSeconds
+        }
+    });
 };
