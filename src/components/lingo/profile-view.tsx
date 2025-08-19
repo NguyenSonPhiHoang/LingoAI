@@ -102,14 +102,17 @@ const PlacementTestHistory: FC = () => {
                         tickFormatter={(value) => `${value}%`}
                     />
                     <ChartTooltip 
+                        cursor={false}
                         content={<ChartTooltipContent 
-                            formatter={(value, name) => {
-                                if (name === 'percentage') {
-                                    return [`${value}%`, 'Score'];
-                                }
-                                return null;
-                            }}
-                            itemStyle={{ color: 'hsl(var(--primary))' }}
+                            formatter={(value, name) => (
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{backgroundColor: name === 'percentage' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'}} />
+                                    <div className="flex flex-1 justify-between">
+                                        <span className="text-muted-foreground">{name === 'percentage' ? 'Score' : 'Trend'}</span>
+                                        <span className="font-bold">{value}%</span>
+                                    </div>
+                                </div>
+                            )}
                         />} 
                     />
                     <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
