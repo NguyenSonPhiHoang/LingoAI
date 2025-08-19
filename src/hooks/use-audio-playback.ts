@@ -12,21 +12,51 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+    const [highlightedRange, setHighlightedRange] = useState<{start: number, end: number} | null>(null);
+    const [activePlaybackKey, setActivePlaybackKey] = useState<string | null>(null);
+
     const { toast } = useToast();
     const { speechRate } = useSettings();
     
-    const playAudioUrl = (url: string) => {
-        if (audioRef.current) {
-            audioRef.current.src = url;
+    const playAudioUrl = (key: string) => {
+        if (audioRef.current && audioUrls[key]) {
+            setActivePlaybackKey(key);
+            setHighlightedRange(null); // Clear previous highlighting
+            audioRef.current.src = audioUrls[key];
             audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+            audioRef.current.onended = () => {
+                setActivePlaybackKey(null);
+            };
         }
     };
 
-    const playWithBrowserTTS = (text: string) => {
+    const playWithBrowserTTS = (key: string, text: string) => {
         if ('speechSynthesis' in window) {
+            // Cancel any previous speech
+            window.speechSynthesis.cancel();
+            
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = speechRate;
+            
+            utterance.onstart = () => {
+                 setActivePlaybackKey(key);
+            };
+            
+            utterance.onboundary = (event) => {
+                setHighlightedRange({ start: event.charIndex, end: event.charIndex + event.charLength });
+            };
+            
+            utterance.onend = () => {
+                setHighlightedRange(null);
+                setActivePlaybackKey(null);
+            };
+            
+            utterance.onerror = () => {
+                setHighlightedRange(null);
+                setActivePlaybackKey(null);
+            }
+
             window.speechSynthesis.speak(utterance);
         } else {
             toast({
@@ -38,9 +68,13 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
     const playAudio = async (key: string, text: string) => {
+        // Stop any currently playing audio
+        if (audioRef.current) audioRef.current.pause();
+        window.speechSynthesis.cancel();
+        
         // Priority 1: Check for cached URL for general content
         if (audioUrls[key]) {
-            playAudioUrl(audioUrls[key]);
+            playAudioUrl(key);
             return;
         }
 
@@ -49,10 +83,21 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             // Priority 2: Generate with AI
             const result = await generateAudio({ text });
             setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
-            playAudioUrl(result.audioUrl);
+            
+            // Need to update state before playing
+            if (audioRef.current) {
+                 setActivePlaybackKey(key);
+                 setHighlightedRange(null);
+                 audioRef.current.src = result.audioUrl;
+                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+                 audioRef.current.onended = () => {
+                    setActivePlaybackKey(null);
+                 };
+            }
+
         } catch (error: any) {
              // Priority 3: Fallback to browser TTS
-             playWithBrowserTTS(text);
+             playWithBrowserTTS(key, text);
         } finally {
             setIsPlaying(prev => ({ ...prev, [key]: false }));
         }
@@ -61,9 +106,19 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     const playTermAudio = useCallback(async (word: CombinedVocabulary) => {
         const audioKey = word.userVocabularyId || word.id;
         
+        if (audioRef.current) audioRef.current.pause();
+        window.speechSynthesis.cancel();
+        
         // Priority 1: Check for saved audio URL on the word object
         if (word.audioUrl) {
-            playAudioUrl(word.audioUrl);
+             if (audioRef.current) {
+                 setActivePlaybackKey(audioKey);
+                 audioRef.current.src = word.audioUrl;
+                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+                  audioRef.current.onended = () => {
+                    setActivePlaybackKey(null);
+                 };
+            }
             return;
         }
 
@@ -72,7 +127,15 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             // Priority 2: Generate with AI
             const result = await generateAudio({ text: word.term });
             const newAudioUrl = result.audioUrl;
-            playAudioUrl(newAudioUrl);
+            
+             if (audioRef.current) {
+                 setActivePlaybackKey(audioKey);
+                 audioRef.current.src = newAudioUrl;
+                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+                  audioRef.current.onended = () => {
+                    setActivePlaybackKey(null);
+                 };
+            }
             
             // Save the new URL to the database and update local state
             await updateWord(word.id, { audioUrl: newAudioUrl });
@@ -80,16 +143,26 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
 
         } catch (error: any) {
              // Priority 3: Fallback to browser TTS
-             playWithBrowserTTS(word.term);
+             playWithBrowserTTS(audioKey, word.term);
         } finally {
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
-    }, [setWords, toast, speechRate]);
+    }, [setWords, speechRate]);
     
     const playGlobalWordAudio = useCallback(async (word: Word) => {
         const audioKey = word.id;
+        if (audioRef.current) audioRef.current.pause();
+        window.speechSynthesis.cancel();
+        
          if (word.audioUrl) {
-            playAudioUrl(word.audioUrl);
+            if (audioRef.current) {
+                 setActivePlaybackKey(audioKey);
+                 audioRef.current.src = word.audioUrl;
+                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+                  audioRef.current.onended = () => {
+                    setActivePlaybackKey(null);
+                 };
+            }
             return;
         }
 
@@ -97,17 +170,25 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         try {
             const result = await generateAudio({ text: word.term });
             const newAudioUrl = result.audioUrl;
-            playAudioUrl(newAudioUrl);
+
+             if (audioRef.current) {
+                 setActivePlaybackKey(audioKey);
+                 audioRef.current.src = newAudioUrl;
+                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
+                  audioRef.current.onended = () => {
+                    setActivePlaybackKey(null);
+                 };
+            }
             
             await updateWord(word.id, { audioUrl: newAudioUrl });
             setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
         } catch (error: any) {
-             playWithBrowserTTS(word.term);
+             playWithBrowserTTS(audioKey, word.term);
         } finally {
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
     }, [setWords, speechRate]);
 
 
-    return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio, playGlobalWordAudio };
+    return { audioRef, isPlaying, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey };
 };
