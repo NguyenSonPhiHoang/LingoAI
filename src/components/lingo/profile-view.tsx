@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
 import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, ComposedChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -71,8 +71,17 @@ const PlacementTestHistory: FC = () => {
 
     return (
         <div className="space-y-8">
-            <ChartContainer config={{}} className="h-64 w-full">
-                <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+            <ChartContainer config={{
+                 percentage: {
+                    label: "Score",
+                    color: "hsl(var(--primary))",
+                },
+                trend: {
+                    label: "Trend",
+                    color: "hsl(var(--accent))"
+                }
+            }} className="h-64 w-full">
+                 <ComposedChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid vertical={false} />
                     <XAxis
                         dataKey="date"
@@ -89,14 +98,18 @@ const PlacementTestHistory: FC = () => {
                     />
                     <ChartTooltip 
                         content={<ChartTooltipContent 
-                            labelKey="percentage" 
-                            nameKey="date" 
-                            formatter={(value) => `${value}%`} 
+                            formatter={(value, name) => {
+                                if (name === 'percentage') {
+                                    return [`${value}%`, 'Score'];
+                                }
+                                return null;
+                            }}
+                            itemStyle={{ color: 'hsl(var(--primary))' }}
                         />} 
                     />
                     <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
-                    <Line type="monotone" dataKey="percentage" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
-                </BarChart>
+                    <Line dataKey="percentage" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} name="trend" />
+                </ComposedChart>
             </ChartContainer>
 
             <Table>
@@ -292,3 +305,5 @@ const ProfileView: FC = () => {
 };
 
 export default ProfileView;
+
+    
