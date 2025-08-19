@@ -276,14 +276,14 @@ const FillInBlankGame: FC<{
                                     </Button>
                                 </div>
                            </div>
-                           <p className="text-sm text-red-900">
+                           <div className="text-sm text-red-900">
                              <InteractiveText 
                                 text={feedback.vocabularyAnalysis} 
                                 vocabulary={words}
                                 playbackHook={playbackHook}
                                 activePlaybackKey={`feedback-vocab-${currentQuestionIndex}`}
                             />
-                           </p>
+                           </div>
                            {translation['vocab'] && (
                                 <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
                                     <strong>Dịch:</strong> {translation['vocab']}
@@ -303,14 +303,14 @@ const FillInBlankGame: FC<{
                                     </Button>
                                 </div>
                            </div>
-                           <p className="text-sm text-red-900">
+                           <div className="text-sm text-red-900">
                              <InteractiveText 
                                 text={feedback.grammarAnalysis} 
                                 vocabulary={words}
                                 playbackHook={playbackHook}
                                 activePlaybackKey={`feedback-grammar-${currentQuestionIndex}`}
                             />
-                           </p>
+                           </div>
                             {translation['grammar'] && (
                                 <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
                                     <strong>Dịch:</strong> {translation['grammar']}
