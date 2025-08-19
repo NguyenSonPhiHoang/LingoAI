@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil } from 'lucide-react';
+import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, ComposedChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -113,7 +113,7 @@ const PlacementTestHistory: FC = () => {
                         />} 
                     />
                     <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
-                    <Line dataKey="percentage" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} name="trend" />
+                    <Line dataKey="percentage" name="trend" type="monotone" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--accent))" }} />
                 </ComposedChart>
             </ChartContainer>
 
@@ -121,6 +121,7 @@ const PlacementTestHistory: FC = () => {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>
+                        <TableHead>Test Type</TableHead>
                         <TableHead>Score</TableHead>
                         <TableHead>Percentage</TableHead>
                         <TableHead>Recommended Level</TableHead>
@@ -130,9 +131,15 @@ const PlacementTestHistory: FC = () => {
                     {results.map(result => (
                         <TableRow key={result.id}>
                             <TableCell>{format(new Date(result.takenAt), 'PPP')}</TableCell>
+                            <TableCell>
+                                <Badge variant={result.testType === 'Placement Test' ? 'default' : 'secondary'}>
+                                    {result.testType === 'Placement Test' ? <Star className="mr-1 h-3 w-3" /> : <FileText className="mr-1 h-3 w-3" />}
+                                    {result.testType}
+                                </Badge>
+                            </TableCell>
                             <TableCell>{result.correctAnswers}/{result.totalQuestions}</TableCell>
                             <TableCell>{result.percentage.toFixed(1)}%</TableCell>
-                            <TableCell className="capitalize">{result.recommendedLevel}</TableCell>
+                            <TableCell className="capitalize">{result.recommendedLevel || 'N/A'}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -298,8 +305,8 @@ const ProfileView: FC = () => {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Placement Test History</CardTitle>
-                    <CardDescription>Review your past placement test results and track your progress.</CardDescription>
+                    <CardTitle>Test History</CardTitle>
+                    <CardDescription>Review your past placement and review test results to track your progress.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <PlacementTestHistory />

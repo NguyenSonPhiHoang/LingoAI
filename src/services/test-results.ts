@@ -22,14 +22,16 @@ export interface TestResult {
   correctAnswers: number;
   totalQuestions: number;
   percentage: number;
-  recommendedLevel: UserLevel;
+  recommendedLevel?: UserLevel;
+  testType: 'Placement Test' | 'Review Test';
 }
 
 export interface NewTestResultPayload {
   correctAnswers: number;
   totalQuestions: number;
   percentage: number;
-  recommendedLevel: UserLevel;
+  recommendedLevel?: UserLevel;
+  testType: 'Placement Test' | 'Review Test';
 }
 
 export const addTestResult = async (

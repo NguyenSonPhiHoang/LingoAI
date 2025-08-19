@@ -123,6 +123,7 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                 totalQuestions: questions.length,
                 percentage: (totalCorrect / questions.length) * 100,
                 recommendedLevel: recLevel,
+                testType: 'Placement Test'
             });
             toast({ title: 'Success', description: 'Your test result has been saved.' });
         } catch (error) {

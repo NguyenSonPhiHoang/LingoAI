@@ -21,6 +21,9 @@ import {
 } from "@/ai/flows/schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+import { addTestResult } from "@/services/test-results";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface ReviewTestViewProps {
@@ -29,6 +32,8 @@ interface ReviewTestViewProps {
 }
 
 const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
 
@@ -40,10 +45,6 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
   const handleSelectAnswer = (qKey: string, option: string) => {
     if (showResults) return;
     setAnswers(prev => ({ ...prev, [qKey]: option }));
-  };
-
-  const handleFinishTest = () => {
-    setShowResults(true);
   };
   
   const totalCorrect = allQuestions.reduce((acc, q, index) => {
@@ -57,6 +58,26 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
 
   const scorePercentage = allQuestions.length > 0 ? (totalCorrect / allQuestions.length) * 100 : 0;
 
+  const handleFinishTest = async () => {
+    setShowResults(true);
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to save results.'});
+        return;
+    };
+    try {
+        await addTestResult(user.uid, {
+            correctAnswers: totalCorrect,
+            totalQuestions: allQuestions.length,
+            percentage: scorePercentage,
+            testType: 'Review Test'
+        });
+        toast({ title: 'Success', description: 'Your review test result has been saved.'});
+    } catch (error) {
+        console.error("Failed to save review test result:", error);
+        toast({ variant: 'destructive', title: 'Save Error', description: 'Could not save your test result.'});
+    }
+  };
+  
 
   return (
     <div className="space-y-6">
