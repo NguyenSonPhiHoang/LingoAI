@@ -16,6 +16,7 @@ import WaitingForApproval from "@/components/lingo/waiting-for-approval";
 import LessonDetailView from "@/components/lingo/lesson-detail-view";
 import MyLessonsView from "@/components/lingo/my-lessons-view";
 import ProfileView from "@/components/lingo/profile-view";
+import SettingsView from "@/components/lingo/settings-view";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -35,6 +36,7 @@ export type View =
   | "word-management"
   | "lesson-detail"
   | "profile"
+  | "settings"
   | "storybook";
 
 export type ViewState = {
@@ -135,6 +137,8 @@ const Home: FC = () => {
             return <WordManagement />;
         case "profile":
             return <ProfileView />;
+        case "settings":
+            return <SettingsView />;
         case "storybook":
             // This is now handled by its own page, but we keep a fallback
             return <StorybookPage />;

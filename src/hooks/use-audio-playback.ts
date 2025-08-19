@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, type Dispatch, type SetStateAction } fro
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { updateWord, updateUserVocabulary, type CombinedVocabulary } from "@/services/vocabulary";
+import { useSettings } from "@/context/settings-context";
 
 // --- Audio Playback Helper ---
 export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateAction<CombinedVocabulary[]>> }) => {
@@ -10,6 +11,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateActi
     const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
     const { toast } = useToast();
+    const { speechRate } = useSettings();
     
     const playAudioUrl = (url: string) => {
         if (audioRef.current) {
@@ -22,6 +24,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateActi
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
+            utterance.rate = speechRate;
             window.speechSynthesis.speak(utterance);
         } else {
             toast({
@@ -79,7 +82,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: Dispatch<SetStateActi
         } finally {
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
-    }, [setWords, toast]);
+    }, [setWords, toast, speechRate]);
 
     return { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio };
 };

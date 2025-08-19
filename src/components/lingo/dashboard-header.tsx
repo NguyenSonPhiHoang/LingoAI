@@ -34,6 +34,8 @@ const viewTitles: Record<View, string> = {
   "word-management": "Word Management",
   "lesson-detail": "Lesson Details",
   "profile": "My Profile",
+  "settings": "Settings",
+  "storybook": "AI Storybook",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }) => {
@@ -96,7 +98,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }
                     </DropdownMenuItem>
                 </>
                )}
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setActiveView('settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
