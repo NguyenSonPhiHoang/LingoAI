@@ -25,8 +25,9 @@ export const getAllUsers = async (): Promise<User[]> => {
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
     const data = doc.data();
-    // Handle both serverTimestamp and already converted Timestamps
-    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date();
+    // Safely handle the createdAt field. If it's missing or not a Timestamp,
+    // default to the current date to prevent crashes.
+    const createdAt = (data.createdAt instanceof Timestamp) ? data.createdAt.toDate() : new Date();
     return {
       uid: data.uid,
       displayName: data.displayName,
