@@ -6,7 +6,7 @@
  * so it can be imported by both server and client components.
  */
 
-import {z} from 'genkit';
+import {z} from 'zod';
 
 // Schemas for extract-vocabulary.ts
 export const ExtractVocabularyInputSchema = z.object({
@@ -390,8 +390,6 @@ export const GenerateStorybookInputSchema = z.object({
         term: z.string(),
         definition: z.string(),
     })).optional(),
-}).refine(data => data.topic || data.vocabulary, {
-    message: 'Either topic or a vocabulary list must be provided.',
 });
 export type GenerateStorybookInput = z.infer<typeof GenerateStorybookInputSchema>;
 

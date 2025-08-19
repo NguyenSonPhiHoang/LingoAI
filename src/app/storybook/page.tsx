@@ -33,7 +33,7 @@ import DashboardLayout from '@/components/lingo/dashboard-layout';
 
 const formSchema = GenerateStorybookInputSchema.extend({
     generationMode: z.enum(['topic', 'vocabulary']),
-}).omit({ vocabulary: true }); // We handle vocabulary selection separately
+});
 
 type StorybookFormValues = z.infer<typeof formSchema>;
 
