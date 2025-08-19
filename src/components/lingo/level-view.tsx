@@ -2,18 +2,14 @@
 "use client";
 
 import type { FC } from "react";
-import { BookOpen, FilePenLine, Headphones, Mic, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookOpen, FilePenLine, Headphones, Mic } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "../ui/badge";
 
 const levelsData = [
   {
@@ -177,48 +173,39 @@ const levelsData = [
 
 const LevelView: FC = () => {
   return (
-    <Tabs defaultValue="Bậc 1" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
-        {levelsData.map((level) => (
-          <TabsTrigger key={level.level} value={level.level}>
-            {level.level}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {levelsData.map((level) => (
-        <TabsContent key={level.level} value={level.level}>
-          <Card className="mt-6">
+        <Card key={level.level} className="flex flex-col">
             <CardHeader>
                 <div className="flex items-center gap-4">
                     <div className="bg-primary/10 text-primary p-3 rounded-lg text-2xl font-bold w-16 h-16 flex items-center justify-center">
                         {level.cefr.split(' ')[0]}
                     </div>
                     <div>
-                        <CardTitle className="text-3xl">{level.level}</CardTitle>
-                        <CardDescription className="text-lg">{level.cefr.substring(level.cefr.indexOf(' ')+1)}</CardDescription>
+                        <CardTitle className="text-2xl">{level.level}</CardTitle>
+                        <CardDescription className="text-md">{level.cefr.substring(level.cefr.indexOf(' ')+1)}</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-6 pt-2">
+            <CardContent className="space-y-4 pt-2 flex-grow">
                 {level.skills.map(skill => {
                     const Icon = skill.icon;
                     return (
-                        <div key={skill.name} className="flex items-start gap-4">
-                            <div className="bg-muted p-3 rounded-full">
-                                <Icon className="h-6 w-6 text-muted-foreground" />
+                        <div key={skill.name} className="flex items-start gap-3">
+                            <div className="bg-muted p-2 rounded-full mt-1">
+                                <Icon className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div>
-                                <h4 className="font-semibold text-lg">{skill.name}</h4>
-                                <p className="text-muted-foreground">{skill.description}</p>
+                                <h4 className="font-semibold">{skill.name}</h4>
+                                <p className="text-muted-foreground text-sm">{skill.description}</p>
                             </div>
                         </div>
                     )
                 })}
             </CardContent>
-          </Card>
-        </TabsContent>
+        </Card>
       ))}
-    </Tabs>
+    </div>
   );
 };
 
