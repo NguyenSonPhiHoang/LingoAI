@@ -255,7 +255,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         advanced: true,
     });
 
-    const [topicFilters, setTopicFilters] = useState<Record<string, boolean>>({});
+    const [topicGroupFilters, setTopicGroupFilters] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const fetchLessons = async () => {
@@ -265,12 +265,12 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                 const userLessons = await getLessons(user.uid);
                 setLessons(userLessons);
                 // Initialize topic filters based on fetched lessons
-                const uniqueTopics = [...new Set(userLessons.map(l => l.topic))];
-                const initialTopicFilters = uniqueTopics.reduce((acc, topic) => {
-                    acc[topic] = true;
+                const uniqueTopicGroups = [...new Set(userLessons.map(l => l.topicGroup))];
+                const initialTopicFilters = uniqueTopicGroups.reduce((acc, topicGroup) => {
+                    acc[topicGroup] = true;
                     return acc;
                 }, {} as Record<string, boolean>);
-                setTopicFilters(initialTopicFilters);
+                setTopicGroupFilters(initialTopicFilters);
 
             } catch (error) {
                 console.error("Failed to fetch lessons:", error);
@@ -294,43 +294,46 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         setLevelFilters(prev => ({ ...prev, [level]: !prev[level] }));
     }
     
-    const handleTopicFilterChange = (topic: string) => {
-        setTopicFilters(prev => ({...prev, [topic]: !prev[topic] }));
+    const handleTopicGroupFilterChange = (topicGroup: string) => {
+        setTopicGroupFilters(prev => ({...prev, [topicGroup]: !prev[topicGroup] }));
     }
 
     const handleSelectAllTopics = (select: boolean) => {
-        setTopicFilters(prev => {
+        setTopicGroupFilters(prev => {
             const newFilters: Record<string, boolean> = {};
-            for (const topic in prev) {
-                newFilters[topic] = select;
+            for (const topicGroup in prev) {
+                newFilters[topicGroup] = select;
             }
             return newFilters;
         });
     };
 
-    const uniqueTopics = useMemo(() => [...new Set(lessons.map(l => l.topic))].sort(), [lessons]);
+    const uniqueTopicGroups = useMemo(() => [...new Set(lessons.map(l => l.topicGroup))].sort(), [lessons]);
 
     const filteredLessons = useMemo(() => {
-        const activeTopicFilters = Object.entries(topicFilters)
+        const activeTopicGroupFilters = Object.entries(topicGroupFilters)
             .filter(([, isActive]) => isActive)
-            .map(([topic]) => topic);
+            .map(([topicGroup]) => topicGroup);
         
-        const hasActiveTopicFilter = activeTopicFilters.length > 0 && activeTopicFilters.length < uniqueTopics.length;
+        const hasActiveTopicGroupFilter = activeTopicGroupFilters.length > 0 && activeTopicGroupFilters.length < uniqueTopicGroups.length;
 
         return lessons
             .filter(lesson => skillFilters[lesson.skill as Skill])
             .filter(lesson => levelFilters[lesson.level])
-            .filter(lesson => hasActiveTopicFilter ? activeTopicFilters.includes(lesson.topic) : true)
-            .filter(lesson => lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [lessons, searchTerm, skillFilters, levelFilters, topicFilters, uniqueTopics.length]);
+            .filter(lesson => hasActiveTopicGroupFilter ? activeTopicGroupFilters.includes(lesson.topicGroup) : true)
+            .filter(lesson => 
+                lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                lesson.topicGroup.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+    }, [lessons, searchTerm, skillFilters, levelFilters, topicGroupFilters, uniqueTopicGroups.length]);
     
     const groupedLessons = useMemo(() => {
         return filteredLessons.reduce((acc, lesson) => {
-            const topic = lesson.topic;
-            if (!acc[topic]) {
-                acc[topic] = [];
+            const group = lesson.topicGroup;
+            if (!acc[group]) {
+                acc[group] = [];
             }
-            acc[topic].push(lesson);
+            acc[group].push(lesson);
             return acc;
         }, {} as Record<string, Lesson[]>);
     }, [filteredLessons]);
@@ -368,12 +371,12 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     
     const renderGridView = () => (
         <Accordion type="multiple" defaultValue={Object.keys(groupedLessons)} className="space-y-6">
-            {Object.entries(groupedLessons).map(([topic, groupLessons]) => (
-                <AccordionItem value={topic} key={topic}>
+            {Object.entries(groupedLessons).map(([topicGroup, groupLessons]) => (
+                <AccordionItem value={topicGroup} key={topicGroup}>
                     <AccordionTrigger className="text-xl font-bold hover:no-underline">
                         <div className="flex items-center gap-2">
                            <Folder className="h-6 w-6 text-primary/80" />
-                           {topic} ({groupLessons.length})
+                           {topicGroup} ({groupLessons.length})
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="pt-4">
@@ -395,8 +398,9 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Status</TableHead>
-                        <TableHead>Topic</TableHead>
+                        <TableHead>Lesson Topic</TableHead>
                         <TableHead>Skill</TableHead>
+                        <TableHead>Group</TableHead>
                         <TableHead>Level</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -423,6 +427,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 <TableCell>
                                     <Badge variant="secondary" className={cn(skillStyles[lesson.skill as Skill])}>{lesson.skill}</Badge>
                                 </TableCell>
+                                 <TableCell className="text-muted-foreground">{lesson.topicGroup}</TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
                                 </TableCell>
@@ -498,7 +503,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input 
-                                placeholder="Search by topic..."
+                                placeholder="Search by lesson or group..."
                                 className="pl-10"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -509,11 +514,11 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
                                         <Folder className="mr-2" />
-                                        Filter by Topic
+                                        Filter by Group
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuLabel>Show Topics</DropdownMenuLabel>
+                                    <DropdownMenuLabel>Show Groups</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                      <DropdownMenuItem onSelect={() => handleSelectAllTopics(true)}>
                                         <Check className="mr-2 h-4 w-4" />
@@ -524,13 +529,13 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                         Deselect All
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    {uniqueTopics.map(topic => (
+                                    {uniqueTopicGroups.map(topicGroup => (
                                         <DropdownMenuCheckboxItem
-                                            key={topic}
-                                            checked={topicFilters[topic] ?? true}
-                                            onCheckedChange={() => handleTopicFilterChange(topic)}
+                                            key={topicGroup}
+                                            checked={topicGroupFilters[topicGroup] ?? true}
+                                            onCheckedChange={() => handleTopicGroupFilterChange(topicGroup)}
                                         >
-                                            {topic}
+                                            {topicGroup}
                                         </DropdownMenuCheckboxItem>
                                     ))}
                                 </DropdownMenuContent>

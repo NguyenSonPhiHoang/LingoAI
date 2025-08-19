@@ -85,7 +85,7 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
       );
       
       const newLessonPromises = result.lessonSuggestions.map(suggestion => 
-        addLesson(user.uid, suggestion)
+        addLesson(user.uid, suggestion, values.learningGoals)
       );
       await Promise.all(newLessonPromises);
 
@@ -164,7 +164,7 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
                         />
                       </FormControl>
                       <FormDescription>
-                        What do you want to achieve?
+                        This will be used as the title for your lesson group.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

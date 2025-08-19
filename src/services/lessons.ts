@@ -37,6 +37,7 @@ export interface Lesson extends LessonSuggestion {
   createdAt: any;
   level: UserLevel;
   status: LessonStatus;
+  topicGroup: string; // The user-defined goal for grouping
   content?: LessonContent[];
   exercises?: {
       reading?: Exercise;
@@ -82,6 +83,7 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
       userId: data.userId,
       level: data.level,
       status: data.status || 'not-started',
+      topicGroup: data.topicGroup || 'General',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
       content: data.content || [],
       exercises: data.exercises || {},
@@ -89,10 +91,11 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
   })
 };
 
-export const addLesson = async (userId: string, lessonSuggestion: LessonSuggestion): Promise<Lesson> => {
+export const addLesson = async (userId: string, lessonSuggestion: LessonSuggestion, topicGroup: string): Promise<Lesson> => {
     const lessonData = {
         ...lessonSuggestion,
         userId,
+        topicGroup,
         createdAt: Timestamp.now(),
         status: 'not-started' as LessonStatus,
         content: [],
