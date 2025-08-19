@@ -20,6 +20,15 @@ import type { ViewState } from "@/app/page";
 import { cn } from "@/lib/utils";
 
 
+const levelMapping: Record<string, { label: string, value: UserLevel }> = {
+    'a1': { label: 'Level 1 (A1 – Beginner)', value: 'beginner' },
+    'a2': { label: 'Level 2 (A2 – Elementary)', value: 'beginner' },
+    'b1': { label: 'Level 3 (B1 – Intermediate)', value: 'intermediate' },
+    'b2': { label: 'Level 4 (B2 – Upper Intermediate)', value: 'intermediate' },
+    'c1': { label: 'Level 5 (C1 – Advanced)', value: 'advanced' },
+    'c2': { label: 'Level 6 (C2 – Proficiency)', value: 'advanced' },
+};
+
 const getLevelScore = (level: UserLevel) => {
     switch (level) {
         case 'beginner': return 1;
@@ -113,14 +122,12 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
     };
 
     const renderResults = () => {
-        let score = 0;
         let beginnerCorrect = 0;
         let intermediateCorrect = 0;
         let advancedCorrect = 0;
 
         questions.forEach((q, index) => {
             if (answers[index] === q.correctOption) {
-                score += getLevelScore(q.level);
                 if (q.level === 'beginner') beginnerCorrect++;
                 if (q.level === 'intermediate') intermediateCorrect++;
                 if (q.level === 'advanced') advancedCorrect++;
@@ -128,14 +135,35 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
         });
 
         let recommendedLevel: UserLevel = 'beginner';
-        if (advancedCorrect >= 3) {
+        let recommendedCefr: keyof typeof levelMapping = 'a1';
+        
+        // C-level determination
+        if (advancedCorrect >= 8) {
+            recommendedCefr = 'c2';
             recommendedLevel = 'advanced';
-        } else if (intermediateCorrect >= 3 || advancedCorrect >= 1) {
+        } else if (advancedCorrect >= 5) {
+            recommendedCefr = 'c1';
+            recommendedLevel = 'advanced';
+        } 
+        // B-level determination
+        else if (intermediateCorrect >= 8) {
+            recommendedCefr = 'b2';
             recommendedLevel = 'intermediate';
+        } else if (intermediateCorrect >= 5) {
+            recommendedCefr = 'b1';
+            recommendedLevel = 'intermediate';
+        }
+        // A-level determination
+        else if (beginnerCorrect >= 7) {
+            recommendedCefr = 'a2';
+            recommendedLevel = 'beginner';
         } else {
+            recommendedCefr = 'a1';
             recommendedLevel = 'beginner';
         }
         
+        const resultLabel = levelMapping[recommendedCefr].label;
+
         return (
             <Card className="w-full max-w-2xl text-center">
                  <CardHeader>
@@ -145,20 +173,20 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                 <CardContent className="space-y-4">
                      <div className="p-6 bg-primary/10 rounded-lg">
                         <div className="text-muted-foreground">Your Recommended Level</div>
-                        <div className="text-4xl font-bold text-primary capitalize">{recommendedLevel}</div>
+                        <div className="text-4xl font-bold text-primary capitalize">{resultLabel}</div>
                      </div>
                      <div className="grid grid-cols-3 gap-4 text-sm">
                         <div className="p-3 bg-muted/50 rounded-md">
                             <div className="font-semibold">Beginner</div>
-                            <div>{beginnerCorrect} / 5</div>
+                            <div>{beginnerCorrect} / 10</div>
                         </div>
                         <div className="p-3 bg-muted/50 rounded-md">
                             <div className="font-semibold">Intermediate</div>
-                            <div>{intermediateCorrect} / 5</div>
+                            <div>{intermediateCorrect} / 10</div>
                         </div>
                         <div className="p-3 bg-muted/50 rounded-md">
                             <div className="font-semibold">Advanced</div>
-                            <div>{advancedCorrect} / 5</div>
+                            <div>{advancedCorrect} / 10</div>
                         </div>
                      </div>
                 </CardContent>

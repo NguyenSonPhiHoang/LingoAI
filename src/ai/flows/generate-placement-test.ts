@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -22,11 +23,11 @@ const prompt = ai.definePrompt({
   output: {schema: GeneratePlacementTestOutputSchema},
   prompt: `You are an expert English language assessment creator. Your task is to create a comprehensive placement test to determine a user's English proficiency level (Beginner, Intermediate, Advanced).
 
-You must generate exactly 15 multiple-choice questions in total.
+You must generate exactly 30 multiple-choice questions in total.
 The questions should be a mix of grammar and vocabulary.
-- 5 questions must be at the 'beginner' level (A1/A2).
-- 5 questions must be at the 'intermediate' level (B1/B2).
-- 5 questions must be at the 'advanced' level (C1/C2).
+- 10 questions must be at the 'beginner' level (A1/A2).
+- 10 questions must be at the 'intermediate' level (B1/B2).
+- 10 questions must be at the 'advanced' level (C1/C2).
 
 For each question, you must provide:
 1.  The question text.
