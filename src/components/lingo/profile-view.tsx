@@ -8,6 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
 import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +20,11 @@ import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/services/users';
 import { getTestResults, type TestResult } from '@/services/test-results';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -43,40 +50,75 @@ const PlacementTestHistory: FC = () => {
         };
         fetchResults();
     }, [user]);
+    
+    const chartData = results.map(result => ({
+        date: format(new Date(result.takenAt), 'MMM d'),
+        percentage: Number(result.percentage.toFixed(1)),
+    })).reverse();
+
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-24">
+            <div className="flex justify-center items-center h-48">
                 <Loader2 className="animate-spin" />
             </div>
         );
     }
     
     if (results.length === 0) {
-        return <p className="text-sm text-muted-foreground">No test history found.</p>;
+        return <p className="text-sm text-muted-foreground text-center py-8">No test history found.</p>;
     }
 
     return (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Percentage</TableHead>
-                    <TableHead>Recommended Level</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {results.map(result => (
-                    <TableRow key={result.id}>
-                        <TableCell>{format(new Date(result.takenAt), 'PPP')}</TableCell>
-                        <TableCell>{result.correctAnswers}/{result.totalQuestions}</TableCell>
-                        <TableCell>{result.percentage.toFixed(1)}%</TableCell>
-                        <TableCell className="capitalize">{result.recommendedLevel}</TableCell>
+        <div className="space-y-8">
+            <ChartContainer config={{}} className="h-64 w-full">
+                <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                    />
+                    <YAxis 
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        domain={[0, 100]}
+                        tickFormatter={(value) => `${value}%`}
+                    />
+                    <ChartTooltip 
+                        content={<ChartTooltipContent 
+                            labelKey="percentage" 
+                            nameKey="date" 
+                            formatter={(value) => `${value}%`} 
+                        />} 
+                    />
+                    <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={4} />
+                </BarChart>
+            </ChartContainer>
+
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Percentage</TableHead>
+                        <TableHead>Recommended Level</TableHead>
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                    {results.map(result => (
+                        <TableRow key={result.id}>
+                            <TableCell>{format(new Date(result.takenAt), 'PPP')}</TableCell>
+                            <TableCell>{result.correctAnswers}/{result.totalQuestions}</TableCell>
+                            <TableCell>{result.percentage.toFixed(1)}%</TableCell>
+                            <TableCell className="capitalize">{result.recommendedLevel}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
     );
 };
 
