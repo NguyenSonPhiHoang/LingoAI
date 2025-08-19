@@ -26,12 +26,10 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateVocabularyFeedbackOutputSchema},
   prompt: `You are an English teacher providing feedback on a fill-in-the-blank vocabulary question. The user has selected an incorrect word.
 
-Your task is to provide a two-part feedback. Populate the 'vocabularyAnalysis' and 'grammarAnalysis' fields in the output.
+Your task is to provide a two-part feedback. Populate the 'vocabularyAnalysis' and 'grammarAnalysis' fields in the output. Use markdown for emphasis (e.g., **bold**, *italics*).
 
 1.  **For 'vocabularyAnalysis'**: Explain why the user's choice is wrong in the context of the sentence and why the correct word is a better fit.
 2.  **For 'grammarAnalysis'**: First, provide the grammatical structure of the complete, correct sentence (e.g., "Subject + Verb + Object"). Then, explain the main components (subject, verb, object) and how they work together. If there are clauses or complex structures, briefly explain them.
-
-Keep the explanations clear, concise, and helpful. Do not use any markdown formatting (e.g., bolding, italics). Return plain text only.
 
 Sentence with blank: "{{sentenceWithBlank}}"
 User's Incorrect Word: "{{userAnswerTerm}}"
