@@ -108,7 +108,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const { toast } = useToast();
   const { user } = useAuth();
   const { translations, isTranslating, toggleTranslation } = useTranslation();
-  const { audioRef, isPlaying, playAudio, playAudioUrl, audioUrls, playTermAudio } = useAudioPlayback({ setWords });
+  const { audioRef, isPlaying, playAudio, playTermAudio } = useAudioPlayback({ setWords });
 
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | "pronunciation" | null>(() => {
       // If there are existing exercises for this skill, open that tab by default
@@ -437,7 +437,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             <AccordionItem value="learning-content" className="border-b-0">
                {hasContentForPractice && (
                  <AccordionTrigger className="justify-center py-2 text-sm">
-                    <span className="sr-only">Show/Hide Learning Content</span>
+                   <ChevronDown className="h-4 w-4" />
                  </AccordionTrigger>
                )}
               <AccordionContent className="pt-4">
@@ -649,6 +649,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
     };
 
     const playAudio = async (key: string, text: string) => {
+        // Priority 1: Check for cached URL for general content
         if (audioUrls[key]) {
             playAudioUrl(audioUrls[key]);
             return;
@@ -656,10 +657,12 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
 
         setIsPlaying(prev => ({ ...prev, [key]: true }));
         try {
+            // Priority 2: Generate with AI
             const result = await generateAudio({ text });
             setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
             playAudioUrl(result.audioUrl);
         } catch (error: any) {
+             // Priority 3: Fallback to browser TTS
              toast({
                 variant: "destructive",
                 title: "AI Audio Failed",
@@ -672,22 +675,27 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
     };
     
     const playTermAudio = useCallback(async (word: CombinedVocabulary) => {
+        const audioKey = word.userVocabularyId || word.id;
+        
+        // Priority 1: Check for saved audio URL on the word object
         if (word.audioUrl) {
             playAudioUrl(word.audioUrl);
             return;
         }
 
-        setIsPlaying(prev => ({ ...prev, [word.id]: true }));
+        setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
         try {
+            // Priority 2: Generate with AI
             const result = await generateAudio({ text: word.term });
             const newAudioUrl = result.audioUrl;
             playAudioUrl(newAudioUrl);
             
+            // Save the new URL to the database and update local state
             await updateWord(word.id, { audioUrl: newAudioUrl });
-
             setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
 
         } catch (error: any) {
+             // Priority 3: Fallback to browser TTS
              toast({
                 variant: "destructive",
                 title: "AI Audio Failed",
@@ -695,7 +703,7 @@ const useAudioPlayback = ({ setWords }: { setWords: React.Dispatch<React.SetStat
             });
             playWithBrowserTTS(word.term);
         } finally {
-             setIsPlaying(prev => ({ ...prev, [word.id]: false }));
+             setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
         }
     }, [setWords, toast]);
 
@@ -1136,3 +1144,5 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput,
 
 
 export default LessonDetailView;
+
+    
