@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { generateAudio } from "@/ai/flows/generate-audio";
 import { translateText } from "@/ai/flows/translate-text-flow";
+import { useAudioPlayback } from "@/hooks/use-audio-playback";
 
 
 const levelsData = [
@@ -178,29 +178,11 @@ const levelsData = [
 
 
 const LevelView: FC = () => {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState<Record<string, 'audio' | 'translation' | null>>({});
+  const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
 
-  const playAudio = async (key: string, text: string) => {
-    setIsProcessing(prev => ({ ...prev, [key]: 'audio' }));
-    try {
-      const result = await generateAudio({ text });
-      if (audioRef.current) {
-        audioRef.current.src = result.audioUrl;
-        audioRef.current.play().catch(e => console.error("Error playing audio:", e));
-      }
-    } catch (e: any) {
-       toast({
-          variant: "destructive",
-          title: "AI Audio Failed",
-          description: "An error occurred during audio generation.",
-      });
-    } finally {
-      setIsProcessing(prev => ({ ...prev, [key]: null }));
-    }
-  };
 
   const toggleTranslation = async (key: string, text: string) => {
     if (translations[key]) {
@@ -211,7 +193,7 @@ const LevelView: FC = () => {
       });
       return;
     }
-    setIsProcessing(prev => ({ ...prev, [key]: 'translation' }));
+    setIsTranslating(prev => ({ ...prev, [key]: true }));
     try {
       const result = await translateText({ text });
       setTranslations(prev => ({ ...prev, [key]: result.translation }));
@@ -222,7 +204,7 @@ const LevelView: FC = () => {
         description: "Could not translate the text.",
       });
     } finally {
-      setIsProcessing(prev => ({ ...prev, [key]: null }));
+      setIsTranslating(prev => ({ ...prev, [key]: false }));
     }
   }
 
@@ -247,7 +229,9 @@ const LevelView: FC = () => {
                 {level.skills.map((skill, skillIndex) => {
                     const Icon = skill.icon;
                     const uniqueKey = `${levelIndex}-${skillIndex}`;
-                    const processingState = isProcessing[uniqueKey];
+                    const isAudioPlaying = isPlaying[uniqueKey];
+                    const isTextTranslating = isTranslating[uniqueKey];
+
                     return (
                         <div key={skill.name} className="flex items-start gap-3">
                             <div className="bg-muted p-2 rounded-full mt-1">
@@ -257,11 +241,11 @@ const LevelView: FC = () => {
                                 <h4 className="font-semibold">{skill.name}</h4>
                                 <p className="text-muted-foreground text-sm">{skill.description}</p>
                                 <div className="flex items-center gap-1 mt-1">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(uniqueKey, skill.description)} disabled={!!processingState}>
-                                    {processingState === 'audio' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(uniqueKey, skill.description)} disabled={isAudioPlaying || isTextTranslating}>
+                                    {isAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(uniqueKey, skill.description)} disabled={!!processingState}>
-                                     {processingState === 'translation' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(uniqueKey, skill.description)} disabled={isAudioPlaying || isTextTranslating}>
+                                     {isTextTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
                                   </Button>
                                 </div>
                                 {translations[uniqueKey] && (
