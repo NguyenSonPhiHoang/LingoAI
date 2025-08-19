@@ -310,4 +310,3 @@ const ProfileView: FC = () => {
 };
 
 export default ProfileView;
-
