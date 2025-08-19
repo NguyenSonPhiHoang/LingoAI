@@ -96,7 +96,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           <SidebarMenu>
             {user?.status === 'approved' && availableMenuItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <Link href={item.href} legacyBehavior>
+                <Link href={item.href}>
                     <SidebarMenuButton
                     onClick={() => item.href === "/" && handleViewChange(item.id as View)}
                     isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
