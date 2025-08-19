@@ -1,70 +1,77 @@
+
 rules_version = '2';
 
-// Cấp quyền truy cập vào Cloud Firestore
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is an admin
+    // Helper function to check if a user is an admin
     function isAdmin() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Helper function to check if the user's account is approved
-    function isApproved() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      // Any authenticated user can create their own user document
-      allow create: if request.auth != null && request.auth.uid == userId;
+      // Allow user to read their own data, or any admin to read any user data
+      allow get: if isOwner(userId) || isAdmin();
       
-      // Users can read their own data. Admins can read any user's data.
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Allow anyone to create their own user document (on signup)
+      allow create: if isOwner(userId);
       
-      // Users can update their own displayName. Admins can update anyone's status.
-      allow update: if request.auth != null && 
-                       ((request.auth.uid == userId && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])) ||
-                        (isAdmin() && request.resource.data.keys().hasOnly(['status'])));
-    }
+      // Allow user to update their own data, or admin to update any user's status
+      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL'])) || 
+                       (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
 
-    // Rules for the global 'words' collection
+      // Only admins can delete users (for future use)
+      allow delete: if isAdmin();
+    }
+    
+    // Rules for the 'words' collection (global vocabulary)
     match /words/{wordId} {
-      // Any approved user can read the global word list
-      allow read: if request.auth != null && isApproved();
-      
-      // Admins can create new global words
-      allow create: if isAdmin();
-      
-      // Admins can update global words (term, pronunciation, audioUrl)
-      allow update: if isAdmin() && request.resource.data.keys().hasAll(['term', 'term_normalized', 'pronunciation']);
+        // Any authenticated user can read the global words
+        allow get: if request.auth != null;
+        // Only admins can create, update, or delete global words
+        allow list, create, update, delete: if isAdmin();
     }
-
-    // Rules for the 'userVocabulary' collection (user-specific words)
+    
+    // Rules for the 'userVocabulary' collection
     match /userVocabulary/{userVocabId} {
-        // Users can read, create, update, and delete their own vocabulary entries,
-        // but only if their account is approved.
-        allow read, write: if request.auth != null && 
-                              isApproved() &&
-                              (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid);
+        // User can read, create, update, delete their own vocabulary entries
+        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        // Allow list only for the owner
+        allow list: if request.auth.uid == request.query.where.value;
     }
     
     // Rules for the 'lessons' collection
     match /lessons/{lessonId} {
-        // Users can read, create, update, and delete their own lessons,
-        // but only if their account is approved.
-        allow read, write: if request.auth != null &&
-                              isApproved() &&
-                              (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid);
+       // User can read, create, update, delete their own lessons
+       allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+       // Allow list only for the owner
+       allow list: if request.auth.uid == request.query.where.value;
     }
 
     // Rules for the 'testResults' collection
-    match /testResults/{testResultId} {
-      // Users can only read their own test results.
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // Users can only create test results for themselves.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    match /testResults/{resultId} {
+        // User can create their own test results
+        allow create: if request.auth.uid == request.resource.data.userId;
+        // User can read their own test results, admins can read all
+        allow get: if request.auth.uid == resource.data.userId || isAdmin();
+        allow list: if request.auth.uid == request.query.where.value || isAdmin();
+    }
+    
+    // Rules for the 'user_activity' collection
+    match /user_activity/{activityId} {
+        // User can create and update their own activity log.
+        // The document ID is structured as `${userId}_${date}`
+        allow create, update: if request.auth.uid == resource.data.userId && request.auth.uid == activityId.split('_')[0];
+        // User can read their own activity logs. Admins can read all.
+        allow get: if request.auth.uid == resource.data.userId || isAdmin();
+        // Allow list only for the owner or an admin.
+        allow list: if (request.query.where.field == 'userId' && request.query.where.value == request.auth.uid) || isAdmin();
     }
   }
 }
