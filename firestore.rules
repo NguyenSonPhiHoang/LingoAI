@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -40,14 +41,12 @@ service cloud.firestore {
         allow list: if isSignedIn();
     }
     
-    // USER ACTIVITY: Users can create/update/read their own activity. Admins can list all activity.
+    // USER ACTIVITY: A user can only write to their own activity document. Admins can list all activity.
+    // The document ID is structured as "{userId}_{date}".
     match /user_activity/{activityId} {
-        allow get: if isSignedIn() && isOwner(resource.data.userId);
-        allow list: if isAdmin();
-        allow write: if isSignedIn() && (
-            (request.resource.data.userId == request.auth.uid && resource == null) || // create
-            (request.resource.data.userId == request.auth.uid && resource.data.userId == request.resource.data.userId) // update
-        );
+      allow read: if isSignedIn() && isOwner(activityId.split('_')[0]);
+      allow write: if isSignedIn() && isOwner(activityId.split('_')[0]);
+      allow list: if isAdmin();
     }
     
     // GLOBAL WORDS: Read-only for all signed-in users. Writable only by Admins.
