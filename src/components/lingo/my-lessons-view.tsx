@@ -421,22 +421,20 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 
                     return (
                         <AccordionItem value={topicGroup} key={topicGroup}>
-                            <AccordionTrigger className="text-xl font-bold hover:no-underline">
-                                <div className="flex items-center gap-4 flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                        <Folder className="h-6 w-6 text-primary/80" />
-                                        {topicGroup}
+                            <AccordionTrigger className="text-xl font-bold hover:no-underline flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    <Folder className="h-6 w-6 text-primary/80" />
+                                    <span>{topicGroup}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground ml-auto pl-4">
+                                    <div className="flex items-center gap-1.5" title="Not Started">
+                                        <Circle className="h-3 w-3 text-muted-foreground/60" /> <span>{stats['not-started'] || 0}</span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground ml-2 border-l pl-4">
-                                        <div className="flex items-center gap-1.5" title="Not Started">
-                                            <Circle className="h-3 w-3 text-muted-foreground/60" /> {stats['not-started'] || 0}
-                                        </div>
-                                        <div className="flex items-center gap-1.5" title="In Progress">
-                                            <CircleDashed className="h-3 w-3 text-yellow-500" /> {stats['in-progress'] || 0}
-                                        </div>
-                                        <div className="flex items-center gap-1.5" title="Completed">
-                                            <CheckCircle className="h-3 w-3 text-green-500" /> {stats['completed'] || 0}
-                                        </div>
+                                    <div className="flex items-center gap-1.5" title="In Progress">
+                                        <CircleDashed className="h-3 w-3 text-yellow-500" /> <span>{stats['in-progress'] || 0}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5" title="Completed">
+                                        <CheckCircle className="h-3 w-3 text-green-500" /> <span>{stats['completed'] || 0}</span>
                                     </div>
                                 </div>
                             </AccordionTrigger>
@@ -692,5 +690,3 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
-
-    
