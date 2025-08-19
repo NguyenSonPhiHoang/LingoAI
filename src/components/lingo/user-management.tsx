@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState, useEffect, useMemo, type FC } from 'react';
 import { Loader2, CheckCircle, XCircle, Clock, Timer, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
@@ -200,7 +201,7 @@ const UserRow: FC<{
     }
 
     return (
-        <TableRow>
+        <TableRow data-state={isOpen ? 'open' : 'closed'}>
             <TableCell>
                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
                     {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
