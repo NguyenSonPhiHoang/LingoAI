@@ -22,6 +22,7 @@ import type { Lesson } from "@/services/lessons";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import StorybookPage from "./storybook/page";
 
 export type View =
   | "overview"
@@ -33,7 +34,8 @@ export type View =
   | "user-management"
   | "word-management"
   | "lesson-detail"
-  | "profile";
+  | "profile"
+  | "storybook";
 
 export type ViewState = {
   view: View;
@@ -91,6 +93,14 @@ const Home: FC = () => {
   }
 
   const favoriteWords = words.filter((word) => word.favorite);
+  
+  const setActiveView = (view: View | "storybook") => {
+      if (view === 'storybook') {
+          router.push('/storybook');
+      } else {
+          setActiveViewState({ view });
+      }
+  }
 
   const renderContent = () => {
     if (user.status === 'approved' && isLoading) {
@@ -125,6 +135,9 @@ const Home: FC = () => {
             return <WordManagement />;
         case "profile":
             return <ProfileView />;
+        case "storybook":
+            // This is now handled by its own page, but we keep a fallback
+            return <StorybookPage />;
         case "lesson-detail":
            return activeViewState.lesson ? (
             <LessonDetailView
@@ -147,7 +160,7 @@ const Home: FC = () => {
   return (
     <DashboardLayout
       activeView={activeViewState.view}
-      setActiveView={(view) => setActiveViewState({ view })}
+      setActiveView={setActiveView}
       setWords={setWords}
     >
       {renderContent()}

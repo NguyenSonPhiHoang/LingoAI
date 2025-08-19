@@ -377,3 +377,34 @@ export const GeneratePronunciationExerciseOutputSchema = z.object({
     challengingSentences: z.array(z.string()).length(2).describe('A list of two challenging sentences for pronunciation practice.'),
 });
 export type GeneratePronunciationExerciseOutput = z.infer<typeof GeneratePronunciationExerciseOutputSchema>;
+
+// Schemas for generate-storybook-flow.ts
+export const StorybookFormatSchema = z.enum(['bilingual', 'interspersed']);
+export type StorybookFormat = z.infer<typeof StorybookFormatSchema>;
+
+export const GenerateStorybookInputSchema = z.object({
+    level: UserLevelSchema,
+    format: StorybookFormatSchema,
+    topic: z.string().optional(),
+    vocabulary: z.array(z.object({
+        term: z.string(),
+        definition: z.string(),
+    })).optional(),
+}).refine(data => data.topic || data.vocabulary, {
+    message: 'Either topic or a vocabulary list must be provided.',
+});
+export type GenerateStorybookInput = z.infer<typeof GenerateStorybookInputSchema>;
+
+const StorybookVocabularySchema = z.object({
+    word: z.string(),
+    definition: z.string(),
+    partOfSpeech: z.string(),
+    pronunciation: z.string(),
+});
+
+export const GenerateStorybookOutputSchema = z.object({
+    title: z.string(),
+    keyVocabulary: z.array(StorybookVocabularySchema),
+    storyContent: z.string(),
+});
+export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSchema>;

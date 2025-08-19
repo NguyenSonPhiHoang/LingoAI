@@ -16,6 +16,7 @@ import {
   BookMarked,
   Plus,
   Database,
+  BookImage,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,8 +49,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  activeView: View;
-  setActiveView: (view: View) => void;
+  activeView: View | "storybook";
+  setActiveView: (view: View | "storybook") => void;
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
@@ -63,12 +64,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard, role: ['user', 'admin'] },
-    { id: "levels", label: "All Levels", icon: GraduationCap, role: ['user', 'admin'] },
-    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'] },
-    { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'] },
-    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'] },
-    { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
+    { id: "overview", label: "Overview", icon: LayoutDashboard, role: ['user', 'admin'], href: "/" },
+    { id: "levels", label: "All Levels", icon: GraduationCap, role: ['user', 'admin'], href: "/" },
+    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'], href: "/" },
+    { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'], href: "/" },
+    { id: "storybook", label: "AI Storybook", icon: BookImage, role: ['user', 'admin'], href: "/storybook" },
+    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'], href: "/" },
+    { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'], href: "/" },
   ];
   
   const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
@@ -94,14 +96,16 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           <SidebarMenu>
             {user?.status === 'approved' && availableMenuItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton
-                  onClick={() => handleViewChange(item.id as View)}
-                  isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
-                  tooltip={item.label}
-                >
-                  <item.icon />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
+                <Link href={item.href} legacyBehavior>
+                    <SidebarMenuButton
+                    onClick={() => item.href === "/" && handleViewChange(item.id as View)}
+                    isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
+                    tooltip={item.label}
+                    >
+                    <item.icon />
+                    <span>{item.label}</span>
+                    </SidebarMenuButton>
+                </Link>
               </SidebarMenuItem>
             ))}
              {user?.status === 'approved' && (
@@ -124,7 +128,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <DashboardHeader activeView={activeView} setActiveView={setActiveView} />
+        <DashboardHeader activeView={activeView as View} setActiveView={setActiveView as (view: View) => void} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
           {children}
         </main>
