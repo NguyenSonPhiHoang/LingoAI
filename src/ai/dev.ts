@@ -18,4 +18,5 @@ import '@/ai/flows/generate-writing-feedback-flow.ts';
 import '@/ai/flows/generate-lesson-content.ts';
 import '@/ai/flows/generate-storybook-flow.ts';
 import '@/ai/flows/generate-placement-test.ts';
+import '@/ai/flows/generate-review-test-flow.ts';
 import '@/ai/flows/schemas.ts';

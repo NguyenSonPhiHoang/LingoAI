@@ -428,3 +428,22 @@ export const GeneratePlacementTestOutputSchema = z.object({
     questions: z.array(PlacementTestQuestionSchema).describe('A list of placement test questions.'),
 });
 export type GeneratePlacementTestOutput = z.infer<typeof GeneratePlacementTestOutputSchema>;
+
+
+// Schemas for generate-review-test-flow.ts
+export const GenerateReviewTestInputSchema = z.object({
+  vocabulary: z.array(
+    z.object({
+      term: z.string(),
+      definition: z.string(),
+    })
+  ).describe('A list of vocabulary words from completed lessons.'),
+  passages: z.array(z.string()).describe('A list of reading passages from completed lessons.'),
+});
+export type GenerateReviewTestInput = z.infer<typeof GenerateReviewTestInputSchema>;
+
+export const GenerateReviewTestOutputSchema = z.object({
+  vocabularyQuestions: z.array(FillInTheBlankQuestionSchema).describe('An array of fill-in-the-blank vocabulary questions.'),
+  readingQuestions: z.array(ReadingComprehensionQuestionSchema).describe('An array of reading comprehension questions.'),
+});
+export type GenerateReviewTestOutput = z.infer<typeof GenerateReviewTestOutputSchema>;

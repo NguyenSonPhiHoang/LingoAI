@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateActi
 import { useAuth } from '@/context/auth-context';
 import { getLessons, type Lesson, deleteLesson, updateLesson, type LessonStatus } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { generateReviewTest } from '@/ai/flows/generate-review-test-flow';
 
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
@@ -58,6 +59,8 @@ const levels: UserLevel[] = ["beginner", "intermediate", "advanced"];
 
 
 interface MyLessonsViewProps {
+    lessons: Lesson[];
+    setLessons: Dispatch<SetStateAction<Lesson[]>>;
     setActiveViewState: Dispatch<SetStateAction<ViewState>>;
 }
 
@@ -242,11 +245,11 @@ const LessonGrid: FC<{
 );
 
 
-const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
+const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveViewState }) => {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [lessons, setLessons] = useState<Lesson[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isGeneratingTest, setIsGeneratingTest] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     
@@ -275,34 +278,15 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const [isGroupFilterOpen, setIsGroupFilterOpen] = useState(false);
 
     useEffect(() => {
-        const fetchLessons = async () => {
-            if (!user) return;
-            setIsLoading(true);
-            try {
-                const userLessons = await getLessons(user.uid);
-                setLessons(userLessons);
-                // Initialize topic filters based on fetched lessons
-                const uniqueTopicGroups = [...new Set(userLessons.map(l => l.topicGroup))];
-                const initialTopicFilters = uniqueTopicGroups.reduce((acc, topicGroup) => {
-                    acc[topicGroup] = true;
-                    return acc;
-                }, {} as Record<string, boolean>);
-                setTopicGroupFilters(initialTopicFilters);
-                setTempTopicGroupFilters(initialTopicFilters);
-
-            } catch (error) {
-                console.error("Failed to fetch lessons:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Could not fetch your saved lessons.",
-                });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchLessons();
-    }, [user, toast]);
+        // Initialize topic filters based on fetched lessons
+        const uniqueTopicGroups = [...new Set(lessons.map(l => l.topicGroup))];
+        const initialTopicFilters = uniqueTopicGroups.reduce((acc, topicGroup) => {
+            acc[topicGroup] = true;
+            return acc;
+        }, {} as Record<string, boolean>);
+        setTopicGroupFilters(initialTopicFilters);
+        setTempTopicGroupFilters(initialTopicFilters);
+    }, [lessons]);
     
     // --- Topic Group Filter Handlers ---
     const handleTempTopicGroupFilterChange = (topicGroup: string) => {
@@ -388,6 +372,55 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
             return acc;
         }, {} as Record<string, Lesson[]>);
     }, [filteredLessons]);
+    
+    const handleCreateReviewTest = async () => {
+        const completedLessons = lessons.filter(l => l.status === 'completed');
+        if (completedLessons.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'No Completed Lessons',
+                description: 'You must complete at least one lesson to create a review test.',
+            });
+            return;
+        }
+
+        setIsGeneratingTest(true);
+        try {
+            const vocabulary = completedLessons.flatMap(l => {
+                const vocabContent = l.content?.find(c => c.type === 'vocabulary');
+                if (!vocabContent) return [];
+                try {
+                    return JSON.parse(vocabContent.value).map((v: { word: string; definition: string; }) => ({
+                        term: v.word,
+                        definition: v.definition
+                    }));
+                } catch { return []; }
+            });
+            
+            const passages = completedLessons.map(l => {
+                 const passageContent = l.content?.find(c => c.type === 'passage');
+                 if (!passageContent) return '';
+                 try {
+                     return JSON.parse(passageContent.value).body;
+                 } catch { return ''; }
+            }).filter(p => p);
+            
+            if (vocabulary.length === 0 && passages.length === 0) {
+                toast({ variant: 'destructive', title: 'Not Enough Content', description: 'Your completed lessons do not have enough vocabulary or reading passages to generate a test.'});
+                setIsGeneratingTest(false);
+                return;
+            }
+            
+            const test = await generateReviewTest({ vocabulary, passages });
+            setActiveViewState({ view: 'review-test', reviewTest: test });
+
+        } catch (error) {
+            console.error('Failed to generate review test:', error);
+            toast({ variant: 'destructive', title: 'Test Generation Failed', description: 'Could not create a review test. Please try again.' });
+        } finally {
+            setIsGeneratingTest(false);
+        }
+    };
 
     const handleStartLesson = (lesson: Lesson) => {
         setActiveViewState({ view: 'lesson-detail', lesson });
@@ -580,7 +613,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <DropdownMenu open={isGroupFilterOpen} onOpenChange={setIsGroupFilterOpen}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
@@ -675,6 +708,14 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                         </div>
                         <Button
                             className="w-full sm:w-auto"
+                            onClick={handleCreateReviewTest}
+                            disabled={isGeneratingTest}
+                        >
+                            {isGeneratingTest ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                            Create Review Test
+                        </Button>
+                        <Button
+                            className="w-full sm:w-auto"
                             onClick={() => setActiveViewState({view: 'ai-suggester'})}
                         >
                             <Sparkles className="mr-2" />
@@ -700,5 +741,3 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
-
-    

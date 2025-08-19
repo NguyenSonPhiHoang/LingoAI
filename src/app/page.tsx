@@ -18,14 +18,16 @@ import MyLessonsView from "@/components/lingo/my-lessons-view";
 import ProfileView from "@/components/lingo/profile-view";
 import SettingsView from "@/components/lingo/settings-view";
 import PlacementTest from "@/components/lingo/placement-test";
+import ReviewTestView from "@/components/lingo/review-test-view";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
+import { getLessons } from "@/services/lessons";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import StorybookPage from "./storybook/page";
-import type { UserLevel } from "@/ai/flows/schemas";
+import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
 
 
 export type View =
@@ -41,12 +43,14 @@ export type View =
   | "profile"
   | "settings"
   | "placement-test"
+  | "review-test"
   | "storybook";
 
 export type ViewState = {
   view: View;
   lesson?: Lesson;
   recommendedLevel?: UserLevel;
+  reviewTest?: GenerateReviewTestOutput;
 };
 
 const Home: FC = () => {
@@ -54,6 +58,7 @@ const Home: FC = () => {
   const router = useRouter();
   const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
   const [words, setWords] = useState<CombinedVocabulary[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
@@ -69,23 +74,27 @@ const Home: FC = () => {
     }
 
     if (userStatus === 'approved') {
-      const fetchWords = async () => {
+      const fetchData = async () => {
         setIsLoading(true);
         try {
-          const fetchedWords = await getVocabulary(userId);
+          const [fetchedWords, fetchedLessons] = await Promise.all([
+            getVocabulary(userId),
+            getLessons(userId)
+          ]);
           setWords(fetchedWords);
+          setLessons(fetchedLessons);
         } catch (error) {
-          console.error("Error fetching vocabulary:", error);
+          console.error("Error fetching initial data:", error);
           toast({
             variant: "destructive",
-            title: "Error Fetching Vocabulary",
-            description: "Could not fetch your vocabulary. Please try again later.",
+            title: "Error Fetching Data",
+            description: "Could not fetch your data. Please try again later.",
           });
         } finally {
             setIsLoading(false);
         }
       };
-      fetchWords();
+      fetchData();
     } else {
       setIsLoading(false);
     }
@@ -131,7 +140,7 @@ const Home: FC = () => {
         case "ai-suggester":
           return <AiSuggester setActiveViewState={setActiveViewState} recommendedLevel={activeViewState.recommendedLevel}/>;
         case "my-lessons":
-          return <MyLessonsView setActiveViewState={setActiveViewState} />;
+          return <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
@@ -146,8 +155,11 @@ const Home: FC = () => {
             return <SettingsView />;
         case "placement-test":
             return <PlacementTest setActiveViewState={setActiveViewState} />;
+        case "review-test":
+             return activeViewState.reviewTest ? (
+                <ReviewTestView test={activeViewState.reviewTest} onBack={() => setActiveViewState({view: 'my-lessons'})} />
+            ) : <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
         case "storybook":
-            // This is now handled by its own page, but we keep a fallback
             return <StorybookPage />;
         case "lesson-detail":
            return activeViewState.lesson ? (
@@ -158,7 +170,7 @@ const Home: FC = () => {
               setWords={setWords}
             />
           ) : (
-            <MyLessonsView setActiveViewState={setActiveViewState} />
+            <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />
           );
         default:
           return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
