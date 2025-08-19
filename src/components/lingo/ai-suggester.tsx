@@ -40,9 +40,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { addLesson } from "@/services/lessons";
 import type { ViewState } from "@/app/page";
+import type { UserLevel } from "@/ai/flows/schemas";
+
+const levelMapping: Record<string, { label: string, value: UserLevel }> = {
+    'a1': { label: 'Level 1 (A1 – Beginner)', value: 'beginner' },
+    'a2': { label: 'Level 2 (A2 – Elementary)', value: 'beginner' },
+    'b1': { label: 'Level 3 (B1 – Intermediate)', value: 'intermediate' },
+    'b2': { label: 'Level 4 (B2 – Upper Intermediate)', value: 'intermediate' },
+    'c1': { label: 'Level 5 (C1 – Advanced)', value: 'advanced' },
+    'c2': { label: 'Level 6 (C2 – Proficiency)', value: 'advanced' },
+};
+
 
 const formSchema = z.object({
-  userLevel: z.enum(["beginner", "intermediate", "advanced"], {
+  cefrLevel: z.enum(Object.keys(levelMapping) as [string, ...string[]], {
     required_error: "Please select your proficiency level.",
   }),
   learningGoals: z
@@ -79,10 +90,15 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
         return;
     }
     setIsGenerating(true);
+
+    const aiPayload: SuggestPersonalizedLessonsInput = {
+        userLevel: levelMapping[values.cefrLevel].value,
+        learningGoals: values.learningGoals,
+        interests: values.interests,
+    };
+
     try {
-      const result = await suggestPersonalizedLessons(
-        values as SuggestPersonalizedLessonsInput
-      );
+      const result = await suggestPersonalizedLessons(aiPayload);
       
       const newLessonPromises = result.lessonSuggestions.map(suggestion => 
         addLesson(user.uid, suggestion, values.learningGoals)
@@ -126,7 +142,7 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
               >
                 <FormField
                   control={form.control}
-                  name="userLevel"
+                  name="cefrLevel"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Your English Level</FormLabel>
@@ -140,11 +156,9 @@ const AiSuggester: FC<AiSuggesterProps> = ({ setActiveView }) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="beginner">Beginner</SelectItem>
-                          <SelectItem value="intermediate">
-                            Intermediate
-                          </SelectItem>
-                          <SelectItem value="advanced">Advanced</SelectItem>
+                          {Object.entries(levelMapping).map(([key, { label }]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
