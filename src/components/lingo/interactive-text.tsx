@@ -48,7 +48,11 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
                 const isHighlighted = activePlaybackKey && currentActiveKey === activePlaybackKey && highlightedRange && start < highlightedRange.end && end > highlightedRange.start;
                 
                 finalParts.push(
-                    <span key={`${activePlaybackKey}-${start}`} className={cn(isHighlighted && "bg-primary/20 rounded")}>
+                    <span 
+                        key={`${activePlaybackKey}-${start}`} 
+                        className={cn(isHighlighted && "bg-primary/20 rounded")}
+                        style={isHighlighted ? {boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone'} : {}}
+                    >
                         {part}
                     </span>
                 );
