@@ -256,6 +256,8 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     });
 
     const [topicGroupFilters, setTopicGroupFilters] = useState<Record<string, boolean>>({});
+    const [tempTopicGroupFilters, setTempTopicGroupFilters] = useState<Record<string, boolean>>({});
+    const [isGroupFilterOpen, setIsGroupFilterOpen] = useState(false);
 
     useEffect(() => {
         const fetchLessons = async () => {
@@ -271,6 +273,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                     return acc;
                 }, {} as Record<string, boolean>);
                 setTopicGroupFilters(initialTopicFilters);
+                setTempTopicGroupFilters(initialTopicFilters);
 
             } catch (error) {
                 console.error("Failed to fetch lessons:", error);
@@ -294,12 +297,22 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         setLevelFilters(prev => ({ ...prev, [level]: !prev[level] }));
     }
     
-    const handleTopicGroupFilterChange = (topicGroup: string) => {
-        setTopicGroupFilters(prev => ({...prev, [topicGroup]: !prev[topicGroup] }));
+    const handleTempTopicGroupFilterChange = (topicGroup: string) => {
+        setTempTopicGroupFilters(prev => ({...prev, [topicGroup]: !prev[topicGroup] }));
     }
 
+    const applyTopicGroupFilters = () => {
+        setTopicGroupFilters(tempTopicGroupFilters);
+        setIsGroupFilterOpen(false);
+    };
+
+    const cancelTopicGroupFilters = () => {
+        setTempTopicGroupFilters(topicGroupFilters);
+        setIsGroupFilterOpen(false);
+    };
+    
     const handleSelectAllTopics = (select: boolean) => {
-        setTopicGroupFilters(prev => {
+        setTempTopicGroupFilters(prev => {
             const newFilters: Record<string, boolean> = {};
             for (const topicGroup in prev) {
                 newFilters[topicGroup] = select;
@@ -508,14 +521,14 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <DropdownMenu>
+                            <DropdownMenu open={isGroupFilterOpen} onOpenChange={setIsGroupFilterOpen}>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
                                         <Folder className="mr-2" />
                                         Group
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent>
+                                <DropdownMenuContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={() => cancelTopicGroupFilters()}>
                                     <DropdownMenuLabel>Show Groups</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                      <DropdownMenuItem onSelect={() => handleSelectAllTopics(true)}>
@@ -530,12 +543,18 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                                     {uniqueTopicGroups.map(topicGroup => (
                                         <DropdownMenuCheckboxItem
                                             key={topicGroup}
-                                            checked={topicGroupFilters[topicGroup] ?? true}
-                                            onCheckedChange={() => handleTopicGroupFilterChange(topicGroup)}
+                                            checked={tempTopicGroupFilters[topicGroup] ?? true}
+                                            onCheckedChange={() => handleTempTopicGroupFilterChange(topicGroup)}
+                                            onSelect={(e) => e.preventDefault()}
                                         >
                                             {topicGroup}
                                         </DropdownMenuCheckboxItem>
                                     ))}
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end gap-2 p-2">
+                                        <Button variant="ghost" size="sm" onClick={cancelTopicGroupFilters}>Cancel</Button>
+                                        <Button size="sm" onClick={applyTopicGroupFilters}>Apply</Button>
+                                    </div>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                              <DropdownMenu>
