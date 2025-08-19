@@ -1,9 +1,7 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
@@ -12,53 +10,45 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    function getUserData(userId) {
-        return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
 
-    function isAdmin() {
-      return isSignedIn() && getUserData(request.auth.uid).role == 'admin';
-    }
-
-    // USER DATA: Users can read/write their own data. Admins can read all user data.
+    // Users collection
     match /users/{userId} {
-      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow list: if isAdmin();
+      allow read; // Admins need to read user lists, users need to read their own data.
+      allow update: if isSignedIn() && isOwner(userId); // Users can only update their own document.
+      allow create: if isSignedIn(); // Allow new user signup to create their doc.
     }
-    
-    // LESSONS: Users can only read/write their own lessons.
-    match /lessons/{lessonId} {
-      allow read, write, delete: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow list: if isSignedIn(); // Users can list lessons, but Firestore rules will filter by userId in the query.
-    }
-    
-    // TEST RESULTS: Users can only read/write their own test results.
-    match /testResults/{resultId} {
-        allow read, write, delete: if isSignedIn() && isOwner(request.resource.data.userId);
-        allow list: if isSignedIn();
-    }
-    
-    // USER ACTIVITY: A user can only write to their own activity document. Admins can list all activity.
-    // The document ID is structured as "{userId}_{date}".
-    match /user_activity/{activityId} {
-      allow read: if isSignedIn() && isOwner(activityId.split('_')[0]);
-      allow write: if isSignedIn() && isOwner(activityId.split('_')[0]);
-      allow list: if isAdmin();
-    }
-    
-    // GLOBAL WORDS: Read-only for all signed-in users. Writable only by Admins.
+
+    // Words collection (Global vocabulary)
     match /words/{wordId} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
+      allow read: if isSignedIn(); // All signed-in users can read the global word list.
+      allow write: if isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; // Only admins can write to the global word list.
+    }
+
+    // UserVocabulary collection (User-specific vocabulary data)
+    match /userVocabulary/{userVocaId} {
+      allow read, delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+      allow update: if isSignedIn() && isOwner(request.resource.data.userId);
     }
     
-    // USER VOCABULARY: Users can only manage their own vocabulary list.
-    match /userVocabulary/{userVocabId} {
-      allow read, write, delete: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow list: if isSignedIn();
+    // Lessons collection
+    match /lessons/{lessonId} {
+       allow read, write: if isSignedIn() && isOwner(request.resource.data.userId);
+       allow create: if isSignedIn() && isOwner(request.resource.data.userId);
+       // For updates, we should also check against existing data
+       allow update: if isSignedIn() && isOwner(resource.data.userId);
+       allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+    
+    // Test Results collection
+    match /testResults/{resultId} {
+      allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
+    }
+
+    // User Activity collection
+    match /user_activity/{activityId} {
+      // Users can only write to their own activity log, identified by the document ID format "userId_date"
+      allow write: if isSignedIn() && request.auth.uid == activityId.split('_')[0];
     }
   }
 }
