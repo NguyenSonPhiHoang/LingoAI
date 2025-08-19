@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateActi
 import { useAuth } from '@/context/auth-context';
 import { getLessons, type Lesson, deleteLesson, updateLesson, LessonStatus } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,7 @@ import * as z from 'zod';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
@@ -164,6 +165,75 @@ const EditLessonDialog: FC<{
     );
 };
 
+const LessonGrid: FC<{
+    lessons: Lesson[];
+    onStartLesson: (lesson: Lesson) => void;
+    onLessonUpdate: (lesson: Lesson) => void;
+    onLessonDelete: (lesson: Lesson) => void;
+}> = ({ lessons, onStartLesson, onLessonUpdate, onLessonDelete }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {lessons.map(lesson => {
+            const { icon: StatusIcon, className: statusClassName } = getStatusIcon(lesson.status);
+            return (
+                <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow">
+                    <CardHeader className="relative">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <EditLessonDialog lesson={lesson} onLessonUpdate={onLessonUpdate} />
+                                <DropdownMenuSeparator />
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the lesson
+                                                <span className="font-semibold"> "{lesson.topic}"</span>.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => onLessonDelete(lesson)}>
+                                                Continue
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className={cn(skillStyles[lesson.skill as Skill])}>{lesson.skill}</Badge>
+                            <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
+                        </div>
+                        <CardTitle className="pt-2 pr-8">{lesson.topic}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{formatDistanceToNow(new Date(lesson.createdAt), { addSuffix: true })}</span>
+                            <StatusIcon className={cn("h-5 w-5", statusClassName)} />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button className="w-full" onClick={() => onStartLesson(lesson)}>
+                            Open Lesson <ArrowRight className="ml-2" />
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )
+        })}
+    </div>
+);
+
+
 const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -171,6 +241,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    
     const [skillFilters, setSkillFilters] = useState<Record<Skill, boolean>>({
         Listening: true,
         Speaking: true,
@@ -184,6 +255,8 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         advanced: true,
     });
 
+    const [topicFilters, setTopicFilters] = useState<Record<string, boolean>>({});
+
     useEffect(() => {
         const fetchLessons = async () => {
             if (!user) return;
@@ -191,6 +264,14 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
             try {
                 const userLessons = await getLessons(user.uid);
                 setLessons(userLessons);
+                // Initialize topic filters based on fetched lessons
+                const uniqueTopics = [...new Set(userLessons.map(l => l.topic))];
+                const initialTopicFilters = uniqueTopics.reduce((acc, topic) => {
+                    acc[topic] = true;
+                    return acc;
+                }, {} as Record<string, boolean>);
+                setTopicFilters(initialTopicFilters);
+
             } catch (error) {
                 console.error("Failed to fetch lessons:", error);
                 toast({
@@ -212,14 +293,38 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     const handleLevelFilterChange = (level: UserLevel) => {
         setLevelFilters(prev => ({ ...prev, [level]: !prev[level] }));
     }
+    
+    const handleTopicFilterChange = (topic: string) => {
+        setTopicFilters(prev => ({...prev, [topic]: !prev[topic] }));
+    }
+
+    const uniqueTopics = useMemo(() => [...new Set(lessons.map(l => l.topic))].sort(), [lessons]);
 
     const filteredLessons = useMemo(() => {
+        const activeTopicFilters = Object.entries(topicFilters)
+            .filter(([, isActive]) => isActive)
+            .map(([topic]) => topic);
+        
+        const hasActiveTopicFilter = activeTopicFilters.length > 0 && activeTopicFilters.length < uniqueTopics.length;
+
         return lessons
             .filter(lesson => skillFilters[lesson.skill as Skill])
             .filter(lesson => levelFilters[lesson.level])
+            .filter(lesson => hasActiveTopicFilter ? activeTopicFilters.includes(lesson.topic) : true)
             .filter(lesson => lesson.topic.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [lessons, searchTerm, skillFilters, levelFilters]);
+    }, [lessons, searchTerm, skillFilters, levelFilters, topicFilters, uniqueTopics.length]);
     
+    const groupedLessons = useMemo(() => {
+        return filteredLessons.reduce((acc, lesson) => {
+            const topic = lesson.topic;
+            if (!acc[topic]) {
+                acc[topic] = [];
+            }
+            acc[topic].push(lesson);
+            return acc;
+        }, {} as Record<string, Lesson[]>);
+    }, [filteredLessons]);
+
     const handleStartLesson = (lesson: Lesson) => {
         setActiveViewState({ view: 'lesson-detail', lesson });
     };
@@ -243,7 +348,6 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
         }
     };
 
-
     if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -253,66 +357,26 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
     }
     
     const renderGridView = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredLessons.map(lesson => {
-                const { icon: StatusIcon, className: statusClassName } = getStatusIcon(lesson.status);
-                return (
-                    <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                        <CardHeader className="relative">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <EditLessonDialog lesson={lesson} onLessonUpdate={handleLessonUpdate} />
-                                    <DropdownMenuSeparator />
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete the lesson
-                                                    <span className="font-semibold"> "{lesson.topic}"</span>.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleLessonDelete(lesson)}>
-                                                    Continue
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <div className="flex items-center gap-2">
-                                <Badge variant="secondary" className={cn(skillStyles[lesson.skill as Skill])}>{lesson.skill}</Badge>
-                                <Badge variant="outline" className="capitalize">{lesson.level}</Badge>
-                            </div>
-                            <CardTitle className="pt-2 pr-8">{lesson.topic}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-grow">
-                            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                <span>{formatDistanceToNow(new Date(lesson.createdAt), { addSuffix: true })}</span>
-                                <StatusIcon className={cn("h-5 w-5", statusClassName)} />
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button className="w-full" onClick={() => handleStartLesson(lesson)}>
-                                Open Lesson <ArrowRight className="ml-2" />
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                )
-            })}
-        </div>
+        <Accordion type="multiple" defaultValue={Object.keys(groupedLessons)} className="space-y-6">
+            {Object.entries(groupedLessons).map(([topic, groupLessons]) => (
+                <AccordionItem value={topic} key={topic}>
+                    <AccordionTrigger className="text-xl font-bold hover:no-underline">
+                        <div className="flex items-center gap-2">
+                           <Folder className="h-6 w-6 text-primary/80" />
+                           {topic} ({groupLessons.length})
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4">
+                        <LessonGrid 
+                            lessons={groupLessons}
+                            onStartLesson={handleStartLesson}
+                            onLessonUpdate={handleLessonUpdate}
+                            onLessonDelete={handleLessonDelete}
+                        />
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
     );
 
     const renderListView = () => (
@@ -431,6 +495,27 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
                             />
                         </div>
                         <div className="flex gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="w-full sm:w-auto">
+                                        <Folder className="mr-2" />
+                                        Filter by Topic
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuLabel>Show Topics</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {uniqueTopics.map(topic => (
+                                        <DropdownMenuCheckboxItem
+                                            key={topic}
+                                            checked={topicFilters[topic] ?? true}
+                                            onCheckedChange={() => handleTopicFilterChange(topic)}
+                                        >
+                                            {topic}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                              <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="w-full sm:w-auto">
@@ -502,3 +587,5 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ setActiveViewState }) => {
 };
 
 export default MyLessonsView;
+
+    
