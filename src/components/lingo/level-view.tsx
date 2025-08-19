@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
+import InteractiveText from "./interactive-text";
 
 
 const levelsData = [
@@ -181,7 +182,7 @@ const LevelView: FC = () => {
   const { toast } = useToast();
   const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
-  const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
+  const playbackHook = useAudioPlayback({ setWords: () => {} });
 
 
   const toggleTranslation = async (key: string, text: string) => {
@@ -211,7 +212,7 @@ const LevelView: FC = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <audio ref={audioRef} className="hidden" />
+      <audio ref={playbackHook.audioRef} className="hidden" />
       {levelsData.map((level, levelIndex) => (
         <Card key={level.level} className="flex flex-col">
             <CardHeader>
@@ -229,7 +230,7 @@ const LevelView: FC = () => {
                 {level.skills.map((skill, skillIndex) => {
                     const Icon = skill.icon;
                     const uniqueKey = `${levelIndex}-${skillIndex}`;
-                    const isAudioPlaying = isPlaying[uniqueKey];
+                    const isAudioPlaying = playbackHook.isPlaying[uniqueKey];
                     const isTextTranslating = isTranslating[uniqueKey];
 
                     return (
@@ -239,9 +240,16 @@ const LevelView: FC = () => {
                             </div>
                             <div>
                                 <h4 className="font-semibold">{skill.name}</h4>
-                                <p className="text-muted-foreground text-sm">{skill.description}</p>
+                                <p className="text-muted-foreground text-sm">
+                                    <InteractiveText
+                                        text={skill.description}
+                                        vocabulary={[]}
+                                        playbackHook={playbackHook}
+                                        activePlaybackKey={uniqueKey}
+                                    />
+                                </p>
                                 <div className="flex items-center gap-1 mt-1">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playAudio(uniqueKey, skill.description)} disabled={isAudioPlaying || isTextTranslating}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(uniqueKey, skill.description)} disabled={isAudioPlaying || isTextTranslating}>
                                     {isAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                   </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(uniqueKey, skill.description)} disabled={isAudioPlaying || isTextTranslating}>

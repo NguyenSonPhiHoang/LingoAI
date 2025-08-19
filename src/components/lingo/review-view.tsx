@@ -29,6 +29,7 @@ import type {
   GenerateVocabularyFeedbackOutput,
 } from "@/ai/flows/schemas";
 import { useToast } from "@/hooks/use-toast";
+import InteractiveText from "./interactive-text";
 
 interface ReviewViewProps {
   words: CombinedVocabulary[];
@@ -128,7 +129,7 @@ const FillInBlankGame: FC<{
   const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
   
   const { toast } = useToast();
-  const { audioRef, isPlaying, playAudio } = useAudioPlayback({ setWords: () => {} });
+  const playbackHook = useAudioPlayback({ setWords: () => {} });
 
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -212,7 +213,7 @@ const FillInBlankGame: FC<{
 
   return (
     <Card className="max-w-2xl mx-auto">
-      <audio ref={audioRef} className="hidden" />
+      <audio ref={playbackHook.audioRef} className="hidden" />
       <CardHeader>
         <CardTitle>Fill in the Blank</CardTitle>
         <CardDescription>
@@ -267,15 +268,22 @@ const FillInBlankGame: FC<{
                            <div className="flex justify-between items-start">
                                 <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><BookCopy className="h-4 w-4"/> Vocabulary Analysis</h5>
                                 <div className="flex items-center -mt-1 -mr-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-vocab-${currentQuestionIndex}`, feedback.vocabularyAnalysis)} disabled={isPlaying[`feedback-vocab-${currentQuestionIndex}`]}>
-                                        {isPlaying[`feedback-vocab-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-vocab-${currentQuestionIndex}`, feedback.vocabularyAnalysis)} disabled={playbackHook.isPlaying[`feedback-vocab-${currentQuestionIndex}`]}>
+                                        {playbackHook.isPlaying[`feedback-vocab-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('vocab', feedback.vocabularyAnalysis)} disabled={isTranslating['vocab']}>
                                         {isTranslating['vocab'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                     </Button>
                                 </div>
                            </div>
-                           <p className="text-sm text-red-900">{feedback.vocabularyAnalysis}</p>
+                           <p className="text-sm text-red-900">
+                             <InteractiveText 
+                                text={feedback.vocabularyAnalysis} 
+                                vocabulary={words}
+                                playbackHook={playbackHook}
+                                activePlaybackKey={`feedback-vocab-${currentQuestionIndex}`}
+                            />
+                           </p>
                            {translation['vocab'] && (
                                 <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
                                     <strong>Dịch:</strong> {translation['vocab']}
@@ -287,15 +295,22 @@ const FillInBlankGame: FC<{
                            <div className="flex justify-between items-start">
                                 <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><Pilcrow className="h-4 w-4"/> Grammar Analysis</h5>
                                 <div className="flex items-center -mt-1 -mr-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playAudio(`feedback-grammar-${currentQuestionIndex}`, feedback.grammarAnalysis)} disabled={isPlaying[`feedback-grammar-${currentQuestionIndex}`]}>
-                                        {isPlaying[`feedback-grammar-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-grammar-${currentQuestionIndex}`, feedback.grammarAnalysis)} disabled={playbackHook.isPlaying[`feedback-grammar-${currentQuestionIndex}`]}>
+                                        {playbackHook.isPlaying[`feedback-grammar-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('grammar', feedback.grammarAnalysis)} disabled={isTranslating['grammar']}>
                                         {isTranslating['grammar'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                     </Button>
                                 </div>
                            </div>
-                           <p className="text-sm text-red-900">{feedback.grammarAnalysis}</p>
+                           <p className="text-sm text-red-900">
+                             <InteractiveText 
+                                text={feedback.grammarAnalysis} 
+                                vocabulary={words}
+                                playbackHook={playbackHook}
+                                activePlaybackKey={`feedback-grammar-${currentQuestionIndex}`}
+                            />
+                           </p>
                             {translation['grammar'] && (
                                 <div className="mt-2 text-sm text-blue-800 bg-blue-50 border-t border-blue-200 pt-2">
                                     <strong>Dịch:</strong> {translation['grammar']}
