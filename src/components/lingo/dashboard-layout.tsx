@@ -71,14 +71,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'] },
   ];
   
-  const managementMenuItems = [
-    { id: "profile", label: "My Profile", icon: User, role: ['user', 'admin'] },
-    { id: "user-management", label: "User Management", icon: Users, role: ['admin'] },
-    { id: "word-management", label: "Word Management", icon: Database, role: ['admin'] },
-  ];
-  
   const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
-  const availableManagementItems = managementMenuItems.filter(item => user && user.role && item.role.includes(user.role));
 
 
   const handleViewChange = (view: View) => {
@@ -127,20 +120,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-             <SidebarMenu>
-                {user?.status === 'approved' && availableManagementItems.map((item) => (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      onClick={() => handleViewChange(item.id as View)}
-                      isActive={activeView === item.id}
-                      tooltip={item.label}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-             </SidebarMenu>
+             {/* Management links moved to header dropdown */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut } from "lucide-react";
+import { User, Settings, LogOut, Users, Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 
@@ -82,8 +82,20 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setActiveView('profile')}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>My Profile</span>
               </DropdownMenuItem>
+               {user?.role === 'admin' && (
+                <>
+                    <DropdownMenuItem onSelect={() => setActiveView('user-management')}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>User Management</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setActiveView('word-management')}>
+                        <Database className="mr-2 h-4 w-4" />
+                        <span>Word Management</span>
+                    </DropdownMenuItem>
+                </>
+               )}
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
