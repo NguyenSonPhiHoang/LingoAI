@@ -24,16 +24,20 @@ const prompt = ai.definePrompt({
   name: 'generateVocabularyFeedbackPrompt',
   input: {schema: GenerateVocabularyFeedbackInputSchema},
   output: {schema: GenerateVocabularyFeedbackOutputSchema},
-  prompt: `You are an English teacher providing feedback on a fill-in-the-blank vocabulary question. The user has selected an incorrect word. Your task is to explain why their choice is wrong in the context of the sentence and why the correct word is a better fit.
+  prompt: `You are an English teacher providing feedback on a fill-in-the-blank vocabulary question. The user has selected an incorrect word.
 
-Keep the explanation clear, concise, and helpful.
+Your task is to provide a two-part feedback:
+1.  **Vocabulary Analysis**: Explain why the user's choice is wrong in the context of the sentence and why the correct word is a better fit.
+2.  **Grammar Analysis**: Analyze the grammatical structure of the complete, correct sentence. Identify the main components (subject, verb, object) and explain how they work together. If there are clauses or complex structures, briefly explain them.
+
+Keep the explanations clear, concise, and helpful.
 
 Sentence with blank: "{{sentenceWithBlank}}"
 User's Incorrect Word: "{{userAnswerTerm}}"
 Correct Word: "{{correctAnswerTerm}}"
 Definition of Correct Word: "{{correctAnswerDefinition}}"
 
-Explain the user's mistake.
+Generate the feedback now.
 `,
 });
 

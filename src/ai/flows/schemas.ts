@@ -458,6 +458,6 @@ export const GenerateVocabularyFeedbackInputSchema = z.object({
 export type GenerateVocabularyFeedbackInput = z.infer<typeof GenerateVocabularyFeedbackInputSchema>;
 
 export const GenerateVocabularyFeedbackOutputSchema = z.object({
-  feedback: z.string().describe("A clear explanation of why the user's answer is incorrect and the correct answer is better in context."),
+  feedback: z.string().describe("A clear, two-part explanation containing: 1. A vocabulary analysis of why the user's answer is incorrect. 2. A grammar analysis of the correct sentence structure."),
 });
 export type GenerateVocabularyFeedbackOutput = z.infer<typeof GenerateVocabularyFeedbackOutputSchema>;
