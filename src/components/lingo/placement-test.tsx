@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { Loader2, ArrowLeft, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, ArrowRight, BookCheck } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,7 +17,9 @@ import { Progress } from "@/components/ui/progress";
 import { generatePlacementTest } from "@/ai/flows/generate-placement-test";
 import type { PlacementTestQuestion, UserLevel } from "@/ai/flows/schemas";
 import type { ViewState } from "@/app/page";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+import { addTestResult } from "@/services/test-results";
+import { useToast } from "@/hooks/use-toast";
 
 
 const levelMapping: Record<string, { label: string, value: UserLevel }> = {
@@ -29,45 +31,43 @@ const levelMapping: Record<string, { label: string, value: UserLevel }> = {
     'c2': { label: 'Level 6 (C2 – Proficiency)', value: 'advanced' },
 };
 
-const getLevelScore = (level: UserLevel) => {
-    switch (level) {
-        case 'beginner': return 1;
-        case 'intermediate': return 2;
-        case 'advanced': return 3;
-        default: return 0;
-    }
-}
 
 interface PlacementTestProps {
     setActiveViewState: Dispatch<SetStateAction<ViewState>>;
 }
 
+type TestState = 'selection' | 'running' | 'finished';
+
 const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [testState, setTestState] = useState<TestState>('selection');
     const [questions, setQuestions] = useState<PlacementTestQuestion[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<number, string>>({});
-    const [isFinished, setIsFinished] = useState(false);
+    const [finalScore, setFinalScore] = useState({ correct: 0, total: 0 });
+    const [recommendedLevel, setRecommendedLevel] = useState<UserLevel>('beginner');
+
     
-    useEffect(() => {
-        const fetchTest = async () => {
-            setIsLoading(true);
-            try {
-                const result = await generatePlacementTest();
-                // Shuffle options for each question
-                const shuffledQuestions = result.questions.map(q => ({
-                    ...q,
-                    options: [...q.options].sort(() => Math.random() - 0.5)
-                }));
-                setQuestions(shuffledQuestions);
-            } catch (error) {
-                console.error("Failed to generate placement test:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchTest();
-    }, []);
+    const startTest = async (numberOfQuestions: number) => {
+        setIsLoading(true);
+        setTestState('running');
+        try {
+            const result = await generatePlacementTest({ numberOfQuestions });
+            const shuffledQuestions = result.questions.map(q => ({
+                ...q,
+                options: [...q.options].sort(() => Math.random() - 0.5)
+            }));
+            setQuestions(shuffledQuestions);
+        } catch (error) {
+            console.error("Failed to generate placement test:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not start the test. Please try again.'});
+            setTestState('selection');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleAnswerSelect = (option: string) => {
         setAnswers(prev => ({ ...prev, [currentQuestionIndex]: option }));
@@ -77,20 +77,97 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
         } else {
-            // Finish the test
-            setIsFinished(true);
+            finishTest();
         }
     };
 
-    const renderTestContent = () => {
+    const finishTest = async () => {
+        if (!user) return;
+        
+        let beginnerCorrect = 0, intermediateCorrect = 0, advancedCorrect = 0;
+        let beginnerTotal = 0, intermediateTotal = 0, advancedTotal = 0;
+
+        questions.forEach((q, index) => {
+            if (q.level === 'beginner') beginnerTotal++;
+            if (q.level === 'intermediate') intermediateTotal++;
+            if (q.level === 'advanced') advancedTotal++;
+
+            if (answers[index] === q.correctOption) {
+                if (q.level === 'beginner') beginnerCorrect++;
+                if (q.level === 'intermediate') intermediateCorrect++;
+                if (q.level === 'advanced') advancedCorrect++;
+            }
+        });
+        
+        const totalCorrect = beginnerCorrect + intermediateCorrect + advancedCorrect;
+        setFinalScore({ correct: totalCorrect, total: questions.length });
+
+        let recLevel: UserLevel = 'beginner';
+        
+        if (advancedTotal > 0 && (advancedCorrect / advancedTotal) >= 0.8) {
+            recLevel = 'advanced';
+        } else if (advancedTotal > 0 && (advancedCorrect / advancedTotal) >= 0.5) {
+            recLevel = 'advanced';
+        } else if (intermediateTotal > 0 && (intermediateCorrect / intermediateTotal) >= 0.8) {
+            recLevel = 'intermediate';
+        } else if (intermediateTotal > 0 && (intermediateCorrect / intermediateTotal) >= 0.5) {
+            recLevel = 'intermediate';
+        } else if (beginnerTotal > 0 && (beginnerCorrect / beginnerTotal) >= 0.7) {
+            recLevel = 'beginner';
+        }
+        setRecommendedLevel(recLevel);
+
+        try {
+            await addTestResult(user.uid, {
+                correctAnswers: totalCorrect,
+                totalQuestions: questions.length,
+                percentage: (totalCorrect / questions.length) * 100,
+                recommendedLevel: recLevel,
+            });
+            toast({ title: 'Success', description: 'Your test result has been saved.' });
+        } catch (error) {
+            console.error("Failed to save test result:", error);
+            toast({ variant: 'destructive', title: 'Save Error', description: 'Could not save your test result.'});
+        }
+        
+        setTestState('finished');
+    };
+
+    const renderSelectionScreen = () => (
+        <Card className="w-full max-w-2xl text-center">
+            <CardHeader>
+                <CardTitle>Placement Test</CardTitle>
+                <CardDescription>Choose the number of questions to start the test and determine your English level.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {[10, 20, 30, 40, 50, 60].map(num => (
+                        <Button key={num} variant="outline" size="lg" onClick={() => startTest(num)}>
+                            {num} Questions
+                        </Button>
+                    ))}
+                </div>
+            </CardContent>
+             <CardFooter>
+                <Button variant="ghost" onClick={() => setActiveViewState({ view: 'overview' })}>Go Back</Button>
+            </CardFooter>
+        </Card>
+    );
+
+    const renderTestScreen = () => {
+        if (isLoading) {
+             return <Loader2 className="h-12 w-12 animate-spin text-primary" />;
+        }
         const currentQuestion = questions[currentQuestionIndex];
+        if (!currentQuestion) return null;
+
         const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
         return (
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <CardTitle>English Placement Test</CardTitle>
-                    <CardDescription>Answer the questions to the best of your ability to determine your level.</CardDescription>
+                    <CardDescription>Answer the questions to the best of your ability.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
@@ -121,49 +198,10 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
         );
     };
 
-    const renderResults = () => {
-        let beginnerCorrect = 0;
-        let intermediateCorrect = 0;
-        let advancedCorrect = 0;
-
-        questions.forEach((q, index) => {
-            if (answers[index] === q.correctOption) {
-                if (q.level === 'beginner') beginnerCorrect++;
-                if (q.level === 'intermediate') intermediateCorrect++;
-                if (q.level === 'advanced') advancedCorrect++;
-            }
-        });
-
-        let recommendedLevel: UserLevel = 'beginner';
-        let recommendedCefr: keyof typeof levelMapping = 'a1';
+    const renderResultsScreen = () => {
+        const scorePercentage = (finalScore.correct / finalScore.total) * 100;
+        const levelLabel = Object.values(levelMapping).find(l => l.value === recommendedLevel)?.label || "Beginner";
         
-        // C-level determination
-        if (advancedCorrect >= 8) {
-            recommendedCefr = 'c2';
-            recommendedLevel = 'advanced';
-        } else if (advancedCorrect >= 5) {
-            recommendedCefr = 'c1';
-            recommendedLevel = 'advanced';
-        } 
-        // B-level determination
-        else if (intermediateCorrect >= 8) {
-            recommendedCefr = 'b2';
-            recommendedLevel = 'intermediate';
-        } else if (intermediateCorrect >= 5) {
-            recommendedCefr = 'b1';
-            recommendedLevel = 'intermediate';
-        }
-        // A-level determination
-        else if (beginnerCorrect >= 7) {
-            recommendedCefr = 'a2';
-            recommendedLevel = 'beginner';
-        } else {
-            recommendedCefr = 'a1';
-            recommendedLevel = 'beginner';
-        }
-        
-        const resultLabel = levelMapping[recommendedCefr].label;
-
         return (
             <Card className="w-full max-w-2xl text-center">
                  <CardHeader>
@@ -173,20 +211,16 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                 <CardContent className="space-y-4">
                      <div className="p-6 bg-primary/10 rounded-lg">
                         <div className="text-muted-foreground">Your Recommended Level</div>
-                        <div className="text-4xl font-bold text-primary capitalize">{resultLabel}</div>
+                        <div className="text-4xl font-bold text-primary capitalize">{levelLabel}</div>
                      </div>
-                     <div className="grid grid-cols-3 gap-4 text-sm">
+                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="p-3 bg-muted/50 rounded-md">
-                            <div className="font-semibold">Beginner</div>
-                            <div>{beginnerCorrect} / 10</div>
+                            <div className="font-semibold">Score</div>
+                            <div>{finalScore.correct} / {finalScore.total}</div>
                         </div>
                         <div className="p-3 bg-muted/50 rounded-md">
-                            <div className="font-semibold">Intermediate</div>
-                            <div>{intermediateCorrect} / 10</div>
-                        </div>
-                        <div className="p-3 bg-muted/50 rounded-md">
-                            <div className="font-semibold">Advanced</div>
-                            <div>{advancedCorrect} / 10</div>
+                            <div className="font-semibold">Percentage</div>
+                            <div>{scorePercentage.toFixed(1)}%</div>
                         </div>
                      </div>
                 </CardContent>
@@ -201,21 +235,20 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
                      <Button 
                         className="w-full"
                         variant="outline"
-                        onClick={() => setActiveViewState({ view: 'ai-suggester' })}
+                        onClick={() => setTestState('selection')}
                     >
-                        Go Back
+                        Take Another Test
                     </Button>
                 </CardFooter>
             </Card>
-        )
+        );
     };
 
-
     return (
-        <div className="flex flex-col items-center justify-center h-full">
-            {isLoading && <Loader2 className="h-12 w-12 animate-spin text-primary" />}
-            {!isLoading && !isFinished && questions.length > 0 && renderTestContent()}
-            {!isLoading && isFinished && renderResults()}
+        <div className="flex flex-col items-center justify-center h-full p-4">
+           {testState === 'selection' && renderSelectionScreen()}
+           {testState === 'running' && renderTestScreen()}
+           {testState === 'finished' && renderResultsScreen()}
         </div>
     );
 };

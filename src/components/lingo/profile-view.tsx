@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useRef, type FC } from 'react';
+import { useState, useRef, useEffect, type FC } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
 import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,69 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfile } from '@/services/users';
+import { getTestResults, type TestResult } from '@/services/test-results';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
+
+const PlacementTestHistory: FC = () => {
+    const { user } = useAuth();
+    const [results, setResults] = useState<TestResult[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchResults = async () => {
+            setIsLoading(true);
+            try {
+                const testResults = await getTestResults(user.uid);
+                setResults(testResults);
+            } catch (error) {
+                console.error("Failed to fetch test results", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchResults();
+    }, [user]);
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-24">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
+    }
+    
+    if (results.length === 0) {
+        return <p className="text-sm text-muted-foreground">No test history found.</p>;
+    }
+
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Percentage</TableHead>
+                    <TableHead>Recommended Level</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {results.map(result => (
+                    <TableRow key={result.id}>
+                        <TableCell>{format(new Date(result.takenAt), 'PPP')}</TableCell>
+                        <TableCell>{result.correctAnswers}/{result.totalQuestions}</TableCell>
+                        <TableCell>{result.percentage.toFixed(1)}%</TableCell>
+                        <TableCell className="capitalize">{result.recommendedLevel}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+};
 
 const ProfileView: FC = () => {
     const { user } = useAuth();
@@ -58,7 +117,6 @@ const ProfileView: FC = () => {
                 title: "Update Failed",
                 description: error.message || "An unknown error occurred.",
             });
-            // Revert form to original value on error
             form.reset({ displayName: user.displayName || '' });
         } finally {
             setIsSubmitting(false);
@@ -73,18 +131,13 @@ const ProfileView: FC = () => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // In a real app, you would upload this file to Firebase Storage
-        // and get a download URL. For this demo, we'll use a placeholder.
         setIsUploading(true);
         toast({
             title: "File Upload (Demo)",
             description: "In a real application, this file would be uploaded to storage. This feature is not fully implemented yet."
         });
 
-        // Simulating upload
         setTimeout(() => {
-             // Example: const photoURL = await uploadFileAndGetURL(file);
-             // await updateUserProfile(user.uid, { photoURL });
             setIsUploading(false);
         }, 2000);
     };
@@ -179,6 +232,16 @@ const ProfileView: FC = () => {
                             </div>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Placement Test History</CardTitle>
+                    <CardDescription>Review your past placement test results and track your progress.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <PlacementTestHistory />
                 </CardContent>
             </Card>
         </div>

@@ -352,7 +352,7 @@ const PassageSchema = z.object({
 export const GenerateLessonContentOutputSchema = z.object({
     vocabularySuggestions: z.array(VocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
     grammarFocus: GrammarFocusSchema.describe("An explanation of a relevant grammar or pronunciation point."),
-    passage: PassageSchema.describe("A reading passage, dialogue script, or word list related to the topic."),
+    passage: PassageSchema.describe("A reading passage, dialogue, or word list related to the topic."),
 });
 export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;
 
@@ -409,6 +409,13 @@ export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSche
 
 
 // Schemas for generate-placement-test.ts
+export const GeneratePlacementTestInputSchema = z.object({
+  numberOfQuestions: z.number().int().min(10).max(60),
+});
+export type GeneratePlacementTestInput = z.infer<
+  typeof GeneratePlacementTestInputSchema
+>;
+
 export const PlacementTestQuestionSchema = z.object({
     question: z.string().describe('The test question.'),
     options: z.array(z.string()).length(4).describe('Four possible answers.'),
