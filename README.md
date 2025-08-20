@@ -1,2 +1,2 @@
-# lingoAI
-Một ứng dụng về học anh văn và AI 
+# LingoAI
+Một ứng dụng AI học anh
