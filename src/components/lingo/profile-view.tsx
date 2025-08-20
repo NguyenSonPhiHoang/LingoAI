@@ -6,8 +6,8 @@ import { useAuth } from '@/context/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format, formatDistanceToNowStrict } from 'date-fns';
-import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star, Timer } from 'lucide-react';
+import { format } from 'date-fns';
+import { Loader2, User, Mail, Shield, CheckCircle, Clock, XCircle, Calendar, Upload, Pencil, FileText, Star, Timer, KeyRound } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, ComposedChart } from "recharts";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -30,6 +30,16 @@ import {
 const profileFormSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
+
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(1, { message: "Current password is required." }),
+  newPassword: z.string().min(6, { message: "New password must be at least 6 characters." }),
+  confirmPassword: z.string(),
+}).refine(data => data.newPassword === data.confirmPassword, {
+    message: "New passwords do not match.",
+    path: ["confirmPassword"],
+});
+
 
 const formatDuration = (seconds: number) => {
     if (isNaN(seconds) || seconds < 0) return 'N/A';
@@ -68,8 +78,6 @@ const PlacementTestHistory: FC = () => {
         fetchResults();
     }, [user]);
     
-    // The results are already sorted newest to oldest from Firestore.
-    // Take the 10 most recent results for the chart and reverse them for chronological display.
     const chartData = results
         .slice(0, 10)
         .map(result => ({
@@ -171,6 +179,87 @@ const PlacementTestHistory: FC = () => {
         </div>
     );
 };
+
+const ChangePasswordForm: FC = () => {
+    const { changePassword } = useAuth();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const form = useForm<z.infer<typeof passwordFormSchema>>({
+        resolver: zodResolver(passwordFormSchema),
+        defaultValues: {
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+        }
+    });
+
+    const onSubmit = async (values: z.infer<typeof passwordFormSchema>) => {
+        setIsSubmitting(true);
+        try {
+            await changePassword(values.currentPassword, values.newPassword);
+            toast({
+                title: "Success",
+                description: "Your password has been changed successfully.",
+            });
+            form.reset();
+        } catch (error: any) {
+            console.error("Password change failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Password Change Failed",
+                description: "Please check your current password and try again.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    return (
+         <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="currentPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Current Password</FormLabel>
+                            <FormControl><Input type="password" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl><Input type="password" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl><Input type="password" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                    Change Password
+                </Button>
+            </form>
+        </Form>
+    );
+};
+
 
 const ProfileView: FC = () => {
     const { user } = useAuth();
@@ -344,6 +433,16 @@ const ProfileView: FC = () => {
                             </div>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Security</CardTitle>
+                    <CardDescription>Change your account password.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChangePasswordForm />
                 </CardContent>
             </Card>
 

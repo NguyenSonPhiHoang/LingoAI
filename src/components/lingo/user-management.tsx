@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useMemo, type FC } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock, Timer, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Timer, ChevronDown, ChevronRight, BarChart3, KeyRound } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { getAllUsers, updateUserStatus } from '@/services/users';
 import { getAllUsersTotalActivity, getUserActivityForMonth, type DailyActivity } from '@/services/activity';
@@ -185,7 +185,8 @@ const UserRow: FC<{
     isOpen: boolean;
     onToggle: () => void;
     onStatusChange: (uid: string, status: 'approved' | 'rejected' | 'pending') => void;
-}> = ({ u, totalActivity, isOpen, onToggle, onStatusChange }) => {
+    onResetPassword: (email: string) => void;
+}> = ({ u, totalActivity, isOpen, onToggle, onStatusChange, onResetPassword }) => {
     
     const getStatusBadge = (status: User['status']) => {
         switch (status) {
@@ -237,6 +238,10 @@ const UserRow: FC<{
                              <XCircle className="mr-2 h-4 w-4 text-red-500" />
                             Reject
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => u.email && onResetPassword(u.email)}>
+                             <KeyRound className="mr-2 h-4 w-4" />
+                            Reset Password
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </TableCell>
@@ -246,7 +251,7 @@ const UserRow: FC<{
 
 
 const UserManagement: FC = () => {
-    const { user } = useAuth();
+    const { user, resetPassword } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [activity, setActivity] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -295,6 +300,23 @@ const UserManagement: FC = () => {
                 variant: "destructive",
                 title: "Error",
                 description: "Failed to update user status.",
+            });
+        }
+    };
+    
+    const handleResetPassword = async (email: string) => {
+        try {
+            await resetPassword(email);
+            toast({
+                title: "Email Sent",
+                description: `A password reset email has been sent to ${email}.`,
+            });
+        } catch (error) {
+            console.error("Error sending reset password email:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to send password reset email.",
             });
         }
     };
@@ -350,6 +372,7 @@ const UserManagement: FC = () => {
                                 u={u} 
                                 totalActivity={activity[u.uid] || 0}
                                 onStatusChange={handleStatusChange}
+                                onResetPassword={handleResetPassword}
                                 isOpen={!!openCollapsibles[u.uid]}
                                 onToggle={() => handleToggleCollapsible(u.uid)}
                              />
