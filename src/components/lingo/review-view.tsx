@@ -327,7 +327,7 @@ const FillInBlankGame: FC<{
         <div className="flex justify-center gap-4">
            <Button
             type="button"
-            onClick={() => { goToNextQuestion() }}
+            onClick={goToNextQuestion}
             variant="secondary"
             disabled={!showResult}
           >
