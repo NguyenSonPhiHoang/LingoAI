@@ -17,7 +17,7 @@ import {
   getDoc,
   limit,
 } from "firebase/firestore";
-import type { VocabularyEntry } from "@/ai/flows/schemas";
+import type { VocabularyEntry, GenerateWordDetailsOutput } from "@/ai/flows/schemas";
 
 // This is the base type, stored in the 'words' collection.
 // It only contains the term and pronunciation, which are global.
@@ -44,6 +44,9 @@ export interface UserVocabulary {
   sentence: string;
   vietnameseSentence: string;
   sentenceAudioUrl?: string;
+  synonyms?: string[];
+  antonyms?: string[];
+  irregularForms?: { v1: string; v2: string; v3: string; };
   
   // User-specific metadata
   favorite: boolean;
@@ -63,7 +66,7 @@ const userVocabularyCollection = collection(db, "userVocabulary");
 
 // Helper function to remove undefined properties from an object
 const cleanObject = (obj: any) => {
-  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined && v !== null));
 }
 
 // GET all of a user's vocabulary, combining data from both collections.
@@ -115,7 +118,7 @@ export const getAllWords = async (): Promise<Word[]> => {
 
 
 // ADD a new word. This function separates global data from user-specific data.
-export const addWordToVocabulary = async (userId: string, fullWordData: VocabularyEntry): Promise<CombinedVocabulary> => {
+export const addWordToVocabulary = async (userId: string, fullWordData: VocabularyEntry & Partial<GenerateWordDetailsOutput>): Promise<CombinedVocabulary> => {
     const normalizedTerm = fullWordData.term.toLowerCase();
     
     // 1. Check if the word exists in the global 'words' collection.
@@ -153,7 +156,6 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     const userVocabSnap = await getDocs(userVocabQuery);
     
     let userVocabDocRefId: string;
-    let existingUserVocabData: Partial<UserVocabulary> = {};
     
     // 4. Create or Update the user-specific vocabulary entry
     const userSpecificPayload = {
@@ -164,6 +166,9 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
         vietnameseDefinition: fullWordData.vietnameseDefinition,
         sentence: fullWordData.sentence,
         vietnameseSentence: fullWordData.vietnameseSentence,
+        synonyms: fullWordData.synonyms || [],
+        antonyms: fullWordData.antonyms || [],
+        irregularForms: fullWordData.irregularForms || null,
     };
 
     if (userVocabSnap.empty) {
@@ -177,8 +182,7 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     } else {
         // If user already has it, update it with the new AI-generated details
         const userVocabDocToUpdateRef = userVocabSnap.docs[0].ref;
-        existingUserVocabData = userVocabSnap.docs[0].data();
-        await updateDoc(userVocabDocToUpdateRef, userSpecificPayload);
+        await updateDoc(userVocabDocToUpdateRef, cleanObject(userSpecificPayload));
         userVocabDocRefId = userVocabDocToUpdateRef.id;
     }
     
@@ -194,7 +198,7 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
 };
 
 
-export const addMultipleWordsToVocabulary = async (words: VocabularyEntry[], userId: string): Promise<CombinedVocabulary[]> => {
+export const addMultipleWordsToVocabulary = async (words: (VocabularyEntry & Partial<GenerateWordDetailsOutput>)[], userId: string): Promise<CombinedVocabulary[]> => {
   const addedOrUpdatedWords: CombinedVocabulary[] = [];
   for (const word of words) {
     const savedWord = await addWordToVocabulary(userId, word);

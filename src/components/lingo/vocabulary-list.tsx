@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useRef, useState, useEffect } from "react";
@@ -76,6 +75,11 @@ const editWordSchema = z.object({
   vietnameseDefinition: z.string(),
   sentence: z.string().min(1, "Example sentence cannot be empty."),
   vietnameseSentence: z.string(),
+  synonyms: z.string().optional(),
+  antonyms: z.string().optional(),
+  v1: z.string().optional(),
+  v2: z.string().optional(),
+  v3: z.string().optional(),
 });
 
 const EditWordDialog: FC<{
@@ -95,15 +99,36 @@ const EditWordDialog: FC<{
       vietnameseDefinition: word.vietnameseDefinition,
       sentence: word.sentence,
       vietnameseSentence: word.vietnameseSentence,
+      synonyms: word.synonyms?.join(', ') || '',
+      antonyms: word.antonyms?.join(', ') || '',
+      v1: word.irregularForms?.v1 || '',
+      v2: word.irregularForms?.v2 || '',
+      v3: word.irregularForms?.v3 || '',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof editWordSchema>) => {
     setIsSaving(true);
     try {
-      await updateUserVocabulary(word.userVocabularyId, values);
+      const updates: Partial<CombinedVocabulary> = {
+          partOfSpeech: values.partOfSpeech,
+          definition: values.definition,
+          vietnameseDefinition: values.vietnameseDefinition,
+          sentence: values.sentence,
+          vietnameseSentence: values.vietnameseSentence,
+          synonyms: values.synonyms?.split(',').map(s => s.trim()).filter(Boolean) || [],
+          antonyms: values.antonyms?.split(',').map(a => a.trim()).filter(Boolean) || [],
+      };
+      
+      if (values.v1 && values.v2 && values.v3) {
+          updates.irregularForms = { v1: values.v1, v2: values.v2, v3: values.v3 };
+      } else {
+          updates.irregularForms = undefined;
+      }
+        
+      await updateUserVocabulary(word.userVocabularyId, updates);
       setWords(prev =>
-        prev.map(w => (w.userVocabularyId === word.userVocabularyId ? { ...w, ...values } : w))
+        prev.map(w => (w.userVocabularyId === word.userVocabularyId ? { ...w, ...updates } : w))
       );
       toast({ title: "Success", description: "Word updated successfully." });
       setIsOpen(false);
@@ -248,6 +273,40 @@ const EditWordDialog: FC<{
                           </FormItem>
                         )}
                       />
+                       <FormField
+                        control={form.control}
+                        name="synonyms"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Synonyms</FormLabel>
+                             <FormControl>
+                              <Textarea {...field} placeholder="Enter synonyms, separated by commas" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="antonyms"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Antonyms</FormLabel>
+                            <FormControl>
+                               <Textarea {...field} placeholder="Enter antonyms, separated by commas" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="space-y-2">
+                        <Label>Irregular Verb Forms</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <FormField control={form.control} name="v1" render={({field}) => (<FormItem><FormLabel>V1</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="v2" render={({field}) => (<FormItem><FormLabel>V2</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="v3" render={({field}) => (<FormItem><FormLabel>V3</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                        </div>
+                      </div>
                 </CardContent>
             </Card>
             <DialogFooter className="sticky bottom-0 bg-background pt-4">
@@ -510,6 +569,33 @@ const VocabularyListInternal: FC<{
                           <p className="font-semibold text-muted-foreground">Example (VI):</p>
                           <p className="italic ml-10">"{word.vietnameseSentence}"</p>
                         </div>
+
+                         {word.synonyms && word.synonyms.length > 0 && (
+                            <div>
+                                <p className="font-semibold text-muted-foreground">Synonyms:</p>
+                                <div className="flex flex-wrap gap-2 mt-1 ml-10">
+                                    {word.synonyms.map((s, i) => <Badge key={i} variant="secondary">{s}</Badge>)}
+                                </div>
+                            </div>
+                        )}
+                        {word.antonyms && word.antonyms.length > 0 && (
+                            <div>
+                                <p className="font-semibold text-muted-foreground">Antonyms:</p>
+                                <div className="flex flex-wrap gap-2 mt-1 ml-10">
+                                    {word.antonyms.map((a, i) => <Badge key={i} variant="outline">{a}</Badge>)}
+                                </div>
+                            </div>
+                        )}
+                        {word.irregularForms && (
+                            <div>
+                                <p className="font-semibold text-muted-foreground">Irregular Verb Forms:</p>
+                                 <div className="flex flex-wrap gap-4 mt-1 ml-10">
+                                    <div>V1: <Badge variant="secondary">{word.irregularForms.v1}</Badge></div>
+                                    <div>V2: <Badge variant="secondary">{word.irregularForms.v2}</Badge></div>
+                                    <div>V3: <Badge variant="secondary">{word.irregularForms.v3}</Badge></div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                   </AccordionContent>
               </AccordionItem>
