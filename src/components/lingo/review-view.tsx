@@ -167,15 +167,6 @@ const FillInBlankGame: FC<{
       }
   };
 
-  const handleSelectOption = (option: string) => {
-    if (showResult) return;
-    setSelectedOption(option);
-    setShowResult(true);
-    if (option !== currentQuestion.correctTerm) {
-        getAIFeedback(option);
-    }
-  };
-
   const handleToggleTranslation = async (key: 'vocab' | 'grammar', text: string) => {
     if (!text) return;
     if (translation[key]) {
@@ -190,6 +181,15 @@ const FillInBlankGame: FC<{
         toast({ variant: "destructive", title: "Translation Failed" });
     } finally {
         setIsTranslating(prev => ({...prev, [key]: false}));
+    }
+  };
+  
+  const handleSelectOption = (option: string) => {
+    if (showResult) return;
+    setSelectedOption(option);
+    setShowResult(true);
+    if (option !== currentQuestion.correctTerm) {
+        getAIFeedback(option);
     }
   };
   
@@ -268,8 +268,8 @@ const FillInBlankGame: FC<{
                            <div className="flex justify-between items-start">
                                 <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><BookCopy className="h-4 w-4"/> Vocabulary Analysis</h5>
                                 <div className="flex items-center -mt-1 -mr-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-vocab-${currentQuestionIndex}`, feedback.vocabularyAnalysis)} disabled={playbackHook.isPlaying[`feedback-vocab-${currentQuestionIndex}`]}>
-                                        {playbackHook.isPlaying[`feedback-vocab-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-vocab-${currentQuestionIndex}`, feedback.vocabularyAnalysis)} disabled={playbackHook.activePlaybackKey ===`feedback-vocab-${currentQuestionIndex}`}}>
+                                        {playbackHook.activePlaybackKey === `feedback-vocab-${currentQuestionIndex}` ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('vocab', feedback.vocabularyAnalysis)} disabled={isTranslating['vocab']}>
                                         {isTranslating['vocab'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -295,8 +295,8 @@ const FillInBlankGame: FC<{
                            <div className="flex justify-between items-start">
                                 <h5 className="font-semibold text-red-800 flex items-center gap-2 mb-1"><Pilcrow className="h-4 w-4"/> Grammar Analysis</h5>
                                 <div className="flex items-center -mt-1 -mr-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-grammar-${currentQuestionIndex}`, feedback.grammarAnalysis)} disabled={playbackHook.isPlaying[`feedback-grammar-${currentQuestionIndex}`]}>
-                                        {playbackHook.isPlaying[`feedback-grammar-${currentQuestionIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => playbackHook.playAudio(`feedback-grammar-${currentQuestionIndex}`, feedback.grammarAnalysis)} disabled={playbackHook.activePlaybackKey === `feedback-grammar-${currentQuestionIndex}`}}>
+                                        {playbackHook.activePlaybackKey === `feedback-grammar-${currentQuestionIndex}` ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-800" onClick={() => handleToggleTranslation('grammar', feedback.grammarAnalysis)} disabled={isTranslating['grammar']}>
                                         {isTranslating['grammar'] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -327,7 +327,7 @@ const FillInBlankGame: FC<{
         <div className="flex justify-center gap-4">
            <Button
             type="button"
-            onClick={goToNextQuestion}
+            onClick={() => { goToNextQuestion() }}
             variant="secondary"
             disabled={!showResult}
           >
