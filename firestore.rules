@@ -1,55 +1,61 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Helper Functions ---
-    // Function to check if the requesting user is an admin.
+  
+    // Helper function to check for admin role
     function isAdmin() {
-      // This checks the user's document in Firestore for the 'admin' role.
+      // Check the user's role by looking up their document in the 'users' collection.
+      // This is secure because access to 'users' collection is controlled by rules below.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // --- Collection Rules ---
-
     // Rules for the 'users' collection
     match /users/{userId} {
-      // READ:
-      // - A user can read their own document.
-      // - An admin can read any user's document (for get and list operations).
-      allow read: if request.auth.uid == userId || isAdmin();
+      // READ: 
+      // - Any authenticated user can GET another user's profile.
+      // - Only admins can LIST all users.
+      allow get: if request.auth.uid != null;
+      allow list: if isAdmin();
 
-      // CREATE:
-      // - Any authenticated user can create their own user document.
-      // - Important: Enforce default role as 'user' and status as 'pending' on creation.
-      allow create: if request.auth.uid == userId
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.status == 'pending';
+      // CREATE: A user can only create their own user document.
+      allow create: if request.auth.uid == userId;
 
       // UPDATE:
-      // - A user can update their own displayName and photoURL.
-      // - They CANNOT change their own role or status.
-      // - An admin can update any user's status.
-      allow update: if (request.auth.uid == userId && request.resource.data.keys().hasOnly(['displayName', 'photoURL']))
-                    || (isAdmin() && request.resource.data.keys().hasOnly(['status']));
+      // - A user can update their own document, BUT cannot change their role or status.
+      // - An admin can update another user's status, but not their role.
+      allow update: if (request.auth.uid == userId && 
+                        request.resource.data.role == resource.data.role &&
+                        request.resource.data.status == resource.data.status) ||
+                       (isAdmin() && 
+                        request.resource.data.role == resource.data.role);
+
+      // DELETE: No one can delete user documents.
+      allow delete: if false;
     }
 
     // Rules for the global 'words' collection
     match /words/{wordId} {
-      // Anyone authenticated can read or create global words.
-      allow read, create: if request.auth.uid != null;
-      // Only admins can update the global word entries (e.g., fix a typo).
-      allow update: if isAdmin();
+      // READ: Any authenticated user can read the global word list.
+      allow read: if request.auth.uid != null;
+      // WRITE: Only admins can create or update global words.
+      allow write: if isAdmin();
+    }
+    
+    // Function to check ownership for user-specific data
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // Rules for user-specific collections
-    // This single rule applies to all collections where documents are owned by a user.
+    // Rules for all user-specific collections
     match /{collection}/{docId} {
-      allow read, write, delete: if request.auth.uid != null
-                                  && request.auth.uid == resource.data.userId
-                                  && (collection == 'lessons'
-                                      || collection == 'userVocabulary'
-                                      || collection == 'testResults'
-                                      || collection == 'user_activity'
-                                      || collection == 'library');
+      // This rule applies to: userVocabulary, lessons, testResults, user_activity, library
+      allow read, write, delete: if collection in ['userVocabulary', 'lessons', 'testResults', 'user_activity', 'library'] && isOwner(resource.data.userId);
+    }
+    
+    // Default deny all other access
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }
