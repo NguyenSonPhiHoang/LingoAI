@@ -1,54 +1,93 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isSignedIn() {
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
+    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+    
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
 
-    // Users collection
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow read; // Admins need to read user lists, users need to read their own data.
-      allow update: if isSignedIn() && isOwner(userId); // Users can only update their own document.
-      allow create: if isSignedIn(); // Allow new user signup to create their doc.
+      // Any authenticated user can read public user profiles
+      allow read: if isAuthenticated();
+      
+      // A user can create their own document (e.g., on signup)
+      allow create: if isOwner(userId);
+
+      // A user can update their own displayName. An admin can update any user's status or role.
+      allow update: if (isOwner(userId) && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])) ||
+                       (isAdmin() && request.resource.data.keys().hasAny(['status', 'role']));
     }
 
-    // Words collection (Global vocabulary)
+    // Rules for the global 'words' collection
     match /words/{wordId} {
-      allow read: if isSignedIn(); // All signed-in users can read the global word list.
-      allow write: if isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; // Only admins can write to the global word list.
-    }
-
-    // UserVocabulary collection (User-specific vocabulary data)
-    match /userVocabulary/{userVocaId} {
-      allow read, delete: if isSignedIn() && isOwner(resource.data.userId);
-      allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-      allow update: if isSignedIn() && isOwner(request.resource.data.userId);
+        // Any authenticated user can read the global word list.
+        allow read: if isAuthenticated();
+        
+        // Any authenticated user can create a new word if it doesn't exist yet.
+        // This is needed for the `addWordToVocabulary` flow.
+        allow create: if isAuthenticated();
+        
+        // Only admins can update existing global words (term, pronunciation, etc.)
+        allow update: if isAdmin();
+        
+        // Words should not be deleted to maintain data integrity.
+        allow delete: if false;
     }
     
-    // Lessons collection
+    // Rules for the 'userVocabulary' collection, linking users to words
+    match /userVocabulary/{userVocabId} {
+        // User can only interact with their own vocabulary entries.
+        allow read, delete: if isOwner(request.resource.data.userId);
+        
+        // Allow user to create their own vocabulary entry.
+        allow create: if isOwner(request.resource.data.userId);
+        
+        // Allow user to update their own entry (e.g., favorite, add topic, change definition).
+        // The userId and wordId should not be changed.
+        allow update: if isOwner(request.resource.data.userId) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.wordId == resource.data.wordId;
+    }
+    
+    // Rules for 'lessons' collection
     match /lessons/{lessonId} {
-       allow read, write: if isSignedIn() && isOwner(request.resource.data.userId);
-       allow create: if isSignedIn() && isOwner(request.resource.data.userId);
-       // For updates, we should also check against existing data
-       allow update: if isSignedIn() && isOwner(resource.data.userId);
-       allow delete: if isSignedIn() && isOwner(resource.data.userId);
+        // User can read and manage their own lessons
+        allow read, delete: if isOwner(request.resource.data.userId);
+        allow create: if isOwner(request.resource.data.userId);
+        allow update: if isOwner(request.resource.data.userId);
     }
     
-    // Test Results collection
+    // Rules for 'testResults' collection
     match /testResults/{resultId} {
-      allow read, create: if isSignedIn() && isOwner(request.resource.data.userId);
+        // User can read their own test results
+        allow read: if isOwner(request.resource.data.userId);
+        // User can create new test results for themselves
+        allow create: if isOwner(request.resource.data.userId);
+        // Test results should be immutable
+        allow update, delete: if false;
+    }
+    
+     // Rules for 'user_activity' collection
+    match /user_activity/{activityId} {
+        // User can read their own activity data
+        allow read: if isOwner(request.resource.data.userId);
+        // User can create/update their own activity document
+        allow write: if isOwner(request.resource.data.userId);
     }
 
-    // User Activity collection
-    match /user_activity/{activityId} {
-      // Users can only write to their own activity log, identified by the document ID format "userId_date"
-      allow write: if isSignedIn() && request.auth.uid == activityId.split('_')[0];
-    }
   }
 }
