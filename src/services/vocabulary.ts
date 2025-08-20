@@ -153,6 +153,7 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
     const userVocabSnap = await getDocs(userVocabQuery);
     
     let userVocabDocRefId: string;
+    let existingUserVocabData: Partial<UserVocabulary> = {};
     
     // 4. Create or Update the user-specific vocabulary entry
     const userSpecificPayload = {
@@ -163,20 +164,21 @@ export const addWordToVocabulary = async (userId: string, fullWordData: Vocabula
         vietnameseDefinition: fullWordData.vietnameseDefinition,
         sentence: fullWordData.sentence,
         vietnameseSentence: fullWordData.vietnameseSentence,
-        favorite: false,
-        createdAt: Timestamp.now(),
     };
 
     if (userVocabSnap.empty) {
         // If user doesn't have it, create a new link in `userVocabulary`.
-        const docRef = await addDoc(userVocabularyCollection, userSpecificPayload);
+        const docRef = await addDoc(userVocabularyCollection, {
+            ...userSpecificPayload,
+            favorite: false,
+            createdAt: Timestamp.now(),
+        });
         userVocabDocRefId = docRef.id;
     } else {
         // If user already has it, update it with the new AI-generated details
         const userVocabDocToUpdateRef = userVocabSnap.docs[0].ref;
-        // Don't overwrite favorite status or topic when re-adding
-        const { favorite, topic, ...restOfPayload } = userSpecificPayload;
-        await updateDoc(userVocabDocToUpdateRef, restOfPayload);
+        existingUserVocabData = userVocabSnap.docs[0].data();
+        await updateDoc(userVocabDocToUpdateRef, userSpecificPayload);
         userVocabDocRefId = userVocabDocToUpdateRef.id;
     }
     
