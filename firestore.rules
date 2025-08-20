@@ -2,48 +2,78 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-    // Users can read public user data, but only update their own.
-    // Admins can update any user's status.
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Collection: users
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow update: if request.auth.uid == userId // Allow user to update their own info (displayName, etc.)
-                    || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' && 'status' in request.resource.data); // Allow admin to update status
+      // Anyone authenticated can view public user profiles
+      allow read: if isAuthenticated();
+      
+      // Users can create their own user document upon signup
+      allow create: if isOwner(userId);
+      
+      // Users can update their own profile (e.g., displayName). Admins can update user status.
+      allow update: if (isOwner(userId) && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])) ||
+                       (isAdmin() && request.resource.data.keys().hasOnly(['status']));
     }
 
-    // Words are global. Authenticated users can read and create them (when adding a new term).
-    // Only admins can update existing words.
+    // Collection: words (Global vocabulary)
     match /words/{wordId} {
-      allow read, create: if request.auth != null;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
+        // Any authenticated user can read words
+        allow read: if isAuthenticated();
 
-    // Users can only manage their own vocabulary entries.
+        // Any authenticated user can create a new word if it doesn't exist
+        // (This happens when they add a word not yet in the global DB)
+        allow create: if isAuthenticated();
+        
+        // Only admins can update the global properties of a word
+        allow update: if isAuthenticated() && isAdmin();
+    }
+    
+    // Collection: userVocabulary (User's personal word list)
     match /userVocabulary/{docId} {
-      allow read, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+        // Users can only read, create, update, and delete their own vocabulary entries
+        allow read, delete: if isAuthenticated() && isOwner(resource.data.userId);
+        
+        // Allow creation if the new entry belongs to the user
+        allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+        
+        // Allow updates if the user is the owner
+        allow update: if isAuthenticated() && isOwner(resource.data.userId);
     }
     
-    // Users can only manage their own lessons.
+    // Collection: lessons
     match /lessons/{lessonId} {
-       allow read, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-       allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+        // Users can manage their own lessons
+        allow read, create, update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+        allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
     
-    // Users can only manage their own test results.
+    // Collection: testResults
     match /testResults/{resultId} {
-       allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-       // Test results are immutable
-       allow update, delete: if false;
+        // Users can read and create their own test results. They cannot be updated or deleted.
+        allow read, create: if isAuthenticated() && isOwner(request.resource.data.userId);
     }
     
-    // Users can only record their own activity.
+    // Collection: user_activity
     match /user_activity/{activityId} {
-      allow read, create, update: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Activity records are not deletable by clients
-      allow delete: if false;
+       // A user can only create/update their own activity log.
+       // The document ID is structured as `userId_date`, so we can check ownership.
+       allow write: if isAuthenticated() && request.auth.uid == activityId.split('_')[0];
     }
   }
 }
