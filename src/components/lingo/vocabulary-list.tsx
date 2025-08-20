@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
 import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, Search } from "lucide-react";
 import mammoth from "mammoth";
@@ -62,6 +62,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import AddWordDialog from "./add-word-dialog";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 interface VocabularyListProps {
   words: CombinedVocabulary[];
@@ -365,6 +366,48 @@ const GroupedView: FC<{
   );
 }
 
+const RelatedWordBadge: FC<{
+    word: string;
+    variant?: "secondary" | "outline";
+    wordMap: Map<string, CombinedVocabulary>;
+    isAudioPlaying: boolean;
+    onPlayAudio: (word: CombinedVocabulary) => void;
+}> = ({ word, variant, wordMap, isAudioPlaying, onPlayAudio }) => {
+    const relatedWordData = wordMap.get(word.toLowerCase());
+
+    if (relatedWordData) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger>
+                        <Badge variant={variant} className="cursor-pointer border-primary/50">{word}</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                        <div className="flex justify-between items-center gap-2">
+                           <div>
+                                <div className="font-bold font-sans">{relatedWordData.pronunciation}</div>
+                                <div className="text-muted-foreground">{relatedWordData.vietnameseDefinition}</div>
+                           </div>
+                           <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={(e) => { e.stopPropagation(); onPlayAudio(relatedWordData); }}
+                                disabled={isAudioPlaying}
+                            >
+                                {isAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+
+    return <Badge variant={variant}>{word}</Badge>;
+};
+
+
 const VocabularyListInternal: FC<{ 
   words: CombinedVocabulary[];
   allWords: CombinedVocabulary[]; 
@@ -374,6 +417,13 @@ const VocabularyListInternal: FC<{
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
   const [isGeneratingAudio, setIsGeneratingAudio] = useState<Record<string, boolean>>({});
+
+  const allWordsMap = useMemo(() => {
+    const map = new Map<string, CombinedVocabulary>();
+    allWords.forEach(w => map.set(w.term.toLowerCase(), w));
+    return map;
+  }, [allWords]);
+
 
   const handleDeleteWord = async (wordToDelete: CombinedVocabulary) => {
     try {
@@ -574,7 +624,16 @@ const VocabularyListInternal: FC<{
                             <div>
                                 <p className="font-semibold text-muted-foreground">Synonyms:</p>
                                 <div className="flex flex-wrap gap-2 mt-1 ml-10">
-                                    {word.synonyms.map((s, i) => <Badge key={i} variant="secondary">{s}</Badge>)}
+                                    {word.synonyms.map((s, i) => (
+                                       <RelatedWordBadge
+                                            key={`${s}-${i}`}
+                                            word={s}
+                                            variant="secondary"
+                                            wordMap={allWordsMap}
+                                            isAudioPlaying={isGeneratingAudio[`${allWordsMap.get(s.toLowerCase())?.userVocabularyId}-term`]}
+                                            onPlayAudio={(w) => handlePlayAudio(w, 'term')}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -582,7 +641,16 @@ const VocabularyListInternal: FC<{
                             <div>
                                 <p className="font-semibold text-muted-foreground">Antonyms:</p>
                                 <div className="flex flex-wrap gap-2 mt-1 ml-10">
-                                    {word.antonyms.map((a, i) => <Badge key={i} variant="outline">{a}</Badge>)}
+                                    {word.antonyms.map((a, i) => (
+                                         <RelatedWordBadge
+                                            key={`${a}-${i}`}
+                                            word={a}
+                                            variant="outline"
+                                            wordMap={allWordsMap}
+                                            isAudioPlaying={isGeneratingAudio[`${allWordsMap.get(a.toLowerCase())?.userVocabularyId}-term`]}
+                                            onPlayAudio={(w) => handlePlayAudio(w, 'term')}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         )}
