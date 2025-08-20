@@ -37,8 +37,8 @@ For the term "{{term}}", provide:
 4.  A contextual example sentence.
 5.  A clear and concise definition in Vietnamese.
 6.  The example sentence translated into Vietnamese.
-7.  A list of common synonyms, if any.
-8.  A list of common antonyms, if any.
+7.  A short list (fewer than 10) of the most common and relevant synonyms, if any.
+8.  A short list (fewer than 10) of the most common and relevant antonyms, if any.
 9.  If the term is a verb, provide its irregular forms (V1, V2, V3). If it is a regular verb, do not provide this field.
 `,
 });
