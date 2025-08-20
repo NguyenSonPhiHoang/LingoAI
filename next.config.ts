@@ -2,7 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@opentelemetry/api', '@opentelemetry/context-async-hooks', '@opentelemetry/instrumentation', '@opentelemetry/resources', '@opentelemetry/sdk-trace-base', '@opentelemetry/sdk-trace-node'],
   typescript: {
     ignoreBuildErrors: true,
   },
