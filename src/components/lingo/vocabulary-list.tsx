@@ -63,6 +63,9 @@ import { Badge } from "@/components/ui/badge";
 import AddWordDialog from "./add-word-dialog";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { useAudioPlayback } from "@/hooks/use-audio-playback";
+import InteractiveText from "./interactive-text";
+
 
 interface VocabularyListProps {
   words: CombinedVocabulary[];
@@ -370,12 +373,13 @@ const RelatedWordBadge: FC<{
     word: string;
     variant?: "secondary" | "outline";
     wordMap: Map<string, CombinedVocabulary>;
-    isAudioPlaying: boolean;
-    onPlayAudio: (word: CombinedVocabulary) => void;
-}> = ({ word, variant, wordMap, isAudioPlaying, onPlayAudio }) => {
+    playbackHook: ReturnType<typeof useAudioPlayback>;
+}> = ({ word, variant, wordMap, playbackHook }) => {
     const relatedWordData = wordMap.get(word.toLowerCase());
 
     if (relatedWordData) {
+        const audioKey = relatedWordData.userVocabularyId || relatedWordData.id;
+        const isAudioPlaying = playbackHook.activePlaybackKey === audioKey;
         return (
             <TooltipProvider>
                 <Tooltip>
@@ -392,7 +396,7 @@ const RelatedWordBadge: FC<{
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
-                                onClick={(e) => { e.stopPropagation(); onPlayAudio(relatedWordData); }}
+                                onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(relatedWordData); }}
                                 disabled={isAudioPlaying}
                             >
                                 {isAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
@@ -414,9 +418,8 @@ const VocabularyListInternal: FC<{
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }> = ({ words, allWords, setWords }) => {
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const playbackHook = useAudioPlayback({ setWords });
   const { toast } = useToast();
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState<Record<string, boolean>>({});
 
   const allWordsMap = useMemo(() => {
     const map = new Map<string, CombinedVocabulary>();
@@ -454,220 +457,166 @@ const VocabularyListInternal: FC<{
     }
   };
 
-  const playWithBrowserTTS = (text: string) => {
-    if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Browser Not Supported",
-            description: "Your browser does not support text-to-speech.",
-        });
-    }
-  };
-  
-  const handlePlayAudio = async (word: CombinedVocabulary, type: 'term' | 'sentence') => {
-    const isTerm = type === 'term';
-    const audioUrl = isTerm ? word.audioUrl : word.sentenceAudioUrl;
-    const textToGenerate = isTerm ? word.term : word.sentence;
-    const audioGenKey = `${word.userVocabularyId}-${type}`;
-
-    if (audioUrl) {
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.play().catch(e => console.error("Error playing audio:", e));
-      }
-      return;
-    }
-
-    setIsGeneratingAudio(prev => ({...prev, [audioGenKey]: true}));
-
-    try {
-      const result = await generateAudio({text: textToGenerate});
-      const newAudioUrl = result.audioUrl;
-      
-      if (audioRef.current) {
-        audioRef.current.src = newAudioUrl;
-        audioRef.current.play().catch(e => console.error("Error playing audio:", e));
-      }
-      
-      const updateData = isTerm ? { audioUrl: newAudioUrl } : { sentenceAudioUrl: newAudioUrl };
-      
-      if (isTerm) {
-          await updateWord(word.id, { audioUrl: newAudioUrl });
-          setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
-      } else {
-          await updateUserVocabulary(word.userVocabularyId, { sentenceAudioUrl: newAudioUrl });
-          setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, sentenceAudioUrl: newAudioUrl } : w));
-      }
-
-    } catch (e: any) {
-       toast({
-          variant: "destructive",
-          title: "AI Audio Failed",
-          description: "Using standard browser voice as a fallback.",
-      });
-      playWithBrowserTTS(textToGenerate);
-    } finally {
-      setIsGeneratingAudio(prev => ({...prev, [audioGenKey]: false}));
-    }
-  }
-
   const toggleAccordionItem = (id: string) => {
     setAccordionValue(prev => prev === id ? undefined : id);
   }
 
   return (
     <div className="border rounded-lg">
-      <audio ref={audioRef} className="hidden" />
+      <audio ref={playbackHook.audioRef} className="hidden" />
        <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
         {words.length > 0 ? (
-            words.map((word) => (
-              <AccordionItem value={word.userVocabularyId} key={word.userVocabularyId} className="border-b last:border-b-0">
-                  <div className="flex items-center">
-                    <div 
-                      className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50 p-4" 
-                      onClick={() => toggleAccordionItem(word.userVocabularyId)}
-                    >
-                      {/* Desktop View */}
-                      <div className="hidden md:flex flex-1 items-center gap-4">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                            disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
-                            className="h-8 w-8 flex-shrink-0"
-                          >
-                            {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
-                            <span className="sr-only">Play term audio</span>
-                          </Button>
-                          <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-semibold">{word.term}</p>
-                                  <Badge variant="outline">{word.partOfSpeech}</Badge>
-                                </div>
-                                <div className="text-sm text-muted-foreground font-sans">{word.pronunciation}</div>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              <p>{word.definition}</p>
-                            </div>
-                          </div>
-                      </div>
-                        {/* Mobile View */}
-                        <div className="md:hidden flex items-center gap-3 flex-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'term'); }}
-                              disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
-                              className="h-8 w-8 flex-shrink-0"
-                            >
-                              {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
-                              <span className="sr-only">Play term audio</span>
-                            </Button>
-                            <div>
-                                <p className="font-semibold">{word.term}</p>
-                                <div className="text-sm text-muted-foreground font-sans">{word.pronunciation}</div>
-                            </div>
-                        </div>
-                    </div>
+            words.map((word) => {
+                const termAudioKey = `${word.userVocabularyId}-term`;
+                const sentenceAudioKey = `${word.userVocabularyId}-sentence`;
+                const isTermAudioPlaying = playbackHook.activePlaybackKey === termAudioKey;
+                const isSentenceAudioPlaying = playbackHook.activePlaybackKey === sentenceAudioKey;
 
-                    <div className="flex items-center justify-end gap-1 pr-2">
-                        <EditWordDialog word={word} setWords={setWords} />
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
-                          <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
-                          <span className="sr-only">Favorite</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}>
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                        <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
-                           <span className="sr-only">Toggle Details</span>
-                        </AccordionTrigger>
-                    </div>
-                  </div>
-                  <AccordionContent>
-                    <div className="px-4 pb-4 pt-0 pl-16 space-y-4 text-sm">
-                        <div className="md:hidden">
-                          <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
-                          <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
-                          <p>{word.vietnameseDefinition}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-semibold text-muted-foreground">Example (EN):</p>
-                          <div className="flex items-start gap-2">
+                return (
+                  <AccordionItem value={word.userVocabularyId} key={word.userVocabularyId} className="border-b last:border-b-0">
+                      <div className="flex items-center">
+                        <div 
+                          className="flex-1 text-left cursor-pointer transition-colors hover:bg-muted/50 p-4" 
+                          onClick={() => toggleAccordionItem(word.userVocabularyId)}
+                        >
+                          {/* Desktop View */}
+                          <div className="hidden md:flex flex-1 items-center gap-4">
                               <Button
-                                  variant="ghost" size="icon"
-                                  onClick={(e) => { e.stopPropagation(); handlePlayAudio(word, 'sentence'); }}
-                                  disabled={isGeneratingAudio[`${word.userVocabularyId}-sentence`]}
-                                  className="h-8 w-8 flex-shrink-0 -ml-2"
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
+                                disabled={isTermAudioPlaying}
+                                className="h-8 w-8 flex-shrink-0"
                               >
-                                  {isGeneratingAudio[`${word.userVocabularyId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
-                                  <span className="sr-only">Play sentence audio</span>
+                                {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
+                                <span className="sr-only">Play term audio</span>
                               </Button>
-                              <p className="italic pt-1.5">"{word.sentence}"</p>
+                              <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-semibold">{word.term}</p>
+                                      <Badge variant="outline">{word.partOfSpeech}</Badge>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground font-sans">{word.pronunciation}</div>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  <p>{word.definition}</p>
+                                </div>
+                              </div>
                           </div>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-muted-foreground">Example (VI):</p>
-                          <p className="italic ml-10">"{word.vietnameseSentence}"</p>
+                            {/* Mobile View */}
+                            <div className="md:hidden flex items-center gap-3 flex-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
+                                  disabled={isTermAudioPlaying}
+                                  className="h-8 w-8 flex-shrink-0"
+                                >
+                                  {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
+                                  <span className="sr-only">Play term audio</span>
+                                </Button>
+                                <div>
+                                    <p className="font-semibold">{word.term}</p>
+                                    <div className="text-sm text-muted-foreground font-sans">{word.pronunciation}</div>
+                                </div>
+                            </div>
                         </div>
 
-                         {word.synonyms && word.synonyms.length > 0 && (
-                            <div>
-                                <p className="font-semibold text-muted-foreground">Synonyms:</p>
-                                <div className="flex flex-wrap gap-2 mt-1 ml-10">
-                                    {word.synonyms.map((s, i) => (
-                                       <RelatedWordBadge
-                                            key={`${s}-${i}`}
-                                            word={s}
-                                            variant="secondary"
-                                            wordMap={allWordsMap}
-                                            isAudioPlaying={isGeneratingAudio[`${allWordsMap.get(s.toLowerCase())?.userVocabularyId}-term`]}
-                                            onPlayAudio={(w) => handlePlayAudio(w, 'term')}
-                                        />
-                                    ))}
-                                </div>
+                        <div className="flex items-center justify-end gap-1 pr-2">
+                            <EditWordDialog word={word} setWords={setWords} />
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(word); }}>
+                              <Star className={`h-5 w-5 transition-colors ${word.favorite ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`} />
+                              <span className="sr-only">Favorite</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteWord(word); }}>
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                            <AccordionTrigger className="p-2 [&[data-state=open]>svg]:rotate-180">
+                               <span className="sr-only">Toggle Details</span>
+                            </AccordionTrigger>
+                        </div>
+                      </div>
+                      <AccordionContent>
+                        <div className="px-4 pb-4 pt-0 pl-16 space-y-4 text-sm">
+                            <div className="md:hidden">
+                              <div className="font-semibold text-muted-foreground">Part of Speech: <Badge variant="outline" className="ml-1">{word.partOfSpeech}</Badge></div>
+                              <div className="mt-1"><strong className="font-semibold text-muted-foreground">Definition (EN): </strong>{word.definition}</div>
                             </div>
-                        )}
-                        {word.antonyms && word.antonyms.length > 0 && (
                             <div>
-                                <p className="font-semibold text-muted-foreground">Antonyms:</p>
-                                <div className="flex flex-wrap gap-2 mt-1 ml-10">
-                                    {word.antonyms.map((a, i) => (
-                                         <RelatedWordBadge
-                                            key={`${a}-${i}`}
-                                            word={a}
-                                            variant="outline"
-                                            wordMap={allWordsMap}
-                                            isAudioPlaying={isGeneratingAudio[`${allWordsMap.get(a.toLowerCase())?.userVocabularyId}-term`]}
-                                            onPlayAudio={(w) => handlePlayAudio(w, 'term')}
-                                        />
-                                    ))}
-                                </div>
+                              <p className="font-semibold text-muted-foreground">Vietnamese Definition:</p>
+                              <p>{word.vietnameseDefinition}</p>
                             </div>
-                        )}
-                        {word.irregularForms && (
+                            <div className="space-y-1">
+                              <p className="font-semibold text-muted-foreground">Example (EN):</p>
+                              <div className="flex items-start gap-2">
+                                  <Button
+                                      variant="ghost" size="icon"
+                                      onClick={(e) => { e.stopPropagation(); playbackHook.playAudio(sentenceAudioKey, word.sentence); }}
+                                      disabled={isSentenceAudioPlaying}
+                                      className="h-8 w-8 flex-shrink-0 -ml-2"
+                                  >
+                                      {isSentenceAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
+                                      <span className="sr-only">Play sentence audio</span>
+                                  </Button>
+                                  <p className="italic pt-1.5">
+                                      "<InteractiveText text={word.sentence} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={sentenceAudioKey} />"
+                                  </p>
+                              </div>
+                            </div>
                             <div>
-                                <p className="font-semibold text-muted-foreground">Irregular Verb Forms:</p>
-                                 <div className="flex flex-wrap gap-4 mt-1 ml-10">
-                                    <div>V1: <Badge variant="secondary">{word.irregularForms.v1}</Badge></div>
-                                    <div>V2: <Badge variant="secondary">{word.irregularForms.v2}</Badge></div>
-                                    <div>V3: <Badge variant="secondary">{word.irregularForms.v3}</Badge></div>
-                                </div>
+                              <p className="font-semibold text-muted-foreground">Example (VI):</p>
+                              <p className="italic ml-10">"{word.vietnameseSentence}"</p>
                             </div>
-                        )}
-                    </div>
-                  </AccordionContent>
-              </AccordionItem>
-            ))
+
+                             {word.synonyms && word.synonyms.length > 0 && (
+                                <div>
+                                    <p className="font-semibold text-muted-foreground">Synonyms:</p>
+                                    <div className="flex flex-wrap gap-2 mt-1 ml-10">
+                                        {word.synonyms.map((s, i) => (
+                                           <RelatedWordBadge
+                                                key={`${s}-${i}`}
+                                                word={s}
+                                                variant="secondary"
+                                                wordMap={allWordsMap}
+                                                playbackHook={playbackHook}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {word.antonyms && word.antonyms.length > 0 && (
+                                <div>
+                                    <p className="font-semibold text-muted-foreground">Antonyms:</p>
+                                    <div className="flex flex-wrap gap-2 mt-1 ml-10">
+                                        {word.antonyms.map((a, i) => (
+                                             <RelatedWordBadge
+                                                key={`${a}-${i}`}
+                                                word={a}
+                                                variant="outline"
+                                                wordMap={allWordsMap}
+                                                playbackHook={playbackHook}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {word.irregularForms && (
+                                <div>
+                                    <p className="font-semibold text-muted-foreground">Irregular Verb Forms:</p>
+                                     <div className="flex flex-wrap gap-4 mt-1 ml-10">
+                                        <div>V1: <Badge variant="secondary">{word.irregularForms.v1}</Badge></div>
+                                        <div>V2: <Badge variant="secondary">{word.irregularForms.v2}</Badge></div>
+                                        <div>V3: <Badge variant="secondary">{word.irregularForms.v3}</Badge></div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                      </AccordionContent>
+                  </AccordionItem>
+                )
+            })
           ) : (
             <div className="h-24 text-center flex items-center justify-center text-sm text-muted-foreground">
                 Your vocabulary list is empty. Add a new word to get started!
