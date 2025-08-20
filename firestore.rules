@@ -3,52 +3,62 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Ensure the user document exists before trying to access data.
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for the 'users' collection
     match /users/{userId} {
-      // READ:
-      // - Admins can read any user profile.
-      // - Any authenticated user can read their own profile.
-      allow get: if request.auth != null && (isAdmin() || request.auth.uid == userId);
-      allow list: if request.auth != null && isAdmin();
+      // Admins can list and read all users. Users can only read their own data.
+      allow read, list: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
-      // CREATE:
-      // - Any authenticated user can create their own user document.
-      // - The role must be 'user' and status 'pending' upon creation.
+      // Anyone can create their own user document upon signup,
+      // but role must be 'user' and status must be 'pending'.
       allow create: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.data.role == 'user'
-        && request.resource.data.status == 'pending';
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.status == 'pending';
 
-      // UPDATE:
-      // - Admins can update the 'status' of any user.
-      // - Any authenticated user can update their own 'displayName' and 'photoURL'.
-      // - Users CANNOT change their own role or status.
+      // Users can only update their own displayName and photoURL.
+      // Admins can only update other users' status.
       allow update: if request.auth != null && (
-        (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])) ||
-        (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']))
-      );
+                      (request.auth.uid == userId && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])) ||
+                      (isAdmin() && request.resource.data.keys().hasOnly(['status']))
+                    );
     }
 
-    // Rules for the 'words' (global vocabulary) collection
     match /words/{wordId} {
-        // Anyone authenticated can read. Anyone can create a new word (e.g., when adding a word not in the DB).
-        allow get, list, create: if request.auth != null;
-        // Only admins can update the base word properties.
-        allow update: if request.auth != null && isAdmin();
+      // Any authenticated user can read or create a global word.
+      allow read, create: if request.auth != null;
+      // Only admins can update a global word's properties.
+      allow update: if request.auth != null && isAdmin();
     }
 
-    // Rules for user-specific collections
-    match /{collection}/{docId}
-      where collection in ['userVocabulary', 'lessons', 'testResults', 'user_activity', 'library'] {
-      // A user can do anything with documents that belong to them.
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      // A user can only create documents for themselves.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    match /userVocabulary/{docId} {
+      // Users can only manage their own vocabulary entries.
+      allow read, write, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /lessons/{lessonId} {
+      // Users can only manage their own lessons.
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /library/{documentId} {
+      // Users can only manage their own library documents.
+      allow read, write, delete: if request.auth.uid == resource.data.userId;
+    }
+
+    match /testResults/{resultId} {
+      // Users can only manage their own test results.
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    match /user_activity/{activityId} {
+       // Users can only read and update their own activity logs.
+       // Create/delete is disallowed to prevent spoofing.
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
   }
 }
