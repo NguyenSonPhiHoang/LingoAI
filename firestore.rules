@@ -3,64 +3,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role from the user's custom claims.
-    // This assumes you set a custom claim 'role' to 'admin' for your admin users.
-    // Using custom claims is more secure than checking a document field.
+    // --- Helper function to check for admin role from token ---
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
 
-    // Rules for the 'users' collection
-    match /users/{userId} {
-      // READ:
-      // - Any authenticated user can get their own document.
-      // - An admin can get any user's document.
-      allow get: if request.auth.uid == userId || isAdmin();
-      
-      // LIST:
-      // - Only admins can list all users.
-      allow list: if isAdmin();
-
-      // CREATE:
-      // - A user can create their own document.
-      // - They cannot assign themselves as 'admin' or 'approved' on creation.
-      allow create: if request.auth.uid == userId
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.status == 'pending';
-      
-      // UPDATE:
-      // - A user can only update their own displayName and photoURL.
-      // - They cannot change their role or status.
-      // - An admin can update any user's status.
-      allow update: if (request.auth.uid == userId && 
-                       request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['displayName', 'photoURL']))
-                    || (isAdmin() &&
-                       request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['status']));
+    // --- Helper function to check if user is the owner of the data ---
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // Rules for the global 'words' collection
-    match /words/{wordId} {
-      // Any authenticated user can read words.
-      allow read: if request.auth.uid != null;
-      
-      // Any authenticated user can create a new word if it doesn't exist.
-      allow create: if request.auth.uid != null;
+    // --- Users Collection ---
+    // Users can read their own data. Admins can read/list all users.
+    // Users can create their own document.
+    // Users can only update their own displayName and photoURL.
+    // Admins can update any user's status.
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId)
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.status == 'pending';
+      allow update: if (isOwner(userId) && request.resource.data.keys().hasOnly(['displayName', 'photoURL']))
+                    || (isAdmin() && request.resource.data.keys().hasOnly(['status']));
+    }
 
-      // Only admins can update global word properties (term, pronunciation, audioUrl).
+    // --- Global Words Collection ---
+    // Any authenticated user can read/create. Only admins can update global words.
+    match /words/{wordId} {
+      allow read, create: if request.auth != null;
       allow update: if isAdmin();
     }
 
-    // Rules for user-specific collections
-    // This single rule covers lessons, userVocabulary, testResults, user_activity, and the new library collection.
-    match /{collection}/{docId} {
-        allow read, write, delete: if request.auth.uid == resource.data.userId
-                                    && (collection == 'userVocabulary' 
-                                        || collection == 'lessons' 
-                                        || collection == 'testResults' 
-                                        || collection == 'user_activity'
-                                        || collection == 'library');
+    // --- User-specific Vocabulary Collection ---
+    // Users can only manage their own vocabulary entries.
+    match /userVocabulary/{userVocabId} {
+      allow read, write, delete: if request.auth != null && isOwner(request.resource.data.userId);
+    }
+
+    // --- Lessons Collection ---
+    // Users can only manage their own lessons.
+    match /lessons/{lessonId} {
+       allow read, write, delete: if request.auth != null && isOwner(request.resource.data.userId);
+    }
+
+    // --- Library Collection ---
+    // Users can only manage their own library documents.
+    match /library/{documentId} {
+       allow read, write, delete: if request.auth != null && isOwner(request.resource.data.userId);
+    }
+
+    // --- Test Results Collection ---
+    // Users can only manage their own test results.
+    match /testResults/{resultId} {
+       allow read, write, delete: if request.auth != null && isOwner(request.resource.data.userId);
+    }
+
+    // --- User Activity Collection ---
+    // Users can only manage their own activity logs.
+    match /user_activity/{activityId} {
+       allow read, write, delete: if request.auth != null && isOwner(request.resource.data.userId);
+    }
+
+    // --- Default deny rule ---
+    // Any other path not explicitly matched above will be denied.
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }
