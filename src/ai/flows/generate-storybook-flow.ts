@@ -22,6 +22,7 @@ export async function generateStorybook(
 
 const prompt = ai.definePrompt({
   name: 'generateStorybookPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateStorybookInputSchema},
   output: {schema: GenerateStorybookOutputSchema},
   prompt: `You are an expert English language teacher and a creative storyteller. Your task is to generate a short story for an English learner at the "{{level}}" level. The story should be engaging and educational.

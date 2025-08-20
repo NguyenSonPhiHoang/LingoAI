@@ -22,6 +22,7 @@ export async function generateSpeakingExercise(
 
 const prompt = ai.definePrompt({
   name: 'generateSpeakingExercisePrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateSpeakingExerciseInputSchema},
   output: {schema: GenerateSpeakingExerciseOutputSchema},
   prompt: `You are an English teacher creating a role-play exercise. The topic is "{{topic}}".

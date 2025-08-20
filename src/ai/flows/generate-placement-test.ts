@@ -22,6 +22,7 @@ export async function generatePlacementTest(
 
 const prompt = ai.definePrompt({
   name: 'generatePlacementTestPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GeneratePlacementTestInputSchema},
   output: {schema: GeneratePlacementTestOutputSchema},
   prompt: `You are an expert English language assessment creator. Your task is to create a comprehensive placement test to determine a user's English proficiency level (Beginner, Intermediate, Advanced).

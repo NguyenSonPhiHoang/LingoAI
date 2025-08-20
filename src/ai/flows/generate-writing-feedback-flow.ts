@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -21,6 +22,7 @@ export async function generateWritingFeedback(
 
 const prompt = ai.definePrompt({
   name: 'generateWritingFeedbackPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateWritingFeedbackInputSchema},
   output: {schema: GenerateWritingFeedbackOutputSchema},
   prompt: `You are an English teacher providing feedback on a writing exercise. The user was given a Vietnamese prompt, an English hint, and they have written an English sentence.

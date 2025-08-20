@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -22,6 +23,7 @@ export async function translateText(
 
 const prompt = ai.definePrompt({
   name: 'translateTextPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: TranslateTextInputSchema},
   output: {schema: TranslateTextOutputSchema},
   prompt: `Translate the following English text to Vietnamese. Provide only the translation, without any additional explanations or context.

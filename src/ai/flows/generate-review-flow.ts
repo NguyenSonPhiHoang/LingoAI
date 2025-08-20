@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -24,6 +25,7 @@ export async function generateReviewExercises(
 
 const prompt = ai.definePrompt({
   name: 'generateReviewPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateReviewInputSchema},
   output: {schema: GenerateReviewOutputSchema},
   prompt: `You are an AI English learning assistant. Your task is to generate review exercises based on a provided list of vocabulary words.

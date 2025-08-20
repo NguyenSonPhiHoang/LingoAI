@@ -23,6 +23,7 @@ export async function extractVocabularyFromFile(
 
 const prompt = ai.definePrompt({
   name: 'extractVocabularyPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: ExtractVocabularyInputSchema},
   output: {schema: ExtractVocabularyOutputSchema},
   prompt: `You are an English language expert. Your task is to extract a list of vocabulary words, phrases, or sentences from the provided text content or image. For each item, you must provide:
@@ -58,4 +59,3 @@ const extractVocabularyFromFileFlow = ai.defineFlow(
     return output!;
   }
 );
-

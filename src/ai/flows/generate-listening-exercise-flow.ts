@@ -61,6 +61,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
     // 1. Generate Dialogue Script
     const dialoguePrompt = ai.definePrompt({
         name: 'generateDialogueScript',
+        model: 'googleai/gemini-2.0-flash',
         input: { schema: GenerateListeningExerciseInputSchema },
         output: { schema: DialogueSchema },
         prompt: `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
@@ -98,6 +99,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
     // 3. Generate Comprehension Questions
     const questionsPrompt = ai.definePrompt({
         name: 'generateListeningQuestions',
+        model: 'googleai/gemini-2.0-flash',
         input: { schema: z.object({ dialogueText: z.string() }) },
         output: { schema: z.object({ questions: z.array(ReadingComprehensionQuestionSchema) }) },
         prompt: `Based on the following dialogue, create 3 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.

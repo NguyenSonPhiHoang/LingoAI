@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -24,6 +25,7 @@ export async function generateWordDetails(
 
 const prompt = ai.definePrompt({
   name: 'generateWordDetailsPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateWordDetailsInputSchema},
   output: {schema: GenerateWordDetailsOutputSchema},
   prompt: `You are an English language expert. Your task is to provide details for the given vocabulary word, phrase, or sentence.

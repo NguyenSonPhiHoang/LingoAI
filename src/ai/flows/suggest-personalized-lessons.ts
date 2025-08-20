@@ -25,6 +25,7 @@ export async function suggestPersonalizedLessons(
 
 const prompt = ai.definePrompt({
   name: 'suggestPersonalizedLessonsPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: SuggestPersonalizedLessonsInputSchema},
   output: {schema: SuggestPersonalizedLessonsOutputSchema},
   prompt: `You are an AI-powered English language learning assistant. Based on the user's current level, learning goals, and interests, suggest a list of personalized lesson topics.

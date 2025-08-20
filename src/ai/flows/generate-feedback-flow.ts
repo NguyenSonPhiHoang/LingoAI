@@ -22,6 +22,7 @@ export async function generateFeedbackForIncorrectAnswer(
 
 const prompt = ai.definePrompt({
   name: 'generateFeedbackPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateFeedbackInputSchema},
   output: {schema: GenerateFeedbackOutputSchema},
   prompt: `You are an English teacher providing feedback on a reading comprehension question. The user has selected an incorrect answer. Your task is to explain why their answer is wrong and why the correct answer is right.

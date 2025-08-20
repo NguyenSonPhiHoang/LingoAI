@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -24,6 +25,7 @@ export async function groupVocabularyByTopic(
 
 const prompt = ai.definePrompt({
   name: 'groupVocabularyPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GroupVocabularyInputSchema},
   output: {schema: GroupVocabularyOutputSchema},
   prompt: `You are an expert lexicographer and linguist. Your task is to group the following list of vocabulary words, phrases, and sentences into relevant topics.

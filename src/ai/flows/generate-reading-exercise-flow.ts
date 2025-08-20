@@ -22,6 +22,7 @@ export async function generateReadingExercise(
 
 const prompt = ai.definePrompt({
   name: 'generateReadingExercisePrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateReadingExerciseInputSchema},
   output: {schema: GenerateReadingExerciseOutputSchema},
   prompt: `You are an English teacher. Based on the following reading passage, create 5 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.

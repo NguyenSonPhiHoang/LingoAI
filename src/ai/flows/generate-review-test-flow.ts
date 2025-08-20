@@ -22,6 +22,7 @@ export async function generateReviewTest(
 
 const prompt = ai.definePrompt({
   name: 'generateReviewTestPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateReviewTestInputSchema},
   output: {schema: GenerateReviewTestOutputSchema},
   prompt: `You are an expert English assessment creator. Your task is to create a review test based on the content of previously completed lessons.

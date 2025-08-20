@@ -22,6 +22,7 @@ export async function generateVocabularyFeedback(
 
 const prompt = ai.definePrompt({
   name: 'generateVocabularyFeedbackPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateVocabularyFeedbackInputSchema},
   output: {schema: GenerateVocabularyFeedbackOutputSchema},
   prompt: `You are an English teacher providing feedback on a fill-in-the-blank vocabulary question. The user has selected an incorrect word.

@@ -22,6 +22,7 @@ export async function generatePronunciationExercise(
 
 const prompt = ai.definePrompt({
   name: 'generatePronunciationExercisePrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GeneratePronunciationExerciseInputSchema},
   output: {schema: GeneratePronunciationExerciseOutputSchema},
   prompt: `You are an expert English pronunciation coach. Your task is to generate a set of exercises for a user at the "{{userLevel}}" level, focusing on the topic of "{{topic}}".

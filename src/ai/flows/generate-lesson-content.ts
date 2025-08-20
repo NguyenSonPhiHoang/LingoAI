@@ -22,6 +22,7 @@ export async function generateLessonContent(
 
 const prompt = ai.definePrompt({
   name: 'generateLessonContentPrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateLessonContentInputSchema},
   output: {schema: GenerateLessonContentOutputSchema},
   prompt: `You are an expert English language curriculum designer. Your task is to generate a complete set of learning materials for a single lesson based on the provided topic, skill, and user level.

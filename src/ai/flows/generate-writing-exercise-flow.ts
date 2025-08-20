@@ -22,6 +22,7 @@ export async function generateWritingExercise(
 
 const prompt = ai.definePrompt({
   name: 'generateWritingExercisePrompt',
+  model: 'googleai/gemini-2.0-flash',
   input: {schema: GenerateWritingExerciseInputSchema},
   output: {schema: GenerateWritingExerciseOutputSchema},
   prompt: `You are an English teacher. Create 3 writing prompts for a student to practice writing in English. The student's level is {{userLevel}} and the lesson topic is "{{topic}}".
