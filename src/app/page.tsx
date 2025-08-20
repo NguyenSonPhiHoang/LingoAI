@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import StorybookPage from "./storybook/page";
+import LibraryPage from "./library/page";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
 
 
@@ -44,7 +45,8 @@ export type View =
   | "settings"
   | "placement-test"
   | "review-test"
-  | "storybook";
+  | "storybook"
+  | "library";
 
 export type ViewState = {
   view: View;
@@ -110,9 +112,11 @@ const Home: FC = () => {
 
   const favoriteWords = words.filter((word) => word.favorite);
   
-  const setActiveView = (view: View | "storybook") => {
+  const setActiveView = (view: View | "storybook" | "library") => {
       if (view === 'storybook') {
           router.push('/storybook');
+      } else if (view === 'library') {
+          router.push('/library');
       } else {
           setActiveViewState({ view });
       }
@@ -161,6 +165,8 @@ const Home: FC = () => {
             ) : <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
         case "storybook":
             return <StorybookPage />;
+        case "library":
+            return <LibraryPage />;
         case "lesson-detail":
            return activeViewState.lesson ? (
             <LessonDetailView

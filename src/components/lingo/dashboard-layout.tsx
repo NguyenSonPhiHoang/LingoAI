@@ -17,6 +17,7 @@ import {
   Plus,
   Database,
   BookImage,
+  Library,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,8 +50,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  activeView: View | "storybook";
-  setActiveView: (view: View | "storybook") => void;
+  activeView: View | "storybook" | "library";
+  setActiveView: (view: View | "storybook" | "library") => void;
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
@@ -69,6 +70,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'], href: "/" },
     { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'], href: "/" },
     { id: "storybook", label: "AI Storybook", icon: BookImage, role: ['user', 'admin'], href: "/storybook" },
+    { id: "library", label: "My Library", icon: Library, role: ['user', 'admin'], href: "/library" },
     { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'], href: "/" },
     { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'], href: "/" },
   ];
