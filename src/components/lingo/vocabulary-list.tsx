@@ -62,6 +62,7 @@ import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import AddWordDialog from "./add-word-dialog";
+import { cn } from "@/lib/utils";
 
 interface VocabularyListProps {
   words: CombinedVocabulary[];
@@ -430,7 +431,7 @@ const VocabularyListInternal: FC<{
                             disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
                             className="h-8 w-8 flex-shrink-0"
                           >
-                            {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                            {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
                             <span className="sr-only">Play term audio</span>
                           </Button>
                           <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
@@ -455,7 +456,7 @@ const VocabularyListInternal: FC<{
                               disabled={isGeneratingAudio[`${word.userVocabularyId}-term`]}
                               className="h-8 w-8 flex-shrink-0"
                             >
-                              {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                              {isGeneratingAudio[`${word.userVocabularyId}-term`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
                               <span className="sr-only">Play term audio</span>
                             </Button>
                             <div>
@@ -499,7 +500,7 @@ const VocabularyListInternal: FC<{
                                   disabled={isGeneratingAudio[`${word.userVocabularyId}-sentence`]}
                                   className="h-8 w-8 flex-shrink-0 -ml-2"
                               >
-                                  {isGeneratingAudio[`${word.userVocabularyId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                  {isGeneratingAudio[`${word.userVocabularyId}-sentence`] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
                                   <span className="sr-only">Play sentence audio</span>
                               </Button>
                               <p className="italic pt-1.5">"{word.sentence}"</p>
