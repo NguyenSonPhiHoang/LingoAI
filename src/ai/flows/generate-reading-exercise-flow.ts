@@ -20,12 +20,7 @@ export async function generateReadingExercise(
   return generateReadingExerciseFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateReadingExercisePrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateReadingExerciseInputSchema},
-  output: {schema: GenerateReadingExerciseOutputSchema},
-  prompt: `You are an English teacher. Based on the following reading passage, create 5 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
+const promptText = `You are an English teacher. Based on the following reading passage, create 5 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
 
 {{#if focusPoints}}
 The questions should test the reader's understanding of these specific points: {{{focusPoints}}}.
@@ -33,8 +28,7 @@ The questions should test the reader's understanding of these specific points: {
 
 Reading Passage:
 {{{passage}}}
-`,
-});
+`;
 
 const generateReadingExerciseFlow = ai.defineFlow(
   {
@@ -42,8 +36,24 @@ const generateReadingExerciseFlow = ai.defineFlow(
     inputSchema: GenerateReadingExerciseInputSchema,
     outputSchema: GenerateReadingExerciseOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    try {
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-2.0-flash',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateReadingExerciseOutputSchema, format: 'json' },
+      });
+      if (!output) throw new Error("Primary model returned no output.");
+      return output;
+    } catch (error) {
+      console.warn("Primary model failed for reading exercise. Retrying with fallback model.", error);
+      const { output: fallbackOutput } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateReadingExerciseOutputSchema, format: 'json' },
+      });
+      if (!fallbackOutput) throw new Error("Fallback model also returned no output for reading exercise.");
+      return fallbackOutput;
+    }
   }
 );

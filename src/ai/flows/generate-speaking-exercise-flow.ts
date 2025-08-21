@@ -20,12 +20,7 @@ export async function generateSpeakingExercise(
   return generateSpeakingExerciseFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateSpeakingExercisePrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateSpeakingExerciseInputSchema},
-  output: {schema: GenerateSpeakingExerciseOutputSchema},
-  prompt: `You are an English teacher creating a role-play exercise. The topic is "{{topic}}".
+const promptText = `You are an English teacher creating a role-play exercise. The topic is "{{topic}}".
 
 Create a scenario and a short dialogue script for two roles: "You" (the student) and another role (e.g., "Friend", "Interviewer", "Cashier").
 
@@ -36,8 +31,7 @@ Please make sure the dialogue incorporates the following focus points: {{{focusP
 {{/if}}
 
 Topic: {{{topic}}}
-`,
-});
+`;
 
 const generateSpeakingExerciseFlow = ai.defineFlow(
   {
@@ -45,8 +39,24 @@ const generateSpeakingExerciseFlow = ai.defineFlow(
     inputSchema: GenerateSpeakingExerciseInputSchema,
     outputSchema: GenerateSpeakingExerciseOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+     try {
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-2.0-flash',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateSpeakingExerciseOutputSchema, format: 'json' },
+      });
+      if (!output) throw new Error("Primary model returned no output.");
+      return output;
+    } catch (error) {
+      console.warn("Primary model failed for speaking exercise. Retrying with fallback model.", error);
+      const { output: fallbackOutput } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateSpeakingExerciseOutputSchema, format: 'json' },
+      });
+      if (!fallbackOutput) throw new Error("Fallback model also returned no output for speaking exercise.");
+      return fallbackOutput;
+    }
   }
 );

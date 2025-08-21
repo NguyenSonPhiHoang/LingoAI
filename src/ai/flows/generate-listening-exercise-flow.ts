@@ -51,6 +51,63 @@ const toWav = async (
   });
 };
 
+const generateDialogueScript = async (input: GenerateListeningExerciseInput) => {
+    const promptText = `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
+    {{#if focusPoints}}
+    Please make sure the dialogue incorporates the following focus points: {{{focusPoints}}}.
+    {{/if}}
+    `;
+
+    try {
+        const { output } = await ai.generate({
+            model: 'googleai/gemini-2.0-flash',
+            prompt: { text: promptText, input },
+            output: { schema: DialogueSchema, format: 'json' },
+        });
+        if (!output) throw new Error("Primary model failed to generate dialogue script.");
+        return output;
+    } catch (error) {
+        console.warn("Primary model failed for dialogue script. Retrying with fallback.", error);
+        const { output: fallbackOutput } = await ai.generate({
+            model: 'googleai/gemini-1.5-flash-latest',
+            prompt: { text: promptText, input },
+            output: { schema: DialogueSchema, format: 'json' },
+        });
+        if (!fallbackOutput) throw new Error("Fallback model also failed to generate dialogue script.");
+        return fallbackOutput;
+    }
+}
+
+const generateComprehensionQuestions = async (dialogueText: string) => {
+    const promptText = `Based on the following dialogue, create 3 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
+
+Dialogue:
+{{{dialogueText}}}
+`;
+    const input = { dialogueText };
+    const outputSchema = z.object({ questions: z.array(ReadingComprehensionQuestionSchema) });
+
+    try {
+        const { output } = await ai.generate({
+            model: 'googleai/gemini-2.0-flash',
+            prompt: { text: promptText, input },
+            output: { schema: outputSchema, format: 'json' },
+        });
+        if (!output) throw new Error("Primary model failed to generate questions.");
+        return output;
+    } catch (error) {
+         console.warn("Primary model failed for listening questions. Retrying with fallback.", error);
+         const { output: fallbackOutput } = await ai.generate({
+            model: 'googleai/gemini-1.5-flash-latest',
+            prompt: { text: promptText, input },
+            output: { schema: outputSchema, format: 'json' },
+        });
+        if (!fallbackOutput) throw new Error("Fallback model also failed to generate questions.");
+        return fallbackOutput;
+    }
+}
+
+
 const generateListeningExerciseFlow = ai.defineFlow(
   {
     name: 'generateListeningExerciseFlow',
@@ -59,18 +116,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
   },
   async ({ topic, focusPoints }) => {
     // 1. Generate Dialogue Script
-    const dialoguePrompt = ai.definePrompt({
-        name: 'generateDialogueScript',
-        model: 'googleai/gemini-2.0-flash',
-        input: { schema: GenerateListeningExerciseInputSchema },
-        output: { schema: DialogueSchema },
-        prompt: `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
-        {{#if focusPoints}}
-        Please make sure the dialogue incorporates the following focus points: {{{focusPoints}}}.
-        {{/if}}
-        `,
-    });
-    const { output: dialogueOutput } = await dialoguePrompt({ topic, focusPoints });
+    const dialogueOutput = await generateDialogueScript({ topic, focusPoints });
     if (!dialogueOutput) throw new Error('Failed to generate dialogue script.');
 
     const dialogueText = dialogueOutput.dialogue.map(d => `${d.speaker}: ${d.line}`).join('\n');
@@ -97,18 +143,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
     const audioUrl = 'data:audio/wav;base64,' + (await toWav(audioBuffer));
 
     // 3. Generate Comprehension Questions
-    const questionsPrompt = ai.definePrompt({
-        name: 'generateListeningQuestions',
-        model: 'googleai/gemini-2.0-flash',
-        input: { schema: z.object({ dialogueText: z.string() }) },
-        output: { schema: z.object({ questions: z.array(ReadingComprehensionQuestionSchema) }) },
-        prompt: `Based on the following dialogue, create 3 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
-
-Dialogue:
-{{{dialogueText}}}
-`,
-    });
-    const { output: questionsOutput } = await questionsPrompt({ dialogueText });
+    const questionsOutput = await generateComprehensionQuestions(dialogueText);
     if (!questionsOutput) throw new Error('Failed to generate comprehension questions.');
 
     return {

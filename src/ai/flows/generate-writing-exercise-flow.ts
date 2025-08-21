@@ -20,12 +20,7 @@ export async function generateWritingExercise(
   return generateWritingExerciseFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateWritingExercisePrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateWritingExerciseInputSchema},
-  output: {schema: GenerateWritingExerciseOutputSchema},
-  prompt: `You are an English teacher. Create 3 writing prompts for a student to practice writing in English. The student's level is {{userLevel}} and the lesson topic is "{{topic}}".
+const promptText = `You are an English teacher. Create 3 writing prompts for a student to practice writing in English. The student's level is {{userLevel}} and the lesson topic is "{{topic}}".
 
 Each prompt must consist of:
 1.  A sentence in Vietnamese for the student to translate or use as a basis for their writing.
@@ -40,8 +35,7 @@ The English hint should be a key grammar structure or syntax advice relevant to 
 
 Topic: {{{topic}}}
 Student Level: {{{userLevel}}}
-`,
-});
+`;
 
 const generateWritingExerciseFlow = ai.defineFlow(
   {
@@ -49,8 +43,24 @@ const generateWritingExerciseFlow = ai.defineFlow(
     inputSchema: GenerateWritingExerciseInputSchema,
     outputSchema: GenerateWritingExerciseOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+     try {
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-2.0-flash',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateWritingExerciseOutputSchema, format: 'json' },
+      });
+      if (!output) throw new Error("Primary model returned no output.");
+      return output;
+    } catch (error) {
+      console.warn("Primary model failed for writing exercise. Retrying with fallback model.", error);
+      const { output: fallbackOutput } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        prompt: { text: promptText, input },
+        output: { schema: GenerateWritingExerciseOutputSchema, format: 'json' },
+      });
+      if (!fallbackOutput) throw new Error("Fallback model also returned no output for writing exercise.");
+      return fallbackOutput;
+    }
   }
 );
