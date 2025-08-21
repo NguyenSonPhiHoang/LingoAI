@@ -6,91 +6,82 @@ service cloud.firestore {
 
     // Helper function to check if a user is an admin
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function to check if a user is the owner of a resource
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
-    
-    // Users collection rules
+
+    // Users collection
+    // - Authenticated users can read their own data.
+    // - Admins can read/write any user's data.
+    // - Users can create their own user document on signup.
     match /users/{userId} {
-      // A user can read and update their own profile
-      allow read, update: if request.auth.uid == userId;
-      // An admin can read and update any user's status/role
-      allow read, update: if isAdmin();
-      // Only admins can create or delete user records directly (usually handled by auth)
-      allow create, delete: if isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+      allow create: if isOwner(userId);
     }
-    
-    // Global words collection rules
+
+    // Words collection (Global vocabulary)
+    // - Any authenticated user can read the global list of words.
+    // - Only admins can create, update, or delete global words.
     match /words/{wordId} {
-      // Any authenticated user can read the global words list
       allow read: if request.auth != null;
-      // Only admins can create or update global word definitions
-      allow create, update: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // User-specific vocabulary collection
+    // UserVocabulary collection (Personalized vocabulary for each user)
+    // - Users can only CRUD their own vocabulary entries.
     match /userVocabulary/{userVocabId} {
-      // A user can do anything with their own vocabulary entries
-      allow read, write: if request.auth.uid == resource.data.userId;
-      // Admin can view any user's vocabulary (for support, etc.)
-      allow read: if isAdmin();
+      allow read, write, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
-
-    // Lessons collection rules
+    
+    // Lessons collection
+    // - Users can only CRUD their own lessons.
     match /lessons/{lessonId} {
-      // A user can do anything with their own lessons
-      allow read, write: if request.auth.uid == resource.data.userId;
-      // Admin can view any user's lessons
-      allow read: if isAdmin();
+       allow read, write, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
     
-    // Library collection rules
+    // Library collection
+    // - Users can only CRUD their own library documents.
     match /library/{docId} {
-        // A user can manage their own library documents
-        allow read, write: if request.auth.uid == resource.data.userId;
-        // Admins have full access
-        allow read, write: if isAdmin();
+       allow read, write, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Library Content collection
+    // - Users can only CRUD the content associated with their own library documents.
+    match /library_content/{contentId} {
+       allow read, write, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Learning Resources collection
+    // - Any authenticated user can read the list of resources.
+    // - Only admins can create/delete resources.
+    // - Any authenticated user can update a resource (for rating).
+    match /learningResources/{resourceId} {
+      allow read: if request.auth != null;
+      allow create, delete: if isAdmin();
+      allow update: if request.auth != null; // Allows any logged-in user to rate
     }
 
-    // Library content (notes) collection rules
-    match /library_content/{contentId} {
-        // A user can manage their own library content
-        allow read, write: if request.auth.uid == resource.data.userId;
-        // Admins have full access
-        allow read, write: if isAdmin();
-    }
-    
-    // Learning Resources (shared content)
-    match /learningResources/{resourceId} {
-      // Any authenticated user can read the resources
-      allow read: if request.auth != null;
-      // Only admins can add or fully update/delete resources
-      allow create, delete: if isAdmin();
-      // Allow authenticated users to update, but only the 'ratings' field for themselves
-      allow update: if request.auth != null &&
-                      request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['ratings', 'ratingCount', 'averageRating']);
-    }
-    
     // Test Results collection
+    // - Users can read and create their own test results.
     match /testResults/{resultId} {
-      // Users can create their own test results
-      allow create: if request.auth.uid == request.resource.data.userId;
-      // Users can only read their own test results
-      allow read: if request.auth.uid == resource.data.userId;
+       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
     
     // User Activity collection
+    // - Users can create and update their own activity documents.
     match /user_activity/{activityId} {
-      // A user can only create/update their own activity log
-      allow write: if request.auth.uid == request.resource.data.userId;
-      // Only admins can read activity logs (for analytics, etc.)
-      allow read: if isAdmin();
+       allow read, write: if request.auth != null && request.auth.uid == activityId.split('_')[0];
     }
   }
 }
