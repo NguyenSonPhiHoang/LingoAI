@@ -4,77 +4,83 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper Functions
     function isAdmin() {
-      // Check if the user is an admin by looking up their user document.
-      // Note: This requires a separate 'get' permission for admins on the users collection.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for 'users' collection
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // USERS Collection
+    // Users can read/update their own profile. Admins can read/update anyone's status.
     match /users/{userId} {
-      // Allow read access for any authenticated user. This is needed for isAdmin() to function.
-      allow get: if request.auth.uid != null;
-      // Allow list access only for admins.
-      allow list: if isAdmin();
-      // Allow users to update their own info, but not their role or status.
-      // Allow admins to update anyone's status.
-      allow write: if (request.auth.uid == userId && !('role' in request.resource.data) && !('status' in request.resource.data))
-                   || (isAdmin() && !('role' in request.resource.data));
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL'])) || 
+                       (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
+      allow create: if request.auth.uid == userId;
     }
-
-    // Rules for 'words' (global vocabulary) collection
+    
+    // WORDS Collection (Global vocabulary)
+    // Authenticated users can read. Admins can write.
     match /words/{wordId} {
-        // Anyone can read the global words list
-        allow read: if request.auth.uid != null;
-        // Only admins can create, update, or delete global words
-        allow write: if isAdmin();
+      allow read: if request.auth.uid != null;
+      allow create, update: if isAdmin();
     }
 
-    // Rules for 'userVocabulary' collection
+    // USER_VOCABULARY Collection (User-specific vocabulary data)
+    // Users can only manage their own vocabulary entries.
     match /userVocabulary/{userVocabId} {
-        // A user can read/write their own vocabulary entries.
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, write: if isOwner(request.resource.data.userId);
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
-
-    // Rules for 'lessons' collection
+    
+    // LESSONS Collection
+    // Users can only manage their own lessons.
     match /lessons/{lessonId} {
-        // A user can read/write their own lessons.
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow read, write: if isOwner(resource.data.userId);
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
     
-    // Rules for 'testResults' collection
-    match /testResults/{resultId} {
-        // A user can read/create their own test results.
-        allow read, create: if request.auth.uid == request.resource.data.userId;
+    // LIBRARY Collection
+    // Users can only manage their own library documents.
+    match /library/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+        allow create: if request.auth.uid == request.resource.data.userId;
     }
 
-    // Rules for 'user_activity' collection
+    // USER_ACTIVITY Collection
+    // Users can create/update their own activity log.
     match /user_activity/{activityId} {
-        // Users can create/update their own activity logs.
-        // Admins can read any activity log.
-        allow create, update: if request.auth.uid == request.resource.data.userId;
-        allow read: if request.auth.uid == resource.data.userId || isAdmin();
+       allow write: if request.auth.uid != null && request.auth.uid == request.resource.data.userId;
+       allow read: if isOwner(resource.data.userId);
     }
     
-    // Rules for 'learningResources' collection
+    // LEARNING_RESOURCES Collection
+    // Authenticated users can read. Admins can write.
+    // Authenticated users can update ONLY their own rating.
     match /learningResources/{resourceId} {
-        // Any authenticated user can read the resources.
-        allow read: if request.auth.uid != null;
-        
-        // Allow admins to create/delete.
-        allow create, delete: if isAdmin();
-        
-        // Allow any authenticated user to update, but ONLY the 'ratings' field for themselves.
-        // This is a more secure way to handle ratings.
-        allow update: if request.auth.uid != null
-                      && request.resource.data.keys().hasOnly(['ratings', 'ratingCount', 'averageRating'])
-                      && request.resource.data.ratings.diff(resource.data.ratings).affectedKeys().hasOnly([request.auth.uid]);
+      allow read: if request.auth.uid != null;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.auth.uid != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ratings', 'ratingCount', 'averageRating']) &&
+        // Ensure they are only adding/changing their own key in the ratings map
+        request.resource.data.ratings.diff(resource.data.ratings).affectedKeys().hasOnly([request.auth.uid])
+      );
     }
-    
-    // Rules for 'library' collection
-    match /library/{documentId} {
-        // A user can read and write documents that belong to them.
-        allow read, write: if request.auth.uid == resource.data.userId;
+
+    // TEST_RESULTS Collection
+    // Users can create and read their own test results.
+     match /testResults/{resultId} {
+        allow read: if isOwner(resource.data.userId);
+        allow create: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
