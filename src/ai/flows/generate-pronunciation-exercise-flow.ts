@@ -25,13 +25,13 @@ const prompt = ai.definePrompt({
   model: 'googleai/gemini-2.0-flash',
   input: {schema: GeneratePronunciationExerciseInputSchema},
   output: {schema: GeneratePronunciationExerciseOutputSchema},
-  prompt: `You are an expert English pronunciation coach. Your task is to generate a set of exercises for a user at the "{{userLevel}}" level, focusing on the topic of "{{topic}}".
+  prompt: `You are an expert English pronunciation coach. Your task is to generate a set of three exercises for a user at the "{{userLevel}}" level, focusing on the topic of "{{topic}}".
 
-The exercises should help the user distinguish between and practice specific English sounds.
+The exercises should correspond to three areas of pronunciation.
 
-You must generate two types of exercises:
-1.  **Minimal Pairs (3 pairs)**: Create three pairs of words that differ by only one sound (e.g., ship/sheep). These words should be relevant to the topic if possible. For each word, provide its IPA pronunciation.
-2.  **Challenging Sentences (2 sentences)**: Create two sentences that are somewhat challenging to pronounce (like simple tongue twisters) and incorporate sounds from the minimal pairs or other sounds relevant to the topic.
+1.  **Word Pronunciation Exercise**: Create a "minimal pairs" drill. Provide 3 pairs of words that differ by only one key sound. For each word, provide its IPA pronunciation. This helps the user distinguish between similar sounds.
+2.  **Sentence Pronunciation Exercise**: Create a "repeat the sentence" drill. Provide 2 sentences for the user to practice their connected speech and rhythm. The sentences should be natural-sounding.
+3.  **Intonation Exercise**: Create a "choose the correct intonation" drill. Provide a single sentence and describe two scenarios (e.g., one as a genuine question, one as a statement of surprise). Ask the user to identify which scenario would use rising intonation and which would use falling intonation.
 
 {{#if focusPoints}}
 The exercises should be designed to help the student practice the following specific sounds or patterns: {{{focusPoints}}}.

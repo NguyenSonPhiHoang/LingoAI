@@ -31,6 +31,8 @@ import {
   BrainCircuit,
   List,
   Voicemail,
+  TrendingUp,
+  Waveform
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -157,11 +159,19 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             level: currentLesson.level,
         });
 
-        const newContent: LessonContent[] = [
-            { id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) },
-            { id: `grammar-${Date.now()}`, type: 'grammar', value: JSON.stringify(result.grammarFocus) },
-            { id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) },
-        ];
+        const newContent: LessonContent[] = [];
+        if (result.vocabularySuggestions) {
+            newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
+        }
+        if (result.grammarFocus) {
+            newContent.push({ id: `grammar-${Date.now()}`, type: 'grammar', value: JSON.stringify(result.grammarFocus) });
+        }
+        if (result.pronunciationFocus) {
+             newContent.push({ id: `pronunciation-${Date.now()}`, type: 'pronunciation', value: JSON.stringify(result.pronunciationFocus) });
+        }
+        if (result.passage) {
+            newContent.push({ id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) });
+        }
         
         await updateLessonContent(currentLesson.docId, newContent);
         setCurrentLesson(prev => ({ ...prev, content: newContent }));
@@ -252,24 +262,71 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         const isBeingTranslated = isTranslating[translationKey];
         const isBeingSpoken = playbackHook.activePlaybackKey === translationKey;
 
-        const renderToolbar = (textToProcess: string) => (
+        const renderToolbar = (textToProcess: string, customKey?: string) => (
              <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, textToProcess)} disabled={isBeingSpoken}>
-                    {isBeingSpoken ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(customKey || translationKey, textToProcess)} disabled={playbackHook.activePlaybackKey === (customKey || translationKey)}>
+                    {playbackHook.activePlaybackKey === (customKey || translationKey) ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, textToProcess)} disabled={isBeingTranslated}>
-                    {isBeingTranslated ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(customKey || translationKey, textToProcess)} disabled={isTranslating[customKey || translationKey]}>
+                    {isTranslating[customKey || translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                 </Button>
             </div>
         );
         
+        if (item.type === 'pronunciation') {
+            const { wordPronunciation, sentencePronunciation, sentenceIntonation } = data;
+            return (
+                 <Card key={item.id} className="mb-4 bg-background">
+                    <CardHeader className="pb-2">
+                        <div className="text-base flex items-center gap-2 flex-1">
+                           <Voicemail className="h-5 w-5 text-primary" />Pronunciation Focus
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Word Pronunciation */}
+                        <div className="p-3 border rounded-lg bg-muted/50">
+                            <div className="flex justify-between items-start">
+                                <h4 className="font-semibold flex items-center gap-2"><Waveform className="h-4 w-4" />{wordPronunciation.title}</h4>
+                                {renderToolbar(wordPronunciation.explanation + ' ' + wordPronunciation.examples.join(', '), `${translationKey}-word`)}
+                            </div>
+                            <p className="text-sm mt-1"><InteractiveText text={wordPronunciation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-word`} /></p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {wordPronunciation.examples.map((ex: string, i: number) => <Badge key={i} variant="secondary">{ex}</Badge>)}
+                            </div>
+                            {translations[`${translationKey}-word`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-word`]}</p>}
+                        </div>
+                        {/* Sentence Pronunciation */}
+                        <div className="p-3 border rounded-lg bg-muted/50">
+                            <div className="flex justify-between items-start">
+                                <h4 className="font-semibold flex items-center gap-2"><MessageSquareQuote className="h-4 w-4" />{sentencePronunciation.title}</h4>
+                                 {renderToolbar(sentencePronunciation.explanation + ' ' + sentencePronunciation.example, `${translationKey}-sentence`)}
+                            </div>
+                             <p className="text-sm mt-1"><InteractiveText text={sentencePronunciation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-sentence`} /></p>
+                             <p className="text-sm italic mt-2 bg-background p-2 rounded">"<InteractiveText text={sentencePronunciation.example} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-sentence`} />"</p>
+                             {translations[`${translationKey}-sentence`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-sentence`]}</p>}
+                        </div>
+                        {/* Sentence Intonation */}
+                         <div className="p-3 border rounded-lg bg-muted/50">
+                            <div className="flex justify-between items-start">
+                                <h4 className="font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" />{sentenceIntonation.title}</h4>
+                                {renderToolbar(sentenceIntonation.explanation + ' ' + sentenceIntonation.example, `${translationKey}-intonation`)}
+                            </div>
+                           <p className="text-sm mt-1"><InteractiveText text={sentenceIntonation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-intonation`} /></p>
+                           <p className="text-sm italic mt-2 bg-background p-2 rounded">"<InteractiveText text={sentenceIntonation.example} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-intonation`} />"</p>
+                           {translations[`${translationKey}-intonation`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-intonation`]}</p>}
+                        </div>
+                    </CardContent>
+                 </Card>
+            );
+        }
+
         return (
             <Card key={item.id} className="mb-4 bg-background">
                 <CardHeader className="pb-2">
                      <div className="flex justify-between items-start">
                         <div className="text-base flex items-center gap-2 flex-1">
                            {item.type === 'vocabulary' && <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>}
-                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />{lesson.skill === 'Pronunciation' ? 'Pronunciation Focus' : 'Grammar Focus'}</>}
+                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />Grammar Focus</>}
                            {item.type === 'passage' && <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>}
                         </div>
                         {item.type === 'passage' && renderToolbar(data.body)}
@@ -908,15 +965,26 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & Practi
 };
 
 const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput } & PracticeComponentProps> = ({ exercise, vocabulary, playbackHook }) => {
-    
+    const [selectedIntonation, setSelectedIntonation] = useState<Record<string, 'rising' | 'falling'>>({});
+    const [showIntonationResult, setShowIntonationResult] = useState(false);
+
+    const handleSelectIntonation = (scenario: string, choice: 'rising' | 'falling') => {
+        if (showIntonationResult) return;
+        setSelectedIntonation(prev => ({...prev, [scenario]: choice}));
+    }
+
+    const { intonationExercise } = exercise;
+
     return (
         <div className="p-4 space-y-8">
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Minimal Pairs</h3>
-                <p className="text-sm text-muted-foreground mb-4">Listen carefully to the difference between these words.</p>
-                <div className="space-y-4">
-                    {exercise.minimalPairs.map((pair, index) => (
-                        <Card key={index} className="bg-background">
+            <Card className="bg-background">
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2"><Waveform className="h-5 w-5" /> Word Pronunciation</CardTitle>
+                    <CardDescription>Listen carefully to the difference between these words.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {exercise.wordExercise.map((pair, index) => (
+                        <Card key={index} className="bg-muted/50">
                             <CardContent className="p-4 grid grid-cols-2 divide-x divide-border">
                                 <div className="flex items-center justify-center flex-col gap-1">
                                     <div className="font-bold text-xl">{pair.word1}</div>
@@ -935,15 +1003,17 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
                             </CardContent>
                         </Card>
                     ))}
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Challenging Sentences</h3>
-                 <p className="text-sm text-muted-foreground mb-4">Try saying these sentences out loud. Click to hear the correct pronunciation.</p>
-                <div className="space-y-3">
-                    {exercise.challengingSentences.map((sentence, index) => (
-                         <Card key={index} className="bg-background">
+            <Card className="bg-background">
+                 <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2"><MessageSquareQuote className="h-5 w-5" /> Sentence Pronunciation</CardTitle>
+                    <CardDescription>Try saying these sentences out loud. Click to hear the correct pronunciation.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {exercise.sentenceExercise.map((sentence, index) => (
+                         <Card key={index} className="bg-muted/50">
                              <CardContent className="p-4 flex items-center gap-4">
                                 <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`sentence-${index}`, sentence)} disabled={playbackHook.activePlaybackKey === `sentence-${index}`}>
                                    {playbackHook.activePlaybackKey === `sentence-${index}` ? <Loader2 className="animate-spin" /> : <Volume2 />}
@@ -952,8 +1022,54 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
                             </CardContent>
                          </Card>
                     ))}
-                </div>
-            </div>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-background">
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Sentence Intonation</CardTitle>
+                    <CardDescription>For the sentence below, choose the correct intonation for each scenario.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="text-center italic font-semibold p-4 bg-muted/50 rounded-lg">"{intonationExercise.sentence}"</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[intonationExercise.scenario1, intonationExercise.scenario2].map((scenario, index) => {
+                            const isCorrect = (selectedIntonation[scenario] === 'rising' && intonationExercise.correctRising === scenario) ||
+                                              (selectedIntonation[scenario] === 'falling' && intonationExercise.correctFalling === scenario);
+                            return (
+                                <Card key={index} className={cn("p-4", showIntonationResult && (isCorrect ? 'border-green-400' : 'border-red-400'))}>
+                                    <p className="font-medium">{scenario}</p>
+                                    <div className="flex gap-2 mt-3">
+                                        <Button
+                                            variant={selectedIntonation[scenario] === 'rising' ? (showIntonationResult && isCorrect ? 'default' : 'secondary') : 'outline'}
+                                            onClick={() => handleSelectIntonation(scenario, 'rising')}
+                                            disabled={showIntonationResult}
+                                            className="w-full"
+                                        >
+                                            {showIntonationResult && isCorrect && selectedIntonation[scenario] === 'rising' && <Check className="mr-2" />}
+                                            Rising
+                                        </Button>
+                                         <Button
+                                            variant={selectedIntonation[scenario] === 'falling' ? (showIntonationResult && isCorrect ? 'default' : 'secondary') : 'outline'}
+                                            onClick={() => handleSelectIntonation(scenario, 'falling')}
+                                            disabled={showIntonationResult}
+                                            className="w-full"
+                                        >
+                                           {showIntonationResult && isCorrect && selectedIntonation[scenario] === 'falling' && <Check className="mr-2" />}
+                                           Falling
+                                        </Button>
+                                    </div>
+                                </Card>
+                            )
+                        })}
+                    </div>
+                    {!showIntonationResult && (
+                        <div className="text-center">
+                            <Button onClick={() => setShowIntonationResult(true)}>Check Answers</Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 };

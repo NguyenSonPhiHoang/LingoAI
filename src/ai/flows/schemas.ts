@@ -346,20 +346,39 @@ const VocabularySuggestionSchema = z.object({
 });
 
 const GrammarFocusSchema = z.object({
-    title: z.string().describe("The name of the grammar or pronunciation point (e.g., 'Past Perfect Tense', 'The /?/ vs /??/ sound')."),
+    title: z.string().describe("The name of the grammar point."),
     explanation: z.string().describe("A concise explanation of the rule."),
-    example: z.string().describe("An example sentence or list of words demonstrating the rule."),
+    example: z.string().describe("An example sentence demonstrating the rule."),
+});
+
+const PronunciationFocusSchema = z.object({
+  wordPronunciation: z.object({
+    title: z.string().describe("The name of the sound being taught (e.g., 'The /æ/ sound in cat')."),
+    explanation: z.string().describe("How to make the sound."),
+    examples: z.array(z.string()).describe("A list of 3-5 example words with the sound."),
+  }).describe("Focus on a single word sound."),
+  sentencePronunciation: z.object({
+    title: z.string().describe("The name of the sentence-level concept (e.g., 'Linking sounds')."),
+    explanation: z.string().describe("An explanation of the concept."),
+    example: z.string().describe("An example sentence."),
+  }).describe("Focus on connected speech."),
+  sentenceIntonation: z.object({
+    title: z.string().describe("The name of the intonation concept (e.g., 'Rising intonation for questions')."),
+    explanation: z.string().describe("An explanation of the intonation rule."),
+    example: z.string().describe("An example sentence showing the pattern."),
+  }).describe("Focus on sentence intonation (rising/falling tone)."),
 });
 
 const PassageSchema = z.object({
-    title: z.string().describe("A title for the passage, dialogue, or word list."),
-    body: z.string().describe("The full text of the reading passage, dialogue script, or example words list."),
+    title: z.string().describe("A title for the passage or dialogue."),
+    body: z.string().describe("The full text of the reading passage or dialogue script."),
 });
 
 export const GenerateLessonContentOutputSchema = z.object({
-    vocabularySuggestions: z.array(VocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
-    grammarFocus: GrammarFocusSchema.describe("An explanation of a relevant grammar or pronunciation point."),
-    passage: PassageSchema.describe("A reading passage, dialogue, or word list related to the topic."),
+    vocabularySuggestions: z.array(VocabularySuggestionSchema).optional().describe("A list of suggested vocabulary relevant to the topic."),
+    grammarFocus: GrammarFocusSchema.optional().describe("An explanation of a relevant grammar point. Used for Reading, Writing, Listening, Speaking skills."),
+    pronunciationFocus: PronunciationFocusSchema.optional().describe("A set of three pronunciation explanations. Used only for Pronunciation skill."),
+    passage: PassageSchema.optional().describe("A reading passage or dialogue. Not used for Pronunciation skill."),
 });
 export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;
 
@@ -379,9 +398,18 @@ const MinimalPairSchema = z.object({
     pronunciation2: z.string().describe('The IPA pronunciation for the second word.'),
 });
 
+const IntonationExerciseSchema = z.object({
+    sentence: z.string().describe('The sentence to be analyzed.'),
+    scenario1: z.string().describe('The first scenario (e.g., a genuine question).'),
+    scenario2: z.string().describe('The second scenario (e.g., a statement of surprise).'),
+    correctRising: z.string().describe("The scenario that uses rising intonation."),
+    correctFalling: z.string().describe("The scenario that uses falling intonation."),
+});
+
 export const GeneratePronunciationExerciseOutputSchema = z.object({
-    minimalPairs: z.array(MinimalPairSchema).length(3).describe('A list of three minimal pairs.'),
-    challengingSentences: z.array(z.string()).length(2).describe('A list of two challenging sentences for pronunciation practice.'),
+    wordExercise: z.array(MinimalPairSchema).length(3).describe('An array of 3 minimal pairs for word pronunciation practice.'),
+    sentenceExercise: z.array(z.string()).length(2).describe('An array of 2 sentences for connected speech practice.'),
+    intonationExercise: IntonationExerciseSchema.describe('An exercise for practicing sentence intonation.'),
 });
 export type GeneratePronunciationExerciseOutput = z.infer<typeof GeneratePronunciationExerciseOutputSchema>;
 
