@@ -482,23 +482,21 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       <Card>
         <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <AccordionTrigger className="flex-1 p-0 hover:no-underline">
-                             <div className="flex justify-between items-center w-full">
-                                <div>
-                                    <CardTitle>1. Learning Content</CardTitle>
-                                    <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-                                </div>
-                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                            </div>
-                        </AccordionTrigger>
-                        <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm" className="ml-4">
-                            {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-                            {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                        </Button>
-                   </div>
-                </CardHeader>
+                <AccordionTrigger className="flex-1 p-6 hover:no-underline">
+                    <div className="flex justify-between items-center w-full">
+                        <div>
+                            <CardTitle>1. Learning Content</CardTitle>
+                            <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Button onClick={(e) => { e.stopPropagation(); handleGenerateContent(); }} disabled={!!isLoading} size="sm" className="ml-4">
+                                {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+                                {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+                            </Button>
+                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 accordion-chevron" />
+                        </div>
+                    </div>
+                </AccordionTrigger>
                 <AccordionContent>
                     <CardContent>
                         <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
