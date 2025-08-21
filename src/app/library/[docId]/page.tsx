@@ -7,7 +7,6 @@ import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown, LayoutGrid, List, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -83,7 +82,7 @@ const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode }> = 
             <div className="flex-1 relative">
                 <ScrollArea className="absolute inset-0 pr-6">
                     <article className="prose dark:prose-invert max-w-none">
-                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.extractedText}</ReactMarkdown>
+                       <ReactMarkdown>{note.extractedText}</ReactMarkdown>
                     </article>
                 </ScrollArea>
             </div>
@@ -248,7 +247,7 @@ const LibraryDocPage: FC = () => {
                                     </CardHeader>
                                     <CardContent className="flex-grow">
                                         <div className="prose prose-sm dark:prose-invert max-w-none bg-background/50 p-3 rounded-md h-24 overflow-hidden relative">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.extractedText || "No content preview."}</ReactMarkdown>
+                                            <ReactMarkdown>{content.extractedText || "No content preview."}</ReactMarkdown>
                                             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>
