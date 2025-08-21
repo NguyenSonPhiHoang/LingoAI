@@ -1,9 +1,11 @@
+
 "use client";
 
 import * as React from 'react';
 import { useState, useMemo, useEffect, type FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library, Edit } from 'lucide-react';
+import { Loader2, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library, Edit, LayoutGrid, List } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +17,8 @@ import type { LibraryDocument, LibrarySkill } from '@/services/library';
 import { getDocumentsGroupedBySkill, deleteDocument } from '@/services/library';
 import EditDocumentDialog from '@/components/lingo/edit-document-dialog';
 import AddDocumentDialog from '@/components/lingo/add-document-dialog';
+import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 const SKILLS: LibrarySkill[] = ["Reading", "Writing", "Listening", "Speaking", "Pronunciation"];
@@ -26,6 +30,37 @@ const skillIcons: Record<LibrarySkill, React.ElementType> = {
   Pronunciation: AudioWaveform,
 };
 
+const DocumentActions: FC<{
+    doc: LibraryDocument;
+    onDocumentUpdated: (doc: LibraryDocument) => void;
+    onDocumentDeleted: (doc: LibraryDocument) => void;
+    router: ReturnType<typeof useRouter>;
+}> = ({ doc, onDocumentUpdated, onDocumentDeleted, router }) => (
+    <div className="flex items-center gap-1 flex-shrink-0">
+        <Button variant="outline" size="sm" onClick={() => router.push(`/library/${doc.id}`)}>
+            View Notes
+        </Button>
+        <EditDocumentDialog doc={doc} onDocumentUpdated={onDocumentUpdated} />
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>This will delete the document and all its associated notes. This action cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDocumentDeleted(doc)}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </div>
+);
+
 
 const LibraryPage: FC = () => {
     const { user } = useAuth();
@@ -35,6 +70,7 @@ const LibraryPage: FC = () => {
         Reading: [], Writing: [], Listening: [], Speaking: [], Pronunciation: []
     });
     const [isLoading, setIsLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     useEffect(() => {
         if (!user) return;
@@ -63,13 +99,10 @@ const LibraryPage: FC = () => {
 
             const newGroupedDocs = { ...prev };
 
-            // Remove from old skill group if skill changed
             if (oldDoc.skill !== updatedDoc.skill) {
                 newGroupedDocs[oldDoc.skill] = newGroupedDocs[oldDoc.skill].filter(d => d.id !== updatedDoc.id);
-                 // Add to new skill group
                 newGroupedDocs[updatedDoc.skill] = [updatedDoc, ...newGroupedDocs[updatedDoc.skill]];
             } else {
-                // Update in place
                  newGroupedDocs[updatedDoc.skill] = newGroupedDocs[updatedDoc.skill].map(d => d.id === updatedDoc.id ? updatedDoc : d);
             }
            
@@ -111,7 +144,17 @@ const LibraryPage: FC = () => {
                             <CardTitle className="flex items-center gap-2"><Library /> My Library</CardTitle>
                             <CardDescription>Organize your learning resources by skill. Add links and attach notes.</CardDescription>
                         </div>
-                        <AddDocumentDialog onDocumentAdded={handleDocumentAdded} />
+                         <div className="flex items-center gap-2">
+                             <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                                <LayoutGrid className="h-5 w-5" />
+                                <span className="sr-only">Grid View</span>
+                            </Button>
+                            <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                <List className="h-5 w-5" />
+                                <span className="sr-only">List View</span>
+                            </Button>
+                            <AddDocumentDialog onDocumentAdded={handleDocumentAdded} />
+                        </div>
                     </div>
                 </CardHeader>
             </Card>
@@ -141,42 +184,49 @@ const LibraryPage: FC = () => {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-3">
-                                    {skillDocs.map(doc => (
-                                        <div key={doc.id} className="group flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                                            <div className="flex-grow min-w-0">
-                                                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline truncate block">{doc.title}</a>
-                                                <div className="text-sm text-muted-foreground flex items-center gap-1 truncate">
-                                                    <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                                                    <span className="truncate">{doc.url}</span>
+                                {viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        {skillDocs.map(doc => (
+                                            <div key={doc.id} className="flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                                <div className="flex-grow min-w-0">
+                                                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline truncate block flex items-center gap-1.5">
+                                                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                                                        {doc.title}
+                                                    </a>
                                                 </div>
+                                                <DocumentActions doc={doc} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} router={router} />
                                             </div>
-                                            <div className="flex items-center gap-1 flex-shrink-0">
-                                                 <Button variant="outline" size="sm" onClick={() => router.push(`/library/${doc.id}`)}>
-                                                    View Notes
-                                                 </Button>
-                                                 <EditDocumentDialog doc={doc} onDocumentUpdated={handleDocumentUpdated} />
-                                                 <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>This will delete the document and all its associated notes. This action cannot be undone.</AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDocumentDeleted(doc)}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Title</TableHead>
+                                                <TableHead>Added</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {skillDocs.map(doc => (
+                                                <TableRow key={doc.id}>
+                                                    <TableCell>
+                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline flex items-center gap-2">
+                                                            <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                                                            {doc.title}
+                                                        </a>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">
+                                                        {formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true })}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                         <DocumentActions doc={doc} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} router={router} />
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                )}
                             </CardContent>
                         </Card>
                     );
