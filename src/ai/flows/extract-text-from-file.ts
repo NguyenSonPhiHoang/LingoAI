@@ -29,7 +29,7 @@ export async function extractTextFromFile(input: ExtractTextInput): Promise<Extr
 
 const prompt = ai.definePrompt({
   name: 'extractTextFromFilePrompt',
-  model: 'googleai/gemini-2.0-flash-preview',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: ExtractTextInputSchema},
   output: {schema: ExtractTextOutputSchema},
   prompt: `You are an OCR (Optical Character Recognition) expert. Your task is to extract all text from the provided image accurately. Preserve the original formatting, including paragraphs and line breaks, as much as possible.
