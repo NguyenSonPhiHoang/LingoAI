@@ -42,10 +42,11 @@ import { cn } from '@/lib/utils';
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
 type LevelKey = 'a1' | 'a2' | 'b1' | 'b2' | 'c1' | 'c2';
 
-const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record<Skill, { icon: React.ElementType, description: string }> }> = {
+const levelsData: Record<LevelKey, { level: string; cefr: string; outcomes: string; skills: Record<Skill, { icon: React.ElementType, description: string }> }> = {
   a1: {
     level: "Level 1",
     cefr: "A1 – Beginner",
+    outcomes: "Can understand and use familiar everyday expressions and very basic phrases.",
     skills: {
       Listening: { icon: Headphones, description: "Understand familiar words and basic phrases." },
       Speaking: { icon: Mic, description: "Interact in a simple way." },
@@ -57,6 +58,7 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
    a2: {
     level: "Level 2",
     cefr: "A2 – Elementary",
+    outcomes: "Can understand sentences and frequently used expressions related to areas of most immediate relevance.",
     skills: {
       Listening: { icon: Headphones, description: "Grasp phrases and high-frequency vocabulary." },
       Speaking: { icon: Mic, description: "Communicate in simple, routine tasks." },
@@ -68,6 +70,7 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
    b1: {
     level: "Level 3",
     cefr: "B1 – Intermediate",
+    outcomes: "Can understand the main points of clear standard input on familiar matters.",
     skills: {
       Listening: { icon: Headphones, description: "Understand main points on familiar matters." },
       Speaking: { icon: Mic, description: "Handle most situations likely to arise whilst travelling." },
@@ -79,6 +82,7 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
    b2: {
     level: "Level 4",
     cefr: "B2 – Upper Intermediate",
+    outcomes: "Can understand the main ideas of complex text on both concrete and abstract topics.",
     skills: {
       Listening: { icon: Headphones, description: "Understand extended speech and lectures." },
       Speaking: { icon: Mic, description: "Interact with fluency and spontaneity." },
@@ -90,6 +94,7 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
     c1: {
     level: "Level 5",
     cefr: "C1 – Advanced",
+    outcomes: "Can understand a wide range of demanding, longer texts, and recognise implicit meaning.",
     skills: {
       Listening: { icon: Headphones, description: "Understand extended speech even when it is not clearly structured." },
       Speaking: { icon: Mic, description: "Express ideas fluently and spontaneously." },
@@ -101,6 +106,7 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
   c2: {
     level: "Level 6",
     cefr: "C2 – Proficiency",
+    outcomes: "Can understand with ease virtually everything heard or read. Can summarise information from different sources.",
     skills: {
       Listening: { icon: Headphones, description: "Understand any kind of spoken language with ease." },
       Speaking: { icon: Mic, description: "Take part effortlessly in any conversation or discussion." },
@@ -110,6 +116,15 @@ const levelsData: Record<LevelKey, { level: string; cefr: string; skills: Record
     },
   },
 };
+
+const levelColors = [
+  "bg-yellow-50/70",
+  "bg-blue-50/70",
+  "bg-green-50/70",
+  "bg-purple-50/70",
+  "bg-red-50/70",
+  "bg-indigo-50/70",
+];
 
 const resourceFormSchema = z.object({
     label: z.string().min(3, "Label must be at least 3 characters."),
@@ -403,18 +418,18 @@ const LevelView: FC = () => {
         <div className="space-y-6">
             <AIPersonalization />
             <Accordion type="single" collapsible className="w-full space-y-4">
-                {(Object.keys(levelsData) as LevelKey[]).map(levelKey => {
+                {(Object.keys(levelsData) as LevelKey[]).map((levelKey, index) => {
                     const level = levelsData[levelKey];
                     return (
-                        <AccordionItem value={levelKey} key={levelKey} className="border rounded-lg bg-card">
-                            <AccordionTrigger className="p-4 text-left hover:no-underline">
-                                 <div className="flex items-center gap-4">
-                                    <div className="bg-primary/10 text-primary p-3 rounded-lg text-2xl font-bold w-16 h-16 flex items-center justify-center">
+                        <AccordionItem value={levelKey} key={levelKey} className={cn("border rounded-lg", levelColors[index % levelColors.length])}>
+                            <AccordionTrigger className="p-4 text-left hover:no-underline [&>svg]:ml-4">
+                                 <div className="flex-1 flex items-center gap-4">
+                                    <div className="bg-background/80 text-primary p-3 rounded-lg text-2xl font-bold w-16 h-16 flex items-center justify-center">
                                         {levelKey.toUpperCase()}
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-semibold">{level.level}</h3>
-                                        <p className="text-md text-muted-foreground">{level.cefr}</p>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-semibold">{level.level} - {level.cefr}</h3>
+                                        <p className="text-sm text-muted-foreground mt-1">{level.outcomes}</p>
                                     </div>
                                 </div>
                             </AccordionTrigger>
@@ -425,7 +440,7 @@ const LevelView: FC = () => {
                                     const skillResources = groupedResources[levelKey]?.[skillKey] || [];
                                     const Icon = skill.icon;
                                     return (
-                                         <Card key={skillKey} className="bg-muted/30">
+                                         <Card key={skillKey} className="bg-card/80 backdrop-blur-sm">
                                             <CardHeader className="pb-2">
                                                 <div className="flex justify-between items-center">
                                                     <CardTitle className="text-lg flex items-center gap-2">
