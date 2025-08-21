@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect } from "react";
 import type { FC } from "react";
-import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform } from "lucide-react";
+import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform, Star } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,11 +31,12 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Link from "next/link";
-import { getResources, addResource, deleteResource, type LearningResource } from "@/services/learning-resources";
+import { getResources, addResource, deleteResource, rateResource, type LearningResource } from "@/services/learning-resources";
 import { addDocument } from "@/services/library";
-import { extractTextFromFile } from "@/ai/flows/extract-text-from-file";
+import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import mammoth from "mammoth";
 import { useRouter } from "next/navigation";
+import { cn } from '@/lib/utils';
 
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
@@ -267,6 +268,63 @@ const AIPersonalization: FC = () => {
     );
 };
 
+const StarRating: FC<{
+  resourceId: string;
+  averageRating: number;
+  ratingCount: number;
+  userRating: number | undefined;
+  onRate: (resourceId: string, newRating: number) => void;
+}> = ({ resourceId, averageRating, ratingCount, userRating, onRate }) => {
+    const [hoverRating, setHoverRating] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    const handleRating = async (rating: number) => {
+        if (!user) {
+            toast({ variant: "destructive", title: "Login Required", description: "You must be logged in to rate." });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await rateResource(resourceId, rating);
+            onRate(resourceId, rating); // Notify parent to update state
+        } catch (error) {
+            console.error("Failed to submit rating:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to submit your rating." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex items-center" onMouseLeave={() => setHoverRating(0)}>
+                {[1, 2, 3, 4, 5].map((star) => {
+                    const displayRating = hoverRating || averageRating;
+                    const isFilled = star <= displayRating;
+                    const isUserChoice = star <= (userRating || 0);
+
+                    return (
+                        <Star
+                            key={star}
+                            className={cn(
+                                "h-4 w-4 cursor-pointer transition-colors",
+                                isFilled ? "text-yellow-400 fill-yellow-400" : "text-gray-300",
+                                isUserChoice && "fill-yellow-400",
+                                isSubmitting && "animate-pulse"
+                            )}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onClick={() => handleRating(star)}
+                        />
+                    );
+                })}
+            </div>
+            <span className="text-xs text-muted-foreground">({ratingCount})</span>
+        </div>
+    );
+};
+
 
 const LevelView: FC = () => {
     const { user } = useAuth();
@@ -300,6 +358,26 @@ const LevelView: FC = () => {
             toast({ variant: "destructive", title: "Error", description: "Could not delete resource." });
             setResources(originalResources); // Revert on error
         }
+    };
+    
+    const handleResourceRated = (resourceId: string, newRating: number) => {
+        setResources(prev => prev.map(r => {
+            if (r.id === resourceId) {
+                const oldRating = r.ratings[user!.uid];
+                const newRatings = { ...r.ratings, [user!.uid]: newRating };
+                const newRatingCount = oldRating === undefined ? r.ratingCount + 1 : r.ratingCount;
+                const totalRating = (r.averageRating * r.ratingCount) - (oldRating || 0) + newRating;
+                const newAverageRating = totalRating / newRatingCount;
+
+                return {
+                    ...r,
+                    ratings: newRatings,
+                    ratingCount: newRatingCount,
+                    averageRating: newAverageRating,
+                }
+            }
+            return r;
+        }));
     };
 
     const groupedResources = resources.reduce((acc, resource) => {
@@ -362,16 +440,25 @@ const LevelView: FC = () => {
                                                 {skillResources.length > 0 ? (
                                                     <ul className="space-y-2">
                                                         {skillResources.map(resource => (
-                                                            <li key={resource.id} className="flex items-center justify-between gap-2 text-sm group">
-                                                                <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors flex-1 truncate">
-                                                                    <LinkIcon className="h-4 w-4" />
-                                                                    <span className="truncate">{resource.label}</span>
-                                                                </Link>
-                                                                 {user?.role === 'admin' && (
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleResourceDeleted(resource.id)}>
-                                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                                    </Button>
-                                                                )}
+                                                            <li key={resource.id} className="text-sm group space-y-1">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors flex-1 truncate">
+                                                                        <LinkIcon className="h-4 w-4" />
+                                                                        <span className="truncate">{resource.label}</span>
+                                                                    </Link>
+                                                                    {user?.role === 'admin' && (
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleResourceDeleted(resource.id)}>
+                                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                                <StarRating
+                                                                    resourceId={resource.id}
+                                                                    averageRating={resource.averageRating}
+                                                                    ratingCount={resource.ratingCount}
+                                                                    userRating={resource.ratings[user?.uid || '']}
+                                                                    onRate={handleResourceRated}
+                                                                />
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -393,5 +480,3 @@ const LevelView: FC = () => {
 };
 
 export default LevelView;
-
-    
