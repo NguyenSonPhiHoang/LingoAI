@@ -367,7 +367,7 @@ const LevelView: FC = () => {
                 const newRatings = { ...r.ratings, [user!.uid]: newRating };
                 const newRatingCount = oldRating === undefined ? r.ratingCount + 1 : r.ratingCount;
                 const totalRating = (r.averageRating * r.ratingCount) - (oldRating || 0) + newRating;
-                const newAverageRating = totalRating / newRatingCount;
+                const newAverageRating = newRatingCount > 0 ? totalRating / newRatingCount : 0;
 
                 return {
                     ...r,
@@ -440,25 +440,27 @@ const LevelView: FC = () => {
                                                 {skillResources.length > 0 ? (
                                                     <ul className="space-y-2">
                                                         {skillResources.map(resource => (
-                                                            <li key={resource.id} className="text-sm group space-y-1">
-                                                                <div className="flex items-center justify-between gap-2">
+                                                            <li key={resource.id} className="text-sm group flex items-center justify-between gap-2">
+                                                                <div className="flex items-center gap-2 flex-1 truncate">
                                                                     <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors flex-1 truncate">
                                                                         <LinkIcon className="h-4 w-4" />
                                                                         <span className="truncate">{resource.label}</span>
                                                                     </Link>
+                                                                    <StarRating
+                                                                        resourceId={resource.id}
+                                                                        averageRating={resource.averageRating}
+                                                                        ratingCount={resource.ratingCount}
+                                                                        userRating={resource.ratings[user?.uid || '']}
+                                                                        onRate={handleResourceRated}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-2 flex-shrink-0">
                                                                     {user?.role === 'admin' && (
                                                                         <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleResourceDeleted(resource.id)}>
                                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                                         </Button>
                                                                     )}
                                                                 </div>
-                                                                <StarRating
-                                                                    resourceId={resource.id}
-                                                                    averageRating={resource.averageRating}
-                                                                    ratingCount={resource.ratingCount}
-                                                                    userRating={resource.ratings[user?.uid || '']}
-                                                                    onRate={handleResourceRated}
-                                                                />
                                                             </li>
                                                         ))}
                                                     </ul>
