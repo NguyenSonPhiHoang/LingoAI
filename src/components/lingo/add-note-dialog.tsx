@@ -2,9 +2,8 @@
 "use client";
 
 import * as React from 'react';
-import { useState } from 'react';
-import type { FC } from 'react';
-import { Loader2, PlusCircle, Wand2, Clipboard, Image as ImageIcon } from 'lucide-react';
+import { useState, useRef, type FC } from 'react';
+import { Loader2, PlusCircle, Wand2, Clipboard, Image as ImageIcon, Bold, Italic, Heading2, List, ListOrdered } from 'lucide-react';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,82 @@ import type { LibraryContent } from '@/services/library';
 import { addContentToDocument } from '@/services/library';
 import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { format } from 'date-fns';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+
+const MarkdownToolbar: FC<{ textareaRef: React.RefObject<HTMLTextAreaElement>, onContentChange: (newContent: string) => void }> = ({ textareaRef, onContentChange }) => {
+    
+    const applyFormat = (formatType: 'bold' | 'italic' | 'heading' | 'ul' | 'ol') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+        let newText = '';
+        let newCursorPos = 0;
+
+        switch (formatType) {
+            case 'bold':
+                newText = `**${selectedText}**`;
+                newCursorPos = start + 2;
+                break;
+            case 'italic':
+                newText = `*${selectedText}*`;
+                newCursorPos = start + 1;
+                break;
+            case 'heading':
+                newText = `## ${selectedText}`;
+                newCursorPos = start + 3;
+                break;
+            case 'ul':
+                newText = `- ${selectedText}`;
+                newCursorPos = start + 2;
+                break;
+            case 'ol':
+                newText = `1. ${selectedText}`;
+                newCursorPos = start + 3;
+                break;
+        }
+
+        const updatedValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+        onContentChange(updatedValue);
+        
+        // Use timeout to wait for react state update
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(newCursorPos, newCursorPos + selectedText.length);
+        }, 0);
+    };
+
+    const toolbarItems = [
+        { type: 'bold', icon: Bold, tooltip: 'Bold' },
+        { type: 'italic', icon: Italic, tooltip: 'Italic' },
+        { type: 'heading', icon: Heading2, tooltip: 'Heading' },
+        { type: 'ul', icon: List, tooltip: 'Bulleted List' },
+        { type: 'ol', icon: ListOrdered, tooltip: 'Numbered List' },
+    ] as const;
+
+    return (
+        <div className="flex items-center gap-1 p-1 border rounded-md bg-muted">
+            <TooltipProvider>
+                {toolbarItems.map(item => (
+                     <Tooltip key={item.type}>
+                        <TooltipTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyFormat(item.type)}>
+                                <item.icon className="h-4 w-4" />
+                                <span className="sr-only">{item.tooltip}</span>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{item.tooltip}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ))}
+            </TooltipProvider>
+        </div>
+    );
+}
+
 
 const AddNoteDialog: FC<{
     docId: string;
@@ -31,6 +106,7 @@ const AddNoteDialog: FC<{
     // State for manual entry
     const [noteTitle, setNoteTitle] = useState(`Note - ${format(new Date(), 'PPP')}`);
     const [noteContent, setNoteContent] = useState('');
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     
     // State for clipboard
     const [clipboardText, setClipboardText] = useState('');
@@ -146,7 +222,10 @@ const AddNoteDialog: FC<{
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="note-content">Content (Markdown supported)</Label>
-                            <Textarea id="note-content" value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
+                             <div className="space-y-1">
+                                <MarkdownToolbar textareaRef={textareaRef} onContentChange={setNoteContent} />
+                                <Textarea id="note-content" ref={textareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
+                             </div>
                         </div>
                         <Button className="w-full" onClick={() => handleSaveNote(noteContent, noteTitle)} disabled={isSaving}>
                             {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
