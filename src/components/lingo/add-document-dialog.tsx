@@ -11,6 +11,7 @@ import { Loader2, PlusCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +26,7 @@ const addDocSchema = z.object({
     title: z.string().min(3, "Title must be at least 3 characters."),
     url: z.string().url("Please enter a valid URL."),
     skill: z.enum(SKILLS, { required_error: "Please select a skill." }),
+    summary: z.string().optional(),
 });
 
 const AddDocumentDialog: FC<{
@@ -37,13 +39,13 @@ const AddDocumentDialog: FC<{
 
     const form = useForm<z.infer<typeof addDocSchema>>({
         resolver: zodResolver(addDocSchema),
-        defaultValues: { title: "", url: "" },
+        defaultValues: { title: "", url: "", summary: "" },
     });
 
     const onSubmit = async (values: z.infer<typeof addDocSchema>) => {
         if (!user) return;
         try {
-            const newDoc = await addDocument(user.uid, values.title, values.url, values.skill);
+            const newDoc = await addDocument(user.uid, values.title, values.url, values.skill, values.summary);
             onDocumentAdded(newDoc);
             toast({ title: "Success!", description: `"${values.title}" has been added.`});
             form.reset();
@@ -91,6 +93,19 @@ const AddDocumentDialog: FC<{
                                     <FormLabel>URL</FormLabel>
                                     <FormControl>
                                         <Input placeholder="https://..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="summary"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Summary (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="A brief summary of the content..." {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

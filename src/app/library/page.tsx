@@ -99,6 +99,7 @@ const LibraryPage: FC = () => {
 
             const newGroupedDocs = { ...prev };
 
+            // If skill changed, move doc between arrays
             if (oldDoc.skill !== updatedDoc.skill) {
                 newGroupedDocs[oldDoc.skill] = newGroupedDocs[oldDoc.skill].filter(d => d.id !== updatedDoc.id);
                 newGroupedDocs[updatedDoc.skill] = [updatedDoc, ...newGroupedDocs[updatedDoc.skill]];
@@ -185,17 +186,24 @@ const LibraryPage: FC = () => {
                             </CardHeader>
                             <CardContent>
                                 {viewMode === 'grid' ? (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                         {skillDocs.map(doc => (
-                                            <div key={doc.id} className="flex items-center gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                                                <div className="flex-grow min-w-0">
-                                                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline truncate block flex items-center gap-1.5">
-                                                        <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                                                        {doc.title}
-                                                    </a>
-                                                </div>
-                                                <DocumentActions doc={doc} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} router={router} />
-                                            </div>
+                                            <Card key={doc.id} className="flex flex-col hover:bg-muted/50 transition-colors">
+                                                <CardHeader className="flex-grow">
+                                                     <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline block flex items-start gap-1.5 group">
+                                                        <ExternalLink className="h-4 w-4 mt-1 flex-shrink-0 text-muted-foreground group-hover:text-primary" />
+                                                        <span className="flex-1">{doc.title}</span>
+                                                     </a>
+                                                      {doc.summary && (
+                                                        <CardDescription className="mt-2 line-clamp-3">
+                                                            {doc.summary}
+                                                        </CardDescription>
+                                                      )}
+                                                </CardHeader>
+                                                <CardFooter>
+                                                    <DocumentActions doc={doc} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} router={router} />
+                                                </CardFooter>
+                                            </Card>
                                         ))}
                                     </div>
                                 ) : (
@@ -211,9 +219,12 @@ const LibraryPage: FC = () => {
                                             {skillDocs.map(doc => (
                                                 <TableRow key={doc.id}>
                                                     <TableCell>
-                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline flex items-center gap-2">
-                                                            <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                                                            {doc.title}
+                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline flex items-center gap-2 group">
+                                                            <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-primary" />
+                                                            <div>
+                                                                {doc.title}
+                                                                {doc.summary && <p className="text-xs text-muted-foreground font-normal line-clamp-1">{doc.summary}</p>}
+                                                            </div>
                                                         </a>
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">

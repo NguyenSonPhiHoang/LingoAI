@@ -1,3 +1,4 @@
+
 "use client";
 
 import { db, auth } from "@/lib/firebase";
@@ -25,6 +26,7 @@ export interface LibraryDocument {
   skill: LibrarySkill;
   title: string;
   url: string;
+  summary?: string;
   createdAt: any;
 }
 
@@ -97,12 +99,13 @@ export const getDocument = async (docId: string): Promise<LibraryDocument | null
 }
 
 
-export const addDocument = async (userId: string, title: string, url: string, skill: LibrarySkill): Promise<LibraryDocument> => {
+export const addDocument = async (userId: string, title: string, url: string, skill: LibrarySkill, summary?: string): Promise<LibraryDocument> => {
     const docData = {
         userId,
         title,
         url,
         skill,
+        summary: summary || '',
         createdAt: Timestamp.now()
     };
     const docRef = await addDoc(collection(db, "library"), docData);
@@ -114,7 +117,7 @@ export const addDocument = async (userId: string, title: string, url: string, sk
     };
 };
 
-export const updateDocument = async (docId: string, updates: { title: string; url: string; skill: LibrarySkill }) => {
+export const updateDocument = async (docId: string, updates: { title: string; url: string; skill: LibrarySkill; summary?: string }) => {
     const docRef = doc(db, 'library', docId);
     // Optional: Add a security check to ensure the user owns this document before updating.
     await updateDoc(docRef, updates);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { LibraryDocument, LibrarySkill } from '@/services/library';
 import { updateDocument } from '@/services/library';
@@ -21,6 +23,7 @@ const editDocSchema = z.object({
     title: z.string().min(3, "Title must be at least 3 characters."),
     url: z.string().url("Please enter a valid URL."),
     skill: z.enum(SKILLS, { required_error: "Please select a skill." }),
+    summary: z.string().optional(),
 });
 
 type EditDocumentDialogProps = {
@@ -36,7 +39,8 @@ const EditDocumentDialog: FC<EditDocumentDialogProps> = ({ doc, onDocumentUpdate
         defaultValues: {
             title: doc.title,
             url: doc.url,
-            skill: doc.skill
+            skill: doc.skill,
+            summary: doc.summary || '',
         },
     });
 
@@ -88,6 +92,19 @@ const EditDocumentDialog: FC<EditDocumentDialogProps> = ({ doc, onDocumentUpdate
                                 </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="summary"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Summary (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="A brief summary of the content..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                          <FormField
                             control={form.control}
                             name="skill"
@@ -125,5 +142,3 @@ const EditDocumentDialog: FC<EditDocumentDialogProps> = ({ doc, onDocumentUpdate
 };
 
 export default EditDocumentDialog;
-
-    
