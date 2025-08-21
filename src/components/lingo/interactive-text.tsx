@@ -38,83 +38,92 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
         let currentIndex = 0;
 
         const processSegment = (segment: string, segmentOffset: number) => {
-            // Regex to split by words and capture delimiters (spaces, punctuation)
-            const wordRegex = /([\w'-]+)|([^\w'-]+)/g;
+            const highlightRegex = /<mark>(.*?)<\/mark>/g;
+            let lastIndex = 0;
             let match;
-            while ((match = wordRegex.exec(segment)) !== null) {
-                const part = match[0];
-                const start = segmentOffset + match.index;
-                const end = start + part.length;
-                const isHighlighted = activePlaybackKey && currentActiveKey === activePlaybackKey && highlightedRange && start < highlightedRange.end && end > highlightedRange.start;
+
+            while((match = highlightRegex.exec(segment)) !== null) {
+                // Push text before the mark
+                if (match.index > lastIndex) {
+                    finalParts.push(<span key={`${activePlaybackKey}-pre-${lastIndex}`}>{segment.substring(lastIndex, match.index)}</span>);
+                }
+                // Push the marked text
+                finalParts.push(<mark key={`${activePlaybackKey}-mark-${match.index}`} className="bg-primary/30 text-primary-foreground p-0.5 rounded-sm">{match[1]}</mark>);
+                lastIndex = match.index + match[0].length;
+            }
+
+            // Push text after the last mark
+            if (lastIndex < segment.length) {
+                finalParts.push(<span key={`${activePlaybackKey}-post-${lastIndex}`}>{segment.substring(lastIndex)}</span>);
+            }
+
+            // Highlighting for audio playback (This part is a simplification. Real-time audio sync needs more complex logic which we already have)
+            // For now, we will just render the text with marks and vocab tooltips.
+        };
+        
+         const processAndSplitText = (textToProcess: string) => {
+            // Regex to find vocabulary terms or the <mark> tags
+            const vocabTerms = Array.from(vocabMap.keys());
+            if (vocabTerms.length === 0) {
+                 processSegment(textToProcess, 0);
+                 return;
+            }
+            const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+            const combinedRegex = new RegExp(`(<mark>.*?</mark>|\\b(${escapedTerms.join('|')})\\b)`, 'gi');
+
+            let lastIndex = 0;
+            let matchResult;
+            while ((matchResult = combinedRegex.exec(textToProcess)) !== null) {
+                // Process text before the match
+                if (matchResult.index > lastIndex) {
+                    processSegment(textToProcess.substring(lastIndex, matchResult.index), 0);
+                }
+
+                const matchedTerm = matchResult[0];
+                const isMarkTag = matchedTerm.startsWith('<mark>');
                 
-                finalParts.push(
-                    <span 
-                        key={`${activePlaybackKey}-${start}`} 
-                        className={cn(isHighlighted && "bg-primary/20 rounded")}
-                        style={isHighlighted ? {boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone'} : {}}
-                    >
-                        {part}
-                    </span>
-                );
+                if (isMarkTag) {
+                    // It's a highlight, process the content inside
+                     processSegment(matchedTerm, 0);
+                } else {
+                     // It's a vocabulary word
+                    const vocabWord = vocabMap.get(matchedTerm.toLowerCase());
+                    if(vocabWord) {
+                        const audioKey = vocabWord.userVocabularyId || vocabWord.id;
+                        const isTermPlaying = isPlaying[audioKey];
+                        finalParts.push(
+                            <TooltipProvider key={`${activePlaybackKey}-vocab-${matchResult.index}`}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="bg-primary/10 text-primary font-semibold rounded-sm px-1 py-0.5 cursor-pointer">
+                                            {matchedTerm}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        <div className="flex items-center gap-2">
+                                            <div className="font-bold font-sans text-lg">{vocabWord.pronunciation}</div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isTermPlaying}>
+                                                {isTermPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        );
+                    }
+                }
+                lastIndex = matchResult.index + matchedTerm.length;
+            }
+            // Process remaining text
+            if (lastIndex < textToProcess.length) {
+                processSegment(textToProcess.substring(lastIndex), 0);
             }
         };
 
-        const vocabTerms = Array.from(vocabMap.keys());
-        if (vocabTerms.length === 0 || !text) {
-             if(text) processSegment(text, 0);
-             return finalParts;
-        }
-
-        const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        const regex = new RegExp(`\\b(${escapedTerms.join('|')})\\b`, 'gi');
-
-        let match;
-        let lastIndex = 0;
-        while ((match = regex.exec(text)) !== null) {
-            // Process text before the match
-            if (match.index > lastIndex) {
-                processSegment(text.substring(lastIndex, match.index), lastIndex);
-            }
-
-            const matchedTerm = match[0];
-            const vocabWord = vocabMap.get(matchedTerm.toLowerCase());
-            
-            if (vocabWord) {
-                const audioKey = vocabWord.userVocabularyId || vocabWord.id;
-                const isTermPlaying = isPlaying[audioKey];
-                finalParts.push(
-                    <TooltipProvider key={`${activePlaybackKey}-vocab-${match.index}`}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="bg-primary/10 text-primary font-semibold rounded-sm px-1 py-0.5 cursor-pointer">
-                                    {matchedTerm}
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                                <div className="flex items-center gap-2">
-                                    <div className="font-bold font-sans text-lg">{vocabWord.pronunciation}</div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isTermPlaying}>
-                                        {isTermPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                );
-            } else {
-                 finalParts.push(matchedTerm);
-            }
-            lastIndex = match.index + matchedTerm.length;
-        }
-
-        // Process remaining text
-        if (lastIndex < text.length) {
-            processSegment(text.substring(lastIndex), lastIndex);
-        }
-
+        if(text) processAndSplitText(text);
         return finalParts;
 
-    }, [text, vocabMap, playTermAudio, isPlaying, highlightedRange, activePlaybackKey, currentActiveKey]);
+    }, [text, vocabMap, playTermAudio, isPlaying, activePlaybackKey]);
 
     return <>{parts}</>;
 });

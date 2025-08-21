@@ -72,7 +72,7 @@ const NoteActions: FC<{
     </div>
 );
 
-const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode }> = ({ note, children }) => (
+const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode, vocabulary: CombinedVocabulary[], playbackHook: ReturnType<typeof useAudioPlayback> }> = ({ note, children, vocabulary, playbackHook }) => (
     <Dialog>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
@@ -83,7 +83,7 @@ const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode }> = 
             <div className="flex-1 relative">
                 <ScrollArea className="absolute inset-0 pr-6">
                     <article className="prose dark:prose-invert max-w-none">
-                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.extractedText}</ReactMarkdown>
+                        <InteractiveText text={note.extractedText} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`note-dialog-${note.id}`} />
                     </article>
                 </ScrollArea>
             </div>
@@ -178,10 +178,6 @@ const LibraryDocPage: FC = () => {
         )
     }
 
-    const MarkdownRenderer = ({children}: {children: string}) => (
-        <InteractiveText text={children} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
-    )
-
     return (
         <div className="space-y-4">
              <audio ref={playbackHook.audioRef} className="hidden" />
@@ -248,12 +244,12 @@ const LibraryDocPage: FC = () => {
                                     </CardHeader>
                                     <CardContent className="flex-grow">
                                         <div className="prose prose-sm dark:prose-invert max-w-none bg-background/50 p-3 rounded-md h-24 overflow-hidden relative">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.extractedText || "No content preview."}</ReactMarkdown>
+                                            <InteractiveText text={content.extractedText || "No content preview."} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`note-preview-${content.id}`} />
                                             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="justify-between items-center">
-                                        <ViewNoteDialog note={content}>
+                                        <ViewNoteDialog note={content} vocabulary={vocabulary} playbackHook={playbackHook}>
                                              <Button variant="outline" className="w-auto flex-grow">View Details</Button>
                                         </ViewNoteDialog>
                                          <div className="flex-shrink-0">
@@ -277,7 +273,7 @@ const LibraryDocPage: FC = () => {
                                     {contents.map(content => (
                                         <TableRow key={content.id} className="group">
                                              <TableCell className="font-medium">
-                                                <ViewNoteDialog note={content}>
+                                                <ViewNoteDialog note={content} vocabulary={vocabulary} playbackHook={playbackHook}>
                                                     <span className="cursor-pointer hover:underline">{content.fileName}</span>
                                                 </ViewNoteDialog>
                                             </TableCell>
