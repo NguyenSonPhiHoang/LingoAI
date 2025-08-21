@@ -109,7 +109,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
-  const { translations, isTranslating, toggleTranslation } = useTranslation();
   const playbackHook = useAudioPlayback({ setWords });
 
   const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | "pronunciation" | null>(() => {
@@ -252,7 +251,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const hasContentForPractice = currentLesson.content && currentLesson.content.length > 0;
   const currentStatusInfo = statusOptions.find(s => s.value === currentLesson.status) || statusOptions[0];
 
-  const renderContentItem = (item: LessonContent) => {
+  const renderContentItem = useCallback((item: LessonContent) => {
     try {
         const data = JSON.parse(item.value);
         const translationKey = `content-${item.id}`;
@@ -262,8 +261,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(customKey || translationKey, textToProcess)} disabled={playbackHook.activePlaybackKey === (customKey || translationKey)}>
                     {playbackHook.activePlaybackKey === (customKey || translationKey) ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(customKey || translationKey, textToProcess)} disabled={isTranslating[customKey || translationKey]}>
-                    {isTranslating[customKey || translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(customKey || translationKey, textToProcess)} disabled={playbackHook.isTranslating[customKey || translationKey]}>
+                    {playbackHook.isTranslating[customKey || translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                 </Button>
             </div>
         );
@@ -304,9 +303,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                             <InteractiveText text={data.body} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} />
                         </div>
                     )}
-                    {translations[translationKey] && (
+                    {playbackHook.translations[translationKey] && (
                         <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                            <strong>Dịch:</strong> {translations[translationKey]}
+                            <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
                         </div>
                     )}
                 </CardContent>
@@ -316,7 +315,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         console.error("Failed to parse content item:", item.value, e);
         return null;
     }
-  }
+  }, [playbackHook, vocabulary]);
 
   const renderPracticeZone = () => {
     const practiceType = lesson.skill.toLowerCase();
@@ -439,18 +438,20 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
-            {isLoading === 'content' ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              </div>
-            ) : hasContentForPractice ? (
-              currentLesson.content?.map(renderContentItem)
-            ) : (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                Content you generate will appear here.
-              </div>
-            )}
+          <ScrollArea className="max-h-96 rounded-lg border bg-muted/20">
+            <div className="p-4">
+                {isLoading === 'content' ? (
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+                ) : hasContentForPractice ? (
+                currentLesson.content?.map(renderContentItem)
+                ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                    Content you generate will appear here.
+                </div>
+                )}
+            </div>
           </ScrollArea>
         </CardContent>
       </Card>
@@ -502,34 +503,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 };
 
 
-// --- Translation Helper ---
-
-const useTranslation = () => {
-    const [translations, setTranslations] = useState<Record<string, string | null>>({});
-    const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
-    const { toast } = useToast();
-
-    const toggleTranslation = async (key: string, text: string) => {
-        if (translations[key]) {
-            setTranslations(prev => ({ ...prev, [key]: null }));
-            return;
-        }
-
-        setIsTranslating(prev => ({ ...prev, [key]: true }));
-        try {
-            const result = await translateText({ text });
-            setTranslations(prev => ({ ...prev, [key]: result.translation }));
-        } catch (error) {
-            console.error("Translation failed:", error);
-            toast({ variant: "destructive", title: "Translation Failed" });
-        } finally {
-            setIsTranslating(prev => ({ ...prev, [key]: false }));
-        }
-    };
-
-    return { translations, isTranslating, toggleTranslation };
-};
-
 // --- Practice Components ---
 
 type PracticeComponentProps = {
@@ -543,7 +516,6 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
     const [feedback, setFeedback] = useState<Record<number, string>>({});
     const [isChecking, setIsChecking] = useState(false);
     const { toast } = useToast();
-    const { translations, isTranslating, toggleTranslation } = useTranslation();
 
     if (!questions || questions.length === 0) return <div className="p-4 text-center">No questions available.</div>;
 
@@ -602,14 +574,14 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, q.question)} disabled={playbackHook.activePlaybackKey === translationKey}>
                                     {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, q.question)} disabled={isTranslating[translationKey]}>
-                                    {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, q.question)} disabled={playbackHook.isTranslating[translationKey]}>
+                                    {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                 </Button>
                             </div>
                         </div>
-                        {translations[translationKey] && (
+                        {playbackHook.translations[translationKey] && (
                             <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mb-3 rounded-r-md">
-                                <strong>Dịch:</strong> {translations[translationKey]}
+                                <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
                             </div>
                         )}
                         <div className="space-y-2">
@@ -648,8 +620,8 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playbackHook.playAudio(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={playbackHook.activePlaybackKey === `feedback-${qIndex}`}>
                                                 {playbackHook.activePlaybackKey === `feedback-${qIndex}` ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => toggleTranslation(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={isTranslating[`feedback-${qIndex}`]}>
-                                                {isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playbackHook.toggleTranslation(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={playbackHook.isTranslating[`feedback-${qIndex}`]}>
+                                                {playbackHook.isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                             </Button>
                                             </>
                                         )}
@@ -657,9 +629,9 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                 </div>
                                 {isChecking && !feedback[qIndex] && <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4" /><span>Getting feedback from AI...</span></div>}
                                 <div className="text-sm"><InteractiveText text={feedback[qIndex] || ''} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`feedback-${qIndex}`} /></div>
-                                {translations[`feedback-${qIndex}`] && (
+                                {playbackHook.translations[`feedback-${qIndex}`] && (
                                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                                        <strong>Dịch:</strong> {translations[`feedback-${qIndex}`]}
+                                        <strong>Dịch:</strong> {playbackHook.translations[`feedback-${qIndex}`]}
                                     </div>
                                 )}
                             </div>
@@ -682,7 +654,6 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
     const [feedback, setFeedback] = useState<GenerateWritingFeedbackOutput | null>(null);
     const [isGettingFeedback, setIsGettingFeedback] = useState(false);
     const { toast } = useToast();
-    const { translations, isTranslating, toggleTranslation } = useTranslation();
 
 
     const handleGetFeedback = async () => {
@@ -758,15 +729,15 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playbackHook.playAudio(feedbackKey, feedback.feedback)} disabled={playbackHook.activePlaybackKey === feedbackKey}>
                                         {playbackHook.activePlaybackKey === feedbackKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => toggleTranslation(feedbackKey, feedback.feedback)} disabled={isTranslating[feedbackKey]}>
-                                        {isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playbackHook.toggleTranslation(feedbackKey, feedback.feedback)} disabled={playbackHook.isTranslating[feedbackKey]}>
+                                        {playbackHook.isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                     </Button>
                                  </div>
                              </div>
                              <div className="text-sm"><InteractiveText text={feedback.feedback} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={feedbackKey} /></div>
-                             {translations[feedbackKey] && (
+                             {playbackHook.translations[feedbackKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                                    <strong>Dịch:</strong> {translations[feedbackKey]}
+                                    <strong>Dịch:</strong> {playbackHook.translations[feedbackKey]}
                                 </div>
                             )}
                         </div>
@@ -777,15 +748,15 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playbackHook.playAudio(correctedKey, feedback.correctedText)} disabled={playbackHook.activePlaybackKey === correctedKey}>
                                         {playbackHook.activePlaybackKey === correctedKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => toggleTranslation(correctedKey, feedback.correctedText)} disabled={isTranslating[correctedKey]}>
-                                        {isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playbackHook.toggleTranslation(correctedKey, feedback.correctedText)} disabled={playbackHook.isTranslating[correctedKey]}>
+                                        {playbackHook.isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </div>
                             <div className="text-sm font-semibold">"<InteractiveText text={feedback.correctedText} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={correctedKey} />"</div>
-                            {translations[correctedKey] && (
+                            {playbackHook.translations[correctedKey] && (
                                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                                    <strong>Dịch:</strong> {translations[correctedKey]}
+                                    <strong>Dịch:</strong> {playbackHook.translations[correctedKey]}
                                 </div>
                             )}
                         </div>
@@ -799,14 +770,14 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playbackHook.playAudio(answerKey, prompt.exampleAnswer)} disabled={playbackHook.activePlaybackKey === answerKey}>
                             {playbackHook.activePlaybackKey === answerKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={isTranslating[answerKey]}>
-                            {isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playbackHook.toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={playbackHook.isTranslating[answerKey]}>
+                            {playbackHook.isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                         </Button>
                      </div>
                 </div>
-                {translations[answerKey] && (
+                {playbackHook.translations[answerKey] && (
                     <div className="text-xs w-full text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 rounded-r-md">
-                        <strong>Dịch:</strong> {translations[answerKey]}
+                        <strong>Dịch:</strong> {playbackHook.translations[answerKey]}
                     </div>
                 )}
             </CardFooter>
@@ -852,7 +823,6 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 
 const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & PracticeComponentProps> = ({ exercise, vocabulary, playbackHook }) => {
     const { toast } = useToast();
-    const { translations, isTranslating, toggleTranslation } = useTranslation();
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -884,16 +854,16 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & Practi
                                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, line.line)} disabled={playbackHook.activePlaybackKey === translationKey}>
                                             {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                         </Button>
-                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleTranslation(translationKey, line.line)} disabled={isTranslating[translationKey]}>
-                                            {isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, line.line)} disabled={playbackHook.isTranslating[translationKey]}>
+                                            {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
                                        </Button>
                                   </div>
                                </div>
                             </div>
                         </div>
-                        {translations[translationKey] && (
+                        {playbackHook.translations[translationKey] && (
                             <div className={`text-sm text-blue-600 p-2 mt-1 max-w-sm ${line.role === 'You' ? 'ml-auto' : 'ml-11'}`}>
-                                <strong>Dịch:</strong> {translations[translationKey]}
+                                <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
                             </div>
                         )}
                     </div>
