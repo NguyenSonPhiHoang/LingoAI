@@ -26,7 +26,7 @@ import InteractiveText from '@/components/lingo/interactive-text';
 
 
 const LibraryDocPage: FC = () => {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     const params = useParams();
@@ -39,7 +39,7 @@ const LibraryDocPage: FC = () => {
     const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
     useEffect(() => {
-        if (!user || !docId) return;
+        if (authLoading || !user || !docId) return;
 
         const fetchData = async () => {
             setIsLoading(true);
@@ -69,7 +69,7 @@ const LibraryDocPage: FC = () => {
             }
         };
         fetchData();
-    }, [user, docId, toast, router]);
+    }, [user, authLoading, docId, toast, router]);
     
 
     const handleNoteAdded = (newNote: LibraryContent) => {
@@ -93,7 +93,7 @@ const LibraryDocPage: FC = () => {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || authLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -102,7 +102,6 @@ const LibraryDocPage: FC = () => {
     }
     
     if (!doc) {
-        // This case is handled in useEffect, but as a fallback
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
                <p>Document not found.</p>
@@ -178,9 +177,8 @@ const LibraryDocPage: FC = () => {
                                     <article className="prose prose-sm dark:prose-invert max-w-none">
                                         <ReactMarkdown
                                             components={{
-                                                p: ({node, ...props}) => <p {...props} />, // Use default p
-                                                span: ({node, ...props}) => <span {...props} />, // Use default span
-                                                // Override how text is rendered to use our interactive component
+                                                p: ({node, ...props}) => <p {...props} />,
+                                                span: ({node, ...props}) => <span {...props} />,
                                                 text: ({node, ...props}) => {
                                                     return <MarkdownRenderer>{String(node.value)}</MarkdownRenderer>;
                                                 },

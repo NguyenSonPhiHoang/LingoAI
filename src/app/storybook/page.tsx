@@ -38,7 +38,7 @@ const formSchema = GenerateStorybookInputSchema.extend({
 type StorybookFormValues = z.infer<typeof formSchema>;
 
 const StorybookPage: FC = () => {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const [allWords, setAllWords] = useState<CombinedVocabulary[]>([]);
     const [selectedWords, setSelectedWords] = useState<Record<string, boolean>>({});
@@ -48,7 +48,7 @@ const StorybookPage: FC = () => {
     const [storybook, setStorybook] = useState<GenerateStorybookOutput | null>(null);
 
     useEffect(() => {
-        if (!user) return;
+        if (authLoading || !user) return;
         const fetchWords = async () => {
             setIsVocabLoading(true);
             try {
@@ -61,7 +61,7 @@ const StorybookPage: FC = () => {
             }
         };
         fetchWords();
-    }, [user, toast]);
+    }, [user, authLoading, toast]);
     
     const form = useForm<StorybookFormValues>({
         resolver: zodResolver(formSchema),
@@ -144,7 +144,6 @@ const StorybookPage: FC = () => {
         
         const vocabTerms = new Set(storybook.keyVocabulary.map(v => v.word.toLowerCase()));
         
-        // Regex to split story by words, keeping punctuation attached
         const storyParts = storybook.storyContent.split(/(\b[\w'-]+\b|[^\w\s]+)/g);
 
         return (
@@ -166,6 +165,14 @@ const StorybookPage: FC = () => {
             </p>
         );
     };
+
+    if (authLoading) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <DashboardLayout

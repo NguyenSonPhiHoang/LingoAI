@@ -44,12 +44,11 @@ export type View =
   | "profile"
   | "settings"
   | "placement-test"
-  | "review-test"
-  | "storybook"
-  | "library";
+  | "review-test";
+  
 
 export type ViewState = {
-  view: View;
+  view: View | "storybook" | "library";
   lesson?: Lesson;
   recommendedLevel?: UserLevel;
   reviewTest?: GenerateReviewTestOutput;
@@ -114,14 +113,11 @@ const Home: FC = () => {
   
   const setActiveView = (view: View | "storybook" | "library") => {
       if (view === 'storybook') {
-          setActiveViewState({ view: 'storybook' });
           router.push('/storybook');
       } else if (view === 'library') {
-          setActiveViewState({ view: 'library' });
           router.push('/library');
-      } else {
-          setActiveViewState({ view });
       }
+      setActiveViewState({ view });
   }
 
   const renderContent = () => {

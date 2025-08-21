@@ -64,7 +64,7 @@ const DocumentActions: FC<{
 
 
 const LibraryPage: FC = () => {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     const [documents, setDocuments] = useState<Record<LibrarySkill, LibraryDocument[]>>({
@@ -75,7 +75,7 @@ const LibraryPage: FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        if (!user) return;
+        if (authLoading || !user) return;
         setIsLoading(true);
         getDocumentsGroupedBySkill(user.uid)
             .then(setDocuments)
@@ -84,7 +84,7 @@ const LibraryPage: FC = () => {
                 toast({ variant: 'destructive', title: "Error", description: "Could not fetch your library." });
             })
             .finally(() => setIsLoading(false));
-    }, [user, toast]);
+    }, [user, authLoading, toast]);
 
     const handleDocumentAdded = (newDoc: LibraryDocument) => {
         setDocuments(prev => ({
@@ -145,7 +145,7 @@ const LibraryPage: FC = () => {
     }, [searchTerm, documents]);
 
 
-    if (isLoading) {
+    if (isLoading || authLoading) {
         return (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -278,5 +278,3 @@ const LibraryPage: FC = () => {
 };
 
 export default LibraryPage;
-
-    
