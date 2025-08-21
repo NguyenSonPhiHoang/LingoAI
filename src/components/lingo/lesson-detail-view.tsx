@@ -173,8 +173,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             newContent.push({ id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) });
         }
         
-        await updateLessonContent(currentLesson.docId, newContent);
-        // Correctly update the local state with the new content
+        await updateLessonContent(currentLesson.docId, newContent, currentLesson.exercises);
         setCurrentLesson(prev => ({ ...prev, content: newContent }));
 
     } catch (error) {
@@ -478,43 +477,40 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       </div>
 
       {/* Section 1: Learning Content */}
-      <Card>
-        <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
-            <AccordionItem value="learning-content" className="border-b-0">
-                <AccordionTrigger className="flex-1 p-6 hover:no-underline group">
-                    <div className="flex justify-between items-center w-full">
-                        <div>
-                            <CardTitle>1. Learning Content</CardTitle>
-                            <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <Button onClick={(e) => { e.stopPropagation(); handleGenerateContent(); }} disabled={!!isLoading} size="sm" className="ml-4">
-                                {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-                                {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                            </Button>
-                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </div>
+        <Card>
+            <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
+                <AccordionItem value="learning-content" className="border-b-0">
+                    <div className="flex items-center p-6 group">
+                        <AccordionTrigger className="flex-1 hover:no-underline">
+                            <div>
+                                <CardTitle>1. Learning Content</CardTitle>
+                                <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+                            </div>
+                        </AccordionTrigger>
+                        <Button onClick={(e) => { e.stopPropagation(); handleGenerateContent(); }} disabled={!!isLoading} size="sm" className="ml-4">
+                            {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+                            {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+                        </Button>
                     </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                    <CardContent>
-                        <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
-                          {isLoading === 'content' ? (
-                            <div className="flex items-center justify-center h-full">
-                              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                            </div>
-                          ) : hasContentForPractice ? (
-                            currentLesson.content?.map(renderContentItem)
-                          ) : (
-                            <div className="text-sm text-muted-foreground text-center py-4">
-                              Content you generate will appear here.
-                            </div>
-                          )}
-                        </ScrollArea>
-                    </CardContent>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+                    <AccordionContent>
+                        <CardContent>
+                            <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
+                              {isLoading === 'content' ? (
+                                <div className="flex items-center justify-center h-full">
+                                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                </div>
+                              ) : hasContentForPractice ? (
+                                currentLesson.content?.map(renderContentItem)
+                              ) : (
+                                <div className="text-sm text-muted-foreground text-center py-4">
+                                  Content you generate will appear here.
+                                </div>
+                              )}
+                            </ScrollArea>
+                        </CardContent>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
       </Card>
 
 
