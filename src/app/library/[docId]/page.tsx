@@ -115,7 +115,7 @@ const LibraryDocPage: FC = () => {
     )
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
              <audio ref={playbackHook.audioRef} className="hidden" />
             <div className="flex justify-between items-center">
                  <Button variant="ghost" onClick={() => router.push('/library')} className="-ml-4">
@@ -126,10 +126,12 @@ const LibraryDocPage: FC = () => {
              <Card>
                 <CardHeader>
                     <CardTitle>{doc.title}</CardTitle>
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary flex items-center gap-1 hover:underline truncate">
-                       <ExternalLink className="h-4 w-4" />
-                       {doc.url}
-                    </a>
+                    <CardDescription>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline truncate">
+                           <ExternalLink className="h-4 w-4" />
+                           {doc.url}
+                        </a>
+                    </CardDescription>
                 </CardHeader>
                 {doc.summary && (
                     <CardContent>
