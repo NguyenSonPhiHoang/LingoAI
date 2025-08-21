@@ -114,8 +114,10 @@ const Home: FC = () => {
   
   const setActiveView = (view: View | "storybook" | "library") => {
       if (view === 'storybook') {
+          setActiveViewState({ view: 'storybook' });
           router.push('/storybook');
       } else if (view === 'library') {
+          setActiveViewState({ view: 'library' });
           router.push('/library');
       } else {
           setActiveViewState({ view });
