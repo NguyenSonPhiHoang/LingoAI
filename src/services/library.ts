@@ -14,37 +14,69 @@ import {
   where,
   Timestamp,
   getDoc,
+  writeBatch,
 } from "firebase/firestore";
 import type { VocabularyEntry } from "@/ai/flows/schemas";
 
-const libraryCollection = collection(db, "library");
+export type LibrarySkill = "Reading" | "Writing" | "Listening" | "Speaking" | "Pronunciation";
 
+// Represents the main document/link saved by the user.
 export interface LibraryDocument {
   id: string;
   userId: string;
+  skill: LibrarySkill;
   title: string;
-  content: string;
-  imageUrl?: string;
+  url: string;
   createdAt: any;
-  vocabulary: VocabularyEntry[];
+}
+
+// Represents a piece of content extracted from a file, associated with a LibraryDocument.
+export interface LibraryContent {
+    id: string;
+    docId: string; // The ID of the parent LibraryDocument
+    userId: string;
+    fileName: string;
+    extractedText: string;
+    createdAt: any;
+    // This field from the old schema is no longer needed here
+    // vocabulary?: VocabularyEntry[];
 }
 
 
-export const getDocuments = async (userId: string): Promise<LibraryDocument[]> => {
+// --- LibraryDocument Functions ---
+
+export const getDocumentsGroupedBySkill = async (userId: string): Promise<Record<LibrarySkill, LibraryDocument[]>> => {
   const q = query(
-    libraryCollection,
+    collection(db, "library"),
     where("userId", "==", userId),
     orderBy("createdAt", "desc")
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => {
+  
+  const initialGrouping: Record<LibrarySkill, LibraryDocument[]> = {
+    Reading: [],
+    Writing: [],
+    Listening: [],
+    Speaking: [],
+    Pronunciation: [],
+  };
+  
+  const groupedDocs = snapshot.docs.reduce((acc, doc) => {
     const data = doc.data();
-    return {
+    const docSkill = data.skill as LibrarySkill;
+    const document = {
       id: doc.id,
       ...data,
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
-    } as LibraryDocument
-  })
+    } as LibraryDocument;
+    
+    if (acc[docSkill]) {
+        acc[docSkill].push(document);
+    }
+    return acc;
+  }, initialGrouping);
+
+  return groupedDocs;
 };
 
 export const getDocument = async (docId: string): Promise<LibraryDocument | null> => {
@@ -69,34 +101,81 @@ export const getDocument = async (docId: string): Promise<LibraryDocument | null
 }
 
 
-export const addDocument = async (userId: string, title: string, content: string, imageUrl?: string): Promise<LibraryDocument> => {
-    const docData: Omit<LibraryDocument, 'id' | 'createdAt'> = {
+export const addDocument = async (userId: string, title: string, url: string, skill: LibrarySkill): Promise<LibraryDocument> => {
+    const docData = {
         userId,
         title,
-        content,
-        vocabulary: [],
+        url,
+        skill,
+        createdAt: Timestamp.now()
     };
-    if (imageUrl) {
-        docData.imageUrl = imageUrl;
-    }
-    const finalPayload = { ...docData, createdAt: Timestamp.now() };
-    const docRef = await addDoc(libraryCollection, finalPayload);
+    const docRef = await addDoc(collection(db, "library"), docData);
     
     return {
-        ...finalPayload,
+        ...docData,
         id: docRef.id,
         createdAt: new Date(),
-    } as LibraryDocument;
+    };
 };
-
-export const updateDocument = async (docId: string, updates: Partial<LibraryDocument>) => {
-    if (!auth.currentUser) throw new Error("Authentication required");
-    const docRef = doc(db, 'library', docId);
-    await updateDoc(docRef, updates);
-}
 
 export const deleteDocument = async (docId: string) => {
     if (!auth.currentUser) return;
+    
+    const batch = writeBatch(db);
+    
+    // 1. Delete the main document
     const docRef = doc(db, "library", docId);
-    await deleteDoc(docRef);
+    batch.delete(docRef);
+    
+    // 2. Delete all associated content
+    const contentQuery = query(collection(db, "library_content"), where("docId", "==", docId), where("userId", "==", auth.currentUser.uid));
+    const contentSnapshot = await getDocs(contentQuery);
+    contentSnapshot.forEach(contentDoc => {
+        batch.delete(contentDoc.ref);
+    });
+    
+    await batch.commit();
+};
+
+
+// --- LibraryContent Functions ---
+
+export const getContentForDocument = async (docId: string): Promise<LibraryContent[]> => {
+    if (!auth.currentUser) return [];
+
+    const q = query(
+        collection(db, "library_content"),
+        where("docId", "==", docId),
+        where("userId", "==", auth.currentUser.uid),
+        orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as LibraryContent));
+};
+
+export const addContentToDocument = async (docId: string, fileName: string, extractedText: string): Promise<LibraryContent> => {
+    if (!auth.currentUser) throw new Error("Authentication required");
+
+    const contentData = {
+        docId,
+        userId: auth.currentUser.uid,
+        fileName,
+        extractedText,
+        createdAt: Timestamp.now(),
+    };
+    const contentRef = await addDoc(collection(db, "library_content"), contentData);
+
+    return {
+        ...contentData,
+        id: contentRef.id,
+    }
+};
+
+export const deleteContent = async (contentId: string) => {
+    if (!auth.currentUser) throw new Error("Authentication required");
+    // Add extra security check if needed by fetching the document first
+    await deleteDoc(doc(db, "library_content", contentId));
 };

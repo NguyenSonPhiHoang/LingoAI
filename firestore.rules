@@ -4,83 +4,93 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the user is an admin.
+    // Helper function to check if a user is an admin
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for the 'users' collection
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Users collection rules
     match /users/{userId} {
-      // Users can read and update their own profile.
-      // Admins can read any profile and update any user's status/role.
-      allow read: if request.auth.uid == userId || isAdmin();
-      allow update: if request.auth.uid == userId || isAdmin();
-      // Only admins can create or delete user records directly.
+      // A user can read and update their own profile
+      allow read, update: if request.auth.uid == userId;
+      // An admin can read and update any user's status/role
+      allow read, update: if isAdmin();
+      // Only admins can create or delete user records directly (usually handled by auth)
       allow create, delete: if isAdmin();
     }
-
-    // Rules for the global 'words' collection
+    
+    // Global words collection rules
     match /words/{wordId} {
-      // Any authenticated user can read the global word list.
-      allow read: if request.auth.uid != null;
-      // Only admins can write (create, update, delete) to the global word list.
-      allow write: if isAdmin();
+      // Any authenticated user can read the global words list
+      allow read: if request.auth != null;
+      // Only admins can create or update global word definitions
+      allow create, update: if isAdmin();
     }
 
-    // Rules for the user-specific 'userVocabulary' collection
+    // User-specific vocabulary collection
     match /userVocabulary/{userVocabId} {
-      // Users can only read and write their own vocabulary entries.
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Rules for the user-specific 'lessons' collection
-    match /lessons/{lessonId} {
-      // Users can only read and write their own lessons.
+      // A user can do anything with their own vocabulary entries
       allow read, write: if request.auth.uid == resource.data.userId;
+      // Admin can view any user's vocabulary (for support, etc.)
+      allow read: if isAdmin();
+    }
+
+    // Lessons collection rules
+    match /lessons/{lessonId} {
+      // A user can do anything with their own lessons
+      allow read, write: if request.auth.uid == resource.data.userId;
+      // Admin can view any user's lessons
+      allow read: if isAdmin();
     }
     
-    // Rules for the user-specific 'library' collection
-    match /library/{documentId} {
-        // A user can read and write to a document if they are the owner.
-        // Admins can read and write to any document.
-        allow read, write: if request.auth.uid == resource.data.userId || isAdmin();
+    // Library collection rules
+    match /library/{docId} {
+        // A user can manage their own library documents
+        allow read, write: if request.auth.uid == resource.data.userId;
+        // Admins have full access
+        allow read, write: if isAdmin();
+    }
+
+    // Library content (notes) collection rules
+    match /library_content/{contentId} {
+        // A user can manage their own library content
+        allow read, write: if request.auth.uid == resource.data.userId;
+        // Admins have full access
+        allow read, write: if isAdmin();
     }
     
-    // Rules for user activity tracking
-    match /user_activity/{activityId} {
-        // Users can only create/update their own activity logs.
-        allow write: if request.auth.uid == request.resource.data.userId;
-        // Only admins should be able to read all activity logs.
-        allow read: if isAdmin();
-    }
-    
-    // Rules for global learning resources
+    // Learning Resources (shared content)
     match /learningResources/{resourceId} {
-        // Any authenticated user can read resources.
-        allow read: if request.auth.uid != null;
-        
-        // Only admins can create or delete resources.
-        allow create, delete: if isAdmin();
-        
-        // Allow users to update a resource ONLY to add/change their own rating.
-        // Admins can update any field.
-        allow update: if isAdmin() || (
-          request.auth.uid != null &&
-          // The only fields being changed are ratings, ratingCount, averageRating
-          request.resource.data.keys().diff(resource.data.keys()).hasOnly(['ratings', 'ratingCount', 'averageRating']) &&
-          // The user is only changing their own rating
-          request.resource.data.ratings.diff(resource.data.ratings).affectedKeys().hasOnly([request.auth.uid])
-        );
+      // Any authenticated user can read the resources
+      allow read: if request.auth != null;
+      // Only admins can add or fully update/delete resources
+      allow create, delete: if isAdmin();
+      // Allow authenticated users to update, but only the 'ratings' field for themselves
+      allow update: if request.auth != null &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['ratings', 'ratingCount', 'averageRating']);
     }
     
-    // Rules for test results
+    // Test Results collection
     match /testResults/{resultId} {
-        // Users can create their own test results.
-        allow create: if request.auth.uid == request.resource.data.userId;
-        // Users can only read their own test results. Admins can read all.
-        allow read: if request.auth.uid == resource.data.userId || isAdmin();
-        // Nobody can update or delete test results to preserve history.
-        allow update, delete: if false;
+      // Users can create their own test results
+      allow create: if request.auth.uid == request.resource.data.userId;
+      // Users can only read their own test results
+      allow read: if request.auth.uid == resource.data.userId;
+    }
+    
+    // User Activity collection
+    match /user_activity/{activityId} {
+      // A user can only create/update their own activity log
+      allow write: if request.auth.uid == request.resource.data.userId;
+      // Only admins can read activity logs (for analytics, etc.)
+      allow read: if isAdmin();
     }
   }
 }
