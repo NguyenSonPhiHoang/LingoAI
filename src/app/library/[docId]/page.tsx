@@ -253,7 +253,7 @@ const LibraryDocPage: FC = () => {
                                     </CardContent>
                                     <CardFooter className="justify-between items-center">
                                         <ViewNoteDialog note={content}>
-                                             <Button variant="default" className="w-auto flex-grow">View Details</Button>
+                                             <Button variant="outline" className="w-auto flex-grow">View Details</Button>
                                         </ViewNoteDialog>
                                          <div className="flex-shrink-0">
                                             <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} viewMode="grid" />
