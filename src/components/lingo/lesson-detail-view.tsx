@@ -159,7 +159,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             level: currentLesson.level,
         });
 
-        const newContent: any[] = [];
+        const newContent: LessonContent[] = [];
         if (result.vocabularySuggestions) {
             newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
         }
@@ -174,6 +174,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         }
         
         await updateLessonContent(currentLesson.docId, newContent);
+        // Correctly update the local state with the new content
         setCurrentLesson(prev => ({ ...prev, content: newContent }));
 
     } catch (error) {
@@ -480,7 +481,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       <Card>
         <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
             <AccordionItem value="learning-content" className="border-b-0">
-                <AccordionTrigger className="flex-1 p-6 hover:no-underline">
+                <AccordionTrigger className="flex-1 p-6 hover:no-underline group">
                     <div className="flex justify-between items-center w-full">
                         <div>
                             <CardTitle>1. Learning Content</CardTitle>
@@ -491,7 +492,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                                 {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
                                 {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
                             </Button>
-                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 accordion-chevron" />
+                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </div>
                     </div>
                 </AccordionTrigger>
@@ -1081,5 +1082,7 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
+
+    
 
     
