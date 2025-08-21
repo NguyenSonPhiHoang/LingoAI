@@ -4,7 +4,8 @@
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
 import type { FC } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
 import { Loader2, ArrowLeft, BookCopy, List, PlusCircle, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -115,6 +116,42 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
 
     const hasContent = !!doc.content;
 
+    const MarkdownComponents: object = {
+        p: (props: any) => {
+            const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <p className="mb-2 last:mb-0"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></p>
+        },
+        h1: (props: any) => {
+            const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <h1 className="text-2xl font-bold mt-4 mb-2"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></h1>
+        },
+        h2: (props: any) => {
+             const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <h2 className="text-xl font-semibold mt-3 mb-2"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></h2>
+        },
+        h3: (props: any) => {
+            const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <h3 className="text-lg font-semibold mt-2 mb-2"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></h3>
+        },
+        li: (props: any) => {
+            // Children of li can be complex, so we need to handle nested p tags from markdown-react
+            if (props.children.length > 0 && typeof props.children[0] === 'object' && props.children[0].type === 'p') {
+                 const textContent = Array.isArray(props.children[0].props.children) ? props.children[0].props.children.join('') : props.children[0].props.children;
+                 return <li className="ml-5 list-disc"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></li>;
+            }
+             const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <li className="ml-5 list-disc"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></li>
+        },
+        strong: (props: any) => {
+            const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <strong className="font-bold"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></strong>
+        },
+        em: (props: any) => {
+            const textContent = Array.isArray(props.children) ? props.children.join('') : props.children;
+            return <em className="italic"><InteractiveText text={textContent} vocabulary={userVocabulary} playbackHook={playbackHook} activePlaybackKey={`doc-${doc.id}`} /></em>
+        },
+    }
+
     return (
         <div className="space-y-6">
              <audio ref={playbackHook.audioRef} className="hidden" />
@@ -129,18 +166,17 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-                            {hasContent ? (
-                                <InteractiveText
-                                    text={doc.content}
-                                    vocabulary={userVocabulary}
-                                    playbackHook={playbackHook}
-                                    activePlaybackKey={`doc-${doc.id}`}
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                     <p>This document has no content. This might happen if text extraction failed.</p>
-                                </div>
-                            )}
+                            <div className="prose prose-sm max-w-none">
+                                {hasContent ? (
+                                     <ReactMarkdown components={MarkdownComponents}>
+                                        {doc.content}
+                                    </ReactMarkdown>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                         <p>This document has no content. This might happen if text extraction failed.</p>
+                                    </div>
+                                )}
+                            </div>
                         </ScrollArea>
                     </CardContent>
                 </Card>

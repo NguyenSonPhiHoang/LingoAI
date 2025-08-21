@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState, useRef, useMemo } from 'react';
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Upload, Book, Trash2, PlusCircle, FileText, ChevronRight, Eye, Search, X } from 'lucide-react';
+import { Loader2, Upload, Book, Trash2, PlusCircle, FileText, ChevronRight, Eye, Search, X, Heading1, Heading2, Heading3, Bold, Italic, List, ListOrdered } from 'lucide-react';
 import mammoth from "mammoth";
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
@@ -23,11 +23,65 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
+const MarkdownToolbar: FC<{ textareaRef: React.RefObject<HTMLTextAreaElement>; onContentChange: (newContent: string) => void }> = ({ textareaRef, onContentChange }) => {
+    
+    const applyFormat = (prefix: string, suffix: string = '') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = textarea.value.substring(start, end);
+        const newText = `${prefix}${selectedText}${suffix}`;
+        
+        const updatedValue = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+        onContentChange(updatedValue);
+    };
+
+    const applyList = (prefix: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const currentLineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
+        const newText = `${prefix} `;
+
+        const updatedValue = textarea.value.substring(0, currentLineStart) + newText + textarea.value.substring(currentLineStart);
+        onContentChange(updatedValue);
+        
+        // Wait for state update and then focus
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = currentLineStart + newText.length;
+        }, 0);
+    }
+    
+    const toolbarActions = [
+        { icon: Heading1, onClick: () => applyFormat('# '), tooltip: 'Heading 1' },
+        { icon: Bold, onClick: () => applyFormat('**', '**'), tooltip: 'Bold' },
+        { icon: Italic, onClick: () => applyFormat('*', '*'), tooltip: 'Italic' },
+        { icon: List, onClick: () => applyList('-'), tooltip: 'Bulleted List' },
+        { icon: ListOrdered, onClick: () => applyList('1.'), tooltip: 'Numbered List' },
+    ];
+
+    return (
+        <div className="flex items-center gap-1 border rounded-md p-1 mb-2 bg-muted">
+            {toolbarActions.map((action, index) => (
+                <Button key={index} variant="ghost" size="icon" onClick={action.onClick} className="h-8 w-8" title={action.tooltip}>
+                    <action.icon className="h-4 w-4" />
+                </Button>
+            ))}
+        </div>
+    );
+};
+
+
 const LibraryPage: FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const [documents, setDocuments] = useState<LibraryDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -195,22 +249,24 @@ const LibraryPage: FC = () => {
     return (
         <div className="space-y-6">
              <Dialog open={!!previewContent} onOpenChange={(isOpen) => !isOpen && setPreviewContent(null)}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Extracted Content Preview</DialogTitle>
-                        <DialogDescription>Review the content extracted from your file. You can edit it before saving.</DialogDescription>
+                        <DialogDescription>Review and format the content extracted from your file. You can use Markdown for styling.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 flex-grow flex flex-col min-h-0">
                         <div className="space-y-2">
                             <Label htmlFor="preview-title">Title</Label>
                             <Input id="preview-title" value={previewTitle} onChange={(e) => setPreviewTitle(e.target.value)} />
                         </div>
-                         <div className="space-y-2">
+                         <div className="space-y-2 flex-grow flex flex-col min-h-0">
                             <Label htmlFor="preview-content">Content</Label>
-                            <ScrollArea className="h-72 w-full rounded-md border">
+                            <MarkdownToolbar textareaRef={contentTextareaRef} onContentChange={setPreviewContent} />
+                            <ScrollArea className="flex-grow rounded-md border">
                                <Textarea
+                                   ref={contentTextareaRef}
                                    id="preview-content"
-                                   className="h-full w-full border-0 focus-visible:ring-0"
+                                   className="h-full w-full border-0 focus-visible:ring-0 resize-none"
                                    value={previewContent || ''}
                                    onChange={(e) => setPreviewContent(e.target.value)}
                                />
