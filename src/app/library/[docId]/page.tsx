@@ -123,17 +123,16 @@ const LibraryDocPage: FC = () => {
                  <AddNoteDialog docId={docId} onNoteAdded={handleNoteAdded} />
             </div>
              <Card>
-                 <a href={doc.url} target="_blank" rel="noopener noreferrer" className="block hover:bg-muted/50 transition-colors rounded-t-lg">
-                    <CardHeader>
-                        <CardTitle className="flex items-start gap-2 group">
-                             <ExternalLink className="h-5 w-5 mt-1 flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
-                             <span className="flex-1 group-hover:underline">{doc.title}</span>
-                        </CardTitle>
-                        <CardDescription className="pl-7 truncate">{doc.url}</CardDescription>
-                    </CardHeader>
-                 </a>
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span>{doc.title}</span>
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                             <ExternalLink className="h-5 w-5" />
+                        </a>
+                    </CardTitle>
+                 </CardHeader>
                 {doc.summary && (
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-0">
                         <p className="text-sm text-muted-foreground">{doc.summary}</p>
                     </CardContent>
                 )}
