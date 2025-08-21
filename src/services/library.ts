@@ -1,4 +1,3 @@
-
 "use client";
 
 import { db, auth } from "@/lib/firebase";
@@ -115,7 +114,7 @@ export const addDocument = async (userId: string, title: string, url: string, sk
     };
 };
 
-export const updateDocument = async (docId: string, updates: { title: string; url: string; }) => {
+export const updateDocument = async (docId: string, updates: { title: string; url: string; skill: LibrarySkill }) => {
     const docRef = doc(db, 'library', docId);
     // Optional: Add a security check to ensure the user owns this document before updating.
     await updateDoc(docRef, updates);
@@ -184,3 +183,5 @@ export const deleteContent = async (contentId: string) => {
     // Add extra security check if needed by fetching the document first
     await deleteDoc(doc(db, "library_content", contentId));
 };
+
+    
