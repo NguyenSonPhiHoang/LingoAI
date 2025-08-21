@@ -136,7 +136,7 @@ const WordManagement: FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const { audioRef, isPlaying, playGlobalWordAudio } = useAudioPlayback({ setWords });
+    const { audioRef, isPlaying, playGlobalWordAudio } = useAudioPlayback({ setWords: () => {} });
 
 
     useEffect(() => {
@@ -197,7 +197,9 @@ const WordManagement: FC = () => {
              <audio ref={audioRef} className="hidden" />
             <CardHeader>
                 <CardTitle>Word Management</CardTitle>
-                <CardDescription>View and edit the global vocabulary list. Changes made here will affect all users.</CardDescription>
+                <CardDescription>
+                    View and edit the global vocabulary list. There are currently {words.length} words in the database. Changes made here will affect all users.
+                </CardDescription>
                  <div className="relative mt-4 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input 
