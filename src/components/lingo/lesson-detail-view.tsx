@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import type { FC } from "react";
 import {
   ArrowLeft,
@@ -32,8 +32,12 @@ import {
   List,
   Voicemail,
   TrendingUp,
-  AudioWaveform
+  AudioWaveform,
+  Save,
+  AlertCircle
 } from "lucide-react";
+import isEqual from 'lodash.isequal';
+
 
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +78,6 @@ import { Label } from "../ui/label";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "../ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import AddWordDialog from "./add-word-dialog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import InteractiveText from "./interactive-text";
 
@@ -105,150 +108,135 @@ const statusOptions: { value: LessonStatus; label: string; icon: React.ElementTy
 
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
-  const [isLoading, setIsLoading] = useState<Skill | 'content' | null>(null);
+  
+  // State for temporary, unsaved content and exercises
+  const [tempContent, setTempContent] = useState<LessonContent[] | null>(null);
+  const [tempExercises, setTempExercises] = useState<Lesson['exercises'] | null>(null);
+
+  const [isLoading, setIsLoading] = useState<Skill | 'content' | 'saving' | null>(null);
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth();
   const playbackHook = useAudioPlayback({ setWords });
+  
+  const hasUnsavedChanges = useMemo(() => {
+    const contentChanged = tempContent !== null && !isEqual(tempContent, currentLesson.content);
+    const exercisesChanged = tempExercises !== null && !isEqual(tempExercises, currentLesson.exercises);
+    return contentChanged || exercisesChanged;
+  }, [tempContent, tempExercises, currentLesson]);
 
-  const [activePracticeTab, setActivePracticeTab] = useState<"reading" | "writing" | "listening" | "speaking" | "pronunciation" | null>(() => {
-      // If there are existing exercises for this skill, open that tab by default
-      const skillKey = lesson.skill.toLowerCase() as keyof Lesson['exercises'];
-      if (lesson.exercises && lesson.exercises[skillKey]) {
-          return skillKey as any;
-      }
-      return null;
-  });
-
-  const Icon = skillIcons[lesson.skill as Skill] || Sparkles;
+  const displayedContent = tempContent ?? currentLesson.content ?? [];
+  const displayedExercises = tempExercises ?? currentLesson.exercises ?? {};
 
   const handleStatusChange = async (newStatus: LessonStatus) => {
     if (currentLesson.status === newStatus) return;
-    
-    // Optimistically update UI
     const previousStatus = currentLesson.status;
     setCurrentLesson(prev => ({ ...prev, status: newStatus }));
 
     try {
         await updateLesson(currentLesson.docId, { status: newStatus });
-        toast({
-            title: "Status Updated",
-            description: `Lesson marked as ${newStatus.replace('-', ' ')}.`,
-        });
+        toast({ title: "Status Updated" });
     } catch (error) {
-        // Revert UI on error
         setCurrentLesson(prev => ({ ...prev, status: previousStatus }));
-        console.error("Failed to update lesson status:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not update lesson status.',
-        });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not update lesson status.' });
     }
   };
 
-
   const handleGenerateContent = async () => {
     setIsLoading('content');
-    
     try {
-        const result = await generateLessonContent({
-            topic: currentLesson.topic,
-            skill: currentLesson.skill as Skill,
-            level: currentLesson.level,
-        });
+      const result = await generateLessonContent({
+        topic: currentLesson.topic,
+        skill: currentLesson.skill as Skill,
+        level: currentLesson.level,
+      });
 
-        const newContent: LessonContent[] = [];
-        if (result.vocabularySuggestions) {
-            newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
-        }
-        if (result.keyPoints) {
-            newContent.push({ id: `keypoints-${Date.now()}`, type: 'keyPoints', value: JSON.stringify(result.keyPoints) });
-        }
-        if (result.passage) {
-            newContent.push({ id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) });
-        }
-        
-        await updateLessonContent(currentLesson.docId, newContent);
-        setCurrentLesson(prev => ({ ...prev, content: newContent }));
-
+      const newContent: LessonContent[] = [];
+      if (result.vocabularySuggestions) {
+        newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
+      }
+      if (result.keyPoints) {
+        newContent.push({ id: `keypoints-${Date.now()}`, type: 'keyPoints', value: JSON.stringify(result.keyPoints) });
+      }
+      if (result.passage) {
+        newContent.push({ id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) });
+      }
+      
+      setTempContent(newContent);
     } catch (error) {
-        console.error("Error generating lesson content:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not generate lesson content." });
+      toast({ variant: "destructive", title: "Error", description: "Could not generate lesson content." });
+    } finally {
+      setIsLoading(null);
     }
-    
-    setIsLoading(null);
   };
   
   const handleStartPractice = async () => {
     setIsLoading(lesson.skill);
     try {
-        let newExercise: any;
-        const basePayload = { focusPoints: focusPoints || undefined };
-        
-        const passageContent = currentLesson.content?.find(c => c.type === 'passage')?.value;
-        const passageObject = passageContent ? JSON.parse(passageContent) : null;
-        const passageText = passageObject?.body || '';
+      let newExercise: any;
+      const basePayload = { focusPoints: focusPoints || undefined };
+      
+      const passageContent = displayedContent.find(c => c.type === 'passage')?.value;
+      const passageObject = passageContent ? JSON.parse(passageContent) : null;
+      const passageText = passageObject?.body || '';
 
-
-        switch(lesson.skill) {
-            case "Reading":
-                if (!passageText) {
-                    toast({ variant: "destructive", title: "No Reading Passage", description: "Please generate learning content first." });
-                    setIsLoading(null);
-                    return;
-                }
-                newExercise = await generateReadingExercise({ ...basePayload, passage: passageText });
-                break;
-            case "Writing":
-                newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
-                break;
-            case "Listening":
-                 if (!passageText) {
-                    toast({ variant: "destructive", title: "No Dialogue", description: "Please generate learning content first." });
-                    setIsLoading(null);
-                    return;
-                }
-                newExercise = await generateListeningExercise({ ...basePayload, topic: lesson.topic });
-                // We'll reuse the generated dialogue for the text part of the exercise, but generate new audio and questions.
-                const listeningPassage = newExercise.dialogue.map((d: any) => `${d.speaker}: ${d.line}`).join('\n');
-                setCurrentLesson(prev => {
-                    const existingPassageIndex = prev.content?.findIndex(c => c.type === 'passage') ?? -1;
-                    if (existingPassageIndex !== -1 && prev.content) {
-                       const newContent = [...prev.content];
-                       newContent[existingPassageIndex] = { ...newContent[existingPassageIndex], value: JSON.stringify({title: 'Dialogue', body: listeningPassage})};
-                       return { ...prev, content: newContent, exercises: { ...prev.exercises, listening: newExercise } };
-                    }
-                    return { ...prev, exercises: { ...prev.exercises, listening: newExercise } };
-                });
-                break;
-            case "Speaking":
-                newExercise = await generateSpeakingExercise({ ...basePayload, topic: lesson.topic });
-                break;
-            case "Pronunciation":
-                 newExercise = await generatePronunciationExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
-                 break;
-        }
-        
-        const cleanExercise = JSON.parse(JSON.stringify(newExercise));
-
-        const updatedExercises = { ...currentLesson.exercises, [lesson.skill.toLowerCase()]: cleanExercise };
-        await updateLessonContent(currentLesson.docId, currentLesson.content || [], updatedExercises);
-        setCurrentLesson(prev => ({...prev, exercises: updatedExercises }));
-        setActivePracticeTab(lesson.skill.toLowerCase() as any);
-    } catch (error: any) {
-        console.error("Error generating practice:", error);
-        toast({ variant: "destructive", title: "Practice Generation Failed", description: error.message || "Could not generate practice exercise." });
-    } finally {
+      if (['Reading', 'Listening'].includes(lesson.skill) && !passageText) {
+        toast({ variant: "destructive", title: "Content Required", description: "Please generate learning content (including a passage or dialogue) first." });
         setIsLoading(null);
+        return;
+      }
+
+      switch(lesson.skill) {
+        case "Reading":
+          newExercise = await generateReadingExercise({ ...basePayload, passage: passageText });
+          break;
+        case "Writing":
+          newExercise = await generateWritingExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
+          break;
+        case "Listening":
+          newExercise = await generateListeningExercise({ ...basePayload, topic: lesson.topic });
+          break;
+        case "Speaking":
+          newExercise = await generateSpeakingExercise({ ...basePayload, topic: lesson.topic });
+          break;
+        case "Pronunciation":
+          newExercise = await generatePronunciationExercise({ ...basePayload, topic: lesson.topic, userLevel: lesson.level });
+          break;
+      }
+      
+      const cleanExercise = JSON.parse(JSON.stringify(newExercise));
+      setTempExercises(prev => ({ ...prev, [lesson.skill.toLowerCase()]: cleanExercise }));
+
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Practice Generation Failed", description: error.message || "Could not generate practice exercise." });
+    } finally {
+      setIsLoading(null);
     }
   }
 
-  const handleMarkAsComplete = async () => {
-    await handleStatusChange('completed');
-  }
+  const handleSaveChanges = async () => {
+    setIsLoading('saving');
+    try {
+        const finalContent = tempContent ?? currentLesson.content;
+        const finalExercises = tempExercises ?? currentLesson.exercises;
+
+        await updateLessonContent(currentLesson.docId, finalContent, finalExercises);
+
+        // Commit temporary state to current state
+        const updatedLesson = { ...currentLesson, content: finalContent, exercises: finalExercises };
+        setCurrentLesson(updatedLesson);
+
+        // Reset temporary states
+        setTempContent(null);
+        setTempExercises(null);
+        
+        toast({ title: "Success!", description: "Your lesson has been saved." });
+    } catch(error) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save your changes.' });
+    } finally {
+        setIsLoading(null);
+    }
+  };
   
-  const hasContentForPractice = currentLesson.content && currentLesson.content.length > 0;
   const currentStatusInfo = statusOptions.find(s => s.value === currentLesson.status) || statusOptions[0];
 
   const renderContentItem = useCallback((item: LessonContent) => {
@@ -338,16 +326,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const renderPracticeZone = () => {
     const practiceType = lesson.skill.toLowerCase();
 
-    if (!activePracticeTab) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
-                <Sparkles className="h-12 w-12 mb-4" />
-                <h3 className="font-semibold">Ready to practice?</h3>
-                <div>Optionally add focus points, then click "Start Practice" to generate an exercise.</div>
-            </div>
-        );
-    }
-
     if (isLoading === lesson.skill) {
         return (
             <div className="flex flex-col items-center justify-center h-full">
@@ -357,16 +335,19 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         );
     }
 
-    const exercises = currentLesson.exercises || {};
-    const currentExercise = exercises[practiceType as keyof typeof exercises];
+    const currentExercise = displayedExercises[practiceType as keyof typeof displayedExercises];
 
     if (!currentExercise) {
          return (
-             <div className="text-center p-4">No exercise available. Click "Start Practice" to generate one.</div>
+             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
+                <Sparkles className="h-12 w-12 mb-4" />
+                <h3 className="font-semibold">Ready to practice?</h3>
+                <div>Generate or save learning content first, then click "Start Practice" to generate an exercise.</div>
+            </div>
          );
     }
     
-    const passageContent = currentLesson.content?.find(c => c.type === 'passage')?.value;
+    const passageContent = displayedContent.find(c => c.type === 'passage')?.value;
     const passageObject = passageContent ? JSON.parse(passageContent) : { body: '' };
     const passageText = passageObject.body;
 
@@ -441,6 +422,27 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         </div>
       </div>
 
+      {/* Unsaved Changes Alert */}
+      {hasUnsavedChanges && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-6 w-6 text-yellow-700" />
+                <div>
+                  <h4 className="font-semibold text-yellow-900">You have unsaved changes.</h4>
+                  <p className="text-sm text-yellow-800">Click the save button to keep your newly generated content.</p>
+                </div>
+              </div>
+              <Button onClick={handleSaveChanges} disabled={isLoading === 'saving'}>
+                {isLoading === 'saving' ? <Loader2 className="mr-2 animate-spin"/> : <Save className="mr-2" />}
+                Save Changes
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Section 1: Learning Content */}
       <Card>
         <CardHeader>
@@ -451,20 +453,21 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             </div>
             <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
               {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-              {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+              {displayedContent.length > 0 ? 'Regenerate Content' : 'Generate Content'}
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
             {isLoading === 'content' ? (
                 <div className="flex items-center justify-center h-full min-h-48">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
-            ) : hasContentForPractice ? (
-                currentLesson.content?.map(renderContentItem)
+            ) : displayedContent.length > 0 ? (
+                displayedContent.map(renderContentItem)
             ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                    Content you generate will appear here.
+                <div className="text-sm text-muted-foreground text-center py-10">
+                    <div className="mx-auto h-12 w-12 text-muted-foreground/50"><BrainCircuit /></div>
+                    <p className="mt-4">Content you generate will appear here.</p>
                 </div>
             )}
         </CardContent>
@@ -482,10 +485,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                     <Button 
                         size="sm" 
                         onClick={handleStartPractice} 
-                        disabled={!!isLoading || !hasContentForPractice}
+                        disabled={!!isLoading || displayedContent.length === 0}
                     >
                         {isLoading === lesson.skill ? <Loader2 className="mr-2 animate-spin"/> : <PlayCircle className="mr-2"/>}
-                        {currentLesson.exercises?.[lesson.skill.toLowerCase() as keyof typeof currentLesson.exercises] ? 'Regenerate Practice' : 'Start Practice'}
+                        {displayedExercises[lesson.skill.toLowerCase() as keyof typeof displayedExercises] ? 'Regenerate Practice' : 'Start Practice'}
                     </Button>
                 </div>
             </CardHeader>
@@ -506,7 +509,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                <div className="rounded-lg border bg-muted/50 flex-grow relative min-h-[400px]">
                    <div className="absolute inset-0">
                      <ScrollArea className="h-full w-full">
-                       {renderPracticeZone()}
+                       <div className="p-4">
+                          {renderPracticeZone()}
+                       </div>
                      </ScrollArea>
                    </div>
                </div>
@@ -575,7 +580,7 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
     };
 
     return (
-        <div className="p-4 space-y-6">
+        <div className="space-y-6">
             {questions.map((q, qIndex) => {
                 const selectedAnswer = answers[qIndex];
                 const isCorrectSelection = selectedAnswer === q.correctOption;
@@ -802,7 +807,7 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
 const WritingPractice: FC<{ prompts: WritingPrompt[] } & PracticeComponentProps> = ({ prompts, vocabulary, playbackHook }) => {
     if (!prompts || prompts.length === 0) return <div className="p-4 text-center">No prompts available.</div>;
     return (
-       <div className="p-4 space-y-6">
+       <div className="space-y-6">
             {prompts.map((p, pIndex) => (
                 <WritingPracticePrompt key={pIndex} prompt={p} vocabulary={vocabulary} playbackHook={playbackHook} />
             ))}
@@ -814,7 +819,7 @@ const WritingPractice: FC<{ prompts: WritingPrompt[] } & PracticeComponentProps>
 const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage: string } & PracticeComponentProps> = ({ exercise, passage, vocabulary, playbackHook }) => {
     const audioRef = React.useRef<HTMLAudioElement>(null);
     return (
-        <div className="p-4 h-full flex flex-col">
+        <div className="h-full flex flex-col">
             <Card className="bg-background mb-4">
                 <CardContent className="p-4 text-center">
                     <div className="text-muted-foreground mb-2">Press play to hear the dialogue.</div>
@@ -826,7 +831,9 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
             <div className="flex-grow relative">
                 <div className="absolute inset-0">
                     <ScrollArea className="h-full w-full">
-                      <ReadingPractice questions={exercise.questions} passage={passage} vocabulary={vocabulary} playbackHook={playbackHook} />
+                      <div className="p-4">
+                        <ReadingPractice questions={exercise.questions} passage={passage} vocabulary={vocabulary} playbackHook={playbackHook} />
+                      </div>
                     </ScrollArea>
                 </div>
             </div>
@@ -844,7 +851,7 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & Practi
     }
     
     return (
-        <div className="p-4 space-y-6">
+        <div className="space-y-6">
             <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
                 <h4 className="font-semibold">Role-Play Scenario</h4>
                 <div className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} /></div>
@@ -904,7 +911,7 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
     }
 
     return (
-        <div className="p-4 space-y-8">
+        <div className="space-y-8">
             <Card className="bg-background">
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2"><AudioWaveform className="h-5 w-5" /> Word Pronunciation</CardTitle>
