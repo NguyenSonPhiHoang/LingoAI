@@ -106,7 +106,8 @@ const AddNoteDialog: FC<{
     // State for manual entry
     const [noteTitle, setNoteTitle] = useState(`Note - ${format(new Date(), 'PPP')}`);
     const [noteContent, setNoteContent] = useState('');
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const writeTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const pastedTextareaRef = useRef<HTMLTextAreaElement>(null);
     
     // State for clipboard
     const [clipboardText, setClipboardText] = useState('');
@@ -223,8 +224,8 @@ const AddNoteDialog: FC<{
                         <div className="space-y-2">
                             <Label htmlFor="note-content">Content (Markdown supported)</Label>
                              <div className="space-y-1">
-                                <MarkdownToolbar textareaRef={textareaRef} onContentChange={setNoteContent} />
-                                <Textarea id="note-content" ref={textareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
+                                <MarkdownToolbar textareaRef={writeTextareaRef} onContentChange={setNoteContent} />
+                                <Textarea id="note-content" ref={writeTextareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
                              </div>
                         </div>
                         <Button className="w-full" onClick={() => handleSaveNote(noteContent, noteTitle)} disabled={isSaving}>
@@ -251,7 +252,10 @@ const AddNoteDialog: FC<{
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="clipboard-content">Pasted Content</Label>
-                                    <Textarea id="clipboard-content" value={clipboardText} onChange={(e) => setClipboardText(e.target.value)} rows={10} placeholder="Click the 'Paste from Clipboard' tab header to read clipboard data..." />
+                                    <div className="space-y-1">
+                                       <MarkdownToolbar textareaRef={pastedTextareaRef} onContentChange={setClipboardText} />
+                                       <Textarea id="clipboard-content" ref={pastedTextareaRef} value={clipboardText} onChange={(e) => setClipboardText(e.target.value)} rows={10} placeholder="Click the 'Paste from Clipboard' tab header to read clipboard data..." />
+                                    </div>
                                 </div>
                                 <Button className="w-full" onClick={() => handleSaveNote(clipboardText, noteTitle)} disabled={isSaving || !clipboardText}>
                                      {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
