@@ -5,8 +5,10 @@ import * as React from 'react';
 import { useState, useRef, useMemo } from 'react';
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Upload, Book, Trash2, PlusCircle, FileText, ChevronRight, Eye, Search } from 'lucide-react';
+import { Loader2, Upload, Book, Trash2, PlusCircle, FileText, ChevronRight, Eye, Search, X } from 'lucide-react';
 import mammoth from "mammoth";
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -15,8 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument } from '@/services/library';
 import { addDocument, getDocuments, deleteDocument } from '@/services/library';
-import { formatDistanceToNow } from 'date-fns';
-import Link from 'next/link';
+import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const LibraryPage: FC = () => {
     const { user } = useAuth();
@@ -28,6 +33,10 @@ const LibraryPage: FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const [previewContent, setPreviewContent] = useState<string | null>(null);
+    const [previewTitle, setPreviewTitle] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     React.useEffect(() => {
         if (!user) return;
@@ -46,34 +55,37 @@ const LibraryPage: FC = () => {
         if (!file || !user) return;
 
         setIsUploading(true);
-        toast({ title: "Processing File...", description: "Adding your document to the library." });
+        toast({ title: "Processing File...", description: "AI is reading your document. This might take a moment." });
+        setPreviewTitle(file.name);
 
         try {
+            let extractedText = '';
             if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
                 const arrayBuffer = await file.arrayBuffer();
                 const { value } = await mammoth.extractRawText({ arrayBuffer });
-                if (!value.trim()) {
-                     toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the DOCX file." });
-                     setIsUploading(false);
-                     return;
-                }
-                const newDoc = await addDocument(user.uid, file.name, value);
-                setDocuments(prev => [newDoc, ...prev]);
-                toast({ title: "Success!", description: `"${file.name}" has been added and processed.` });
-                router.push(`/library/${newDoc.id}`);
+                extractedText = value;
             } else if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 const dataUri = await new Promise<string>((resolve) => {
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(file);
                 });
-                const newDoc = await addDocument(user.uid, file.name, "", dataUri);
-                setDocuments(prev => [newDoc, ...prev]);
-                toast({ title: "Image Added!", description: "Redirecting to process the image." });
-                router.push(`/library/${newDoc.id}?ocr=true`);
+                const result = await extractTextFromFile({ imageDataUri: dataUri });
+                extractedText = result.text;
             } else {
                 toast({ variant: "destructive", title: "Unsupported File", description: "Please upload a .docx or an image file." });
+                setIsUploading(false);
+                return;
             }
+
+            if (!extractedText.trim()) {
+                 toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the file." });
+                 setIsUploading(false);
+                 return;
+            }
+            
+            setPreviewContent(extractedText);
+
         } catch (error) {
             console.error("Error processing file:", error);
             toast({ variant: 'destructive', title: "Processing Failed", description: "Could not process the uploaded file." });
@@ -82,6 +94,23 @@ const LibraryPage: FC = () => {
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
+    
+    const handleSavePreview = async () => {
+        if (!previewContent || !previewTitle || !user) return;
+        setIsSaving(true);
+        try {
+            const newDoc = await addDocument(user.uid, previewTitle, previewContent);
+            setDocuments(prev => [newDoc, ...prev]);
+            toast({ title: "Success!", description: `"${previewTitle}" has been added to your library.`});
+            setPreviewContent(null);
+            setPreviewTitle('');
+        } catch (error) {
+             console.error("Error saving document:", error);
+             toast({ variant: 'destructive', title: "Save Failed", description: "Could not save the document to your library." });
+        } finally {
+            setIsSaving(false);
+        }
+    }
     
     const handleDelete = async (docId: string) => {
         const originalDocs = [...documents];
@@ -165,6 +194,39 @@ const LibraryPage: FC = () => {
 
     return (
         <div className="space-y-6">
+             <Dialog open={!!previewContent} onOpenChange={(isOpen) => !isOpen && setPreviewContent(null)}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Extracted Content Preview</DialogTitle>
+                        <DialogDescription>Review the content extracted from your file. You can edit it before saving.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="preview-title">Title</Label>
+                            <Input id="preview-title" value={previewTitle} onChange={(e) => setPreviewTitle(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="preview-content">Content</Label>
+                            <ScrollArea className="h-72 w-full rounded-md border">
+                               <Textarea
+                                   id="preview-content"
+                                   className="h-full w-full border-0 focus-visible:ring-0"
+                                   value={previewContent || ''}
+                                   onChange={(e) => setPreviewContent(e.target.value)}
+                               />
+                            </ScrollArea>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPreviewContent(null)}>Cancel</Button>
+                        <Button onClick={handleSavePreview} disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                            Save to Library
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <Card>
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
