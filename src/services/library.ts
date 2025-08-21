@@ -152,6 +152,7 @@ export const getContentForDocument = async (docId: string): Promise<LibraryConte
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({
         id: doc.id,
+        createdAt: doc.data().createdAt.toDate(),
         ...doc.data()
     } as LibraryContent));
 };
@@ -171,7 +172,8 @@ export const addContentToDocument = async (docId: string, fileName: string, extr
     return {
         ...contentData,
         id: contentRef.id,
-    }
+        createdAt: new Date(),
+    };
 };
 
 export const deleteContent = async (contentId: string) => {

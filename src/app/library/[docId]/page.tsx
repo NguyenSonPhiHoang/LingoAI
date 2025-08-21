@@ -5,8 +5,9 @@ import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, ArrowLeft, BookCopy, List, PlusCircle, Upload, Trash2, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Upload } from 'lucide-react';
 import mammoth from "mammoth";
+import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -176,7 +177,7 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <CardTitle className="text-lg flex items-center gap-2"><FileText /> {content.fileName}</CardTitle>
-                                        <CardDescription>Added on {format(new Date(content.createdAt.toDate()), 'PPP')}</CardDescription>
+                                        <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
                                     </div>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
@@ -199,7 +200,9 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                             </CardHeader>
                             <CardContent>
                                 <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
-                                    <p className="text-sm whitespace-pre-wrap">{content.extractedText}</p>
+                                    <article className="prose prose-sm dark:prose-invert max-w-none">
+                                        <ReactMarkdown>{content.extractedText}</ReactMarkdown>
+                                    </article>
                                 </ScrollArea>
                             </CardContent>
                         </Card>

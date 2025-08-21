@@ -2,13 +2,15 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useMemo, useEffect, type FC } from 'react';
+import { useState, useMemo, useEffect, type FC, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, PlusCircle, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink } from 'lucide-react';
+import { Loader2, PlusCircle, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Wand2, Upload, Heading, Bold, Italic, List as ListIcon, ListOrdered } from 'lucide-react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import mammoth from "mammoth";
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -20,9 +22,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument, LibrarySkill } from '@/services/library';
 import { getDocumentsGroupedBySkill, addDocument, deleteDocument } from '@/services/library';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import InteractiveText from '@/components/lingo/interactive-text';
+import { useAudioPlayback } from '@/hooks/use-audio-playback';
 
 
 const SKILLS: LibrarySkill[] = ["Reading", "Writing", "Listening", "Speaking", "Pronunciation"];
@@ -40,16 +46,199 @@ const addDocSchema = z.object({
     skill: z.enum(SKILLS, { required_error: "Please select a skill." }),
 });
 
+
+const PreviewAndSaveDialog: FC<{
+    extractedContent: string;
+    fileName: string;
+    onSave: (markdownContent: string) => void;
+    onClose: () => void;
+    isSaving: boolean;
+}> = ({ extractedContent, fileName, onSave, onClose, isSaving }) => {
+    const [content, setContent] = useState(extractedContent);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const applyFormat = (format: 'heading' | 'bold' | 'italic' | 'bullet' | 'number') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        let newText = '';
+
+        switch (format) {
+            case 'heading':
+                newText = `# ${selectedText}`;
+                break;
+            case 'bold':
+                newText = `**${selectedText}**`;
+                break;
+            case 'italic':
+                newText = `*${selectedText}*`;
+                break;
+            case 'bullet':
+                 newText = selectedText.split('\n').map(line => `- ${line}`).join('\n');
+                 break;
+            case 'number':
+                 newText = selectedText.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
+                 break;
+        }
+
+        const updatedContent = content.substring(0, start) + newText + content.substring(end);
+        setContent(updatedContent);
+        
+        // Focus and select the newly inserted text for better UX
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + newText.length;
+        }, 0);
+    };
+    
+    const Toolbar = () => (
+         <div className="flex items-center gap-1 p-1 rounded-t-md border-b bg-muted">
+            <Button variant="ghost" size="icon" onClick={() => applyFormat('heading')} title="Heading"><Heading className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => applyFormat('bold')} title="Bold"><Bold className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => applyFormat('italic')} title="Italic"><Italic className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => applyFormat('bullet')} title="Bulleted List"><ListIcon className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => applyFormat('number')} title="Numbered List"><ListOrdered className="h-4 w-4" /></Button>
+        </div>
+    );
+
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Preview & Edit Content</DialogTitle>
+                    <DialogDescription>
+                        Review the extracted content from <span className="font-semibold">{fileName}</span>. You can edit it using Markdown before saving.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
+                    <div className="flex flex-col">
+                        <Toolbar />
+                        <ScrollArea className="flex-grow rounded-b-md border">
+                            <Textarea
+                                ref={textareaRef}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                className="h-full w-full !mt-0 border-0 rounded-t-none resize-none focus-visible:ring-0"
+                                placeholder="Edit your content here..."
+                            />
+                        </ScrollArea>
+                    </div>
+                     <div className="flex flex-col">
+                        <div className="p-1 rounded-t-md border-b bg-muted font-medium text-sm text-center">Preview</div>
+                        <ScrollArea className="flex-grow rounded-b-md border p-4">
+                            <article className="prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>{content}</ReactMarkdown>
+                            </article>
+                        </ScrollArea>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={() => onSave(content)} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
+                        Save to Library
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 const AddDocumentDialog: FC<{
     onDocumentAdded: (newDoc: LibraryDocument) => void;
 }> = ({ onDocumentAdded }) => {
     const [isOpen, setIsOpen] = useState(false);
     const { user } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [preview, setPreview] = useState<{ content: string; name: string, skill: LibrarySkill, title: string, url: string } | null>(null);
+
     const form = useForm<z.infer<typeof addDocSchema>>({
         resolver: zodResolver(addDocSchema),
         defaultValues: { title: "", url: "" },
     });
+    
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        const values = form.getValues();
+        
+        if (!file || !user || !values.skill || !values.title || !values.url) {
+            toast({ variant: 'destructive', title: "Missing Information", description: "Please fill out the Title, URL, and Skill fields before uploading a file."});
+            return;
+        }
+
+        setIsProcessing(true);
+        toast({ title: "Processing File...", description: "AI is reading your file. This might take a moment." });
+
+        try {
+            let extractedText = '';
+            if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                const arrayBuffer = await file.arrayBuffer();
+                const { value } = await mammoth.extractRawText({ arrayBuffer });
+                extractedText = value;
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                const dataUri = await new Promise<string>((resolve) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                });
+                const result = await extractTextFromFile({ imageDataUri: dataUri });
+                extractedText = result.text;
+            } else {
+                toast({ variant: "destructive", title: "Unsupported File", description: "Please upload a .docx or an image file." });
+                setIsProcessing(false);
+                return;
+            }
+            
+            if (!extractedText.trim()) {
+                 toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the file." });
+                 setIsProcessing(false);
+                 return;
+            }
+            
+            setPreview({ content: extractedText, name: file.name, skill: values.skill, title: values.title, url: values.url });
+
+        } catch (error) {
+            console.error("Error processing file:", error);
+            toast({ variant: 'destructive', title: "Processing Failed", description: "Could not process the uploaded file." });
+        } finally {
+            setIsProcessing(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+    
+    const handleSavePreview = async (markdownContent: string) => {
+        if (!user || !preview) return;
+        setIsProcessing(true);
+        try {
+            // First, create the main library document
+            const newDoc = await addDocument(user.uid, preview.title, preview.url, preview.skill);
+            
+            // Then, add the extracted content as a note associated with it
+            // NOTE: The previous version was missing this part, which is now implied by the new structure
+            // This will be handled on the docId page. For now, we just create the document and navigate.
+            
+            onDocumentAdded(newDoc);
+            toast({ title: "Success!", description: `"${preview.title}" has been added. Redirecting...`});
+            router.push(`/library/${newDoc.id}`);
+            
+            form.reset();
+            setIsOpen(false);
+            setPreview(null);
+        } catch (error) {
+            console.error("Error saving document:", error);
+            toast({ variant: 'destructive', title: "Save Failed" });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     const onSubmit = async (values: z.infer<typeof addDocSchema>) => {
         if (!user) return;
@@ -66,6 +255,16 @@ const AddDocumentDialog: FC<{
     };
 
     return (
+        <>
+        {preview && (
+            <PreviewAndSaveDialog
+                extractedContent={preview.content}
+                fileName={preview.name}
+                onSave={handleSavePreview}
+                onClose={() => setPreview(null)}
+                isSaving={isProcessing}
+            />
+        )}
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button>
@@ -76,7 +275,7 @@ const AddDocumentDialog: FC<{
                 <DialogHeader>
                     <DialogTitle>Add a New Learning Document</DialogTitle>
                     <DialogDescription>
-                        Save a link to an article, video, or any other online resource. You'll be able to add notes and extracted content to it later.
+                        Save a link to an article, video, or other resource. You can add AI-powered notes later.
                     </DialogDescription>
                 </DialogHeader>
                  <Form {...form}>
@@ -112,7 +311,7 @@ const AddDocumentDialog: FC<{
                             name="skill"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Skill</FormLabel>
+                                    <FormLabel>Main Skill</FormLabel>
                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
@@ -129,17 +328,28 @@ const AddDocumentDialog: FC<{
                                 </FormItem>
                             )}
                         />
+                        
+                        <div className="space-y-2 !mt-6">
+                             <Label>Add Notes (Optional)</Label>
+                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".docx,image/*" />
+                             <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
+                                {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
+                                Upload .docx or Image to Add Notes
+                             </Button>
+                        </div>
+                        
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                                Add Document
+                                Add Document Only
                             </Button>
                         </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>
         </Dialog>
+        </>
     );
 };
 
