@@ -226,8 +226,8 @@ const LibraryDocPage: FC = () => {
                             {contents.map(content => (
                                 <Card key={content.id} className="group flex flex-col">
                                     <CardHeader className="flex-grow">
-                                        <CardTitle className="text-lg flex items-start gap-2">
-                                            <FileText className="h-5 w-5 mt-1 flex-shrink-0" />
+                                        <CardTitle className="text-base flex items-start gap-2">
+                                            <FileText className="h-5 w-5 mt-0.5 flex-shrink-0" />
                                             <div className="flex-1">
                                                 <span className="line-clamp-2">{content.fileName}</span>
                                                 <p className="text-sm font-normal text-muted-foreground mt-1">{format(new Date(content.createdAt), 'PPP')}</p>
@@ -237,7 +237,7 @@ const LibraryDocPage: FC = () => {
                                     <CardContent className="flex-grow">
                                         <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-3 rounded-md h-24 overflow-hidden relative">
                                             <ReactMarkdown>{content.extractedText || "No content preview."}</ReactMarkdown>
-                                            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-muted/10 via-muted/80 to-transparent pointer-events-none" />
+                                            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="justify-between items-center">
