@@ -3,7 +3,7 @@
 
 import { useRef, useState, useEffect, useMemo } from "react";
 import type { FC, Dispatch, SetStateAction } from "react";
-import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, Search } from "lucide-react";
+import { PlusCircle, Trash2, Upload, Loader2, Volume2, Star, Pencil, Eye, Search, Languages } from "lucide-react";
 import mammoth from "mammoth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -469,8 +469,10 @@ const VocabularyListInternal: FC<{
             words.map((word) => {
                 const termAudioKey = `${word.userVocabularyId}-term`;
                 const sentenceAudioKey = `${word.userVocabularyId}-sentence`;
+                const definitionTranslationKey = `${word.userVocabularyId}-definition`;
                 const isTermAudioPlaying = playbackHook.activePlaybackKey === termAudioKey;
                 const isSentenceAudioPlaying = playbackHook.activePlaybackKey === sentenceAudioKey;
+                const isDefinitionTranslating = playbackHook.isTranslating[definitionTranslationKey];
 
                 return (
                   <AccordionItem value={word.userVocabularyId} key={word.userVocabularyId} className="border-b last:border-b-0">
@@ -481,16 +483,28 @@ const VocabularyListInternal: FC<{
                         >
                           {/* Desktop View */}
                           <div className="hidden md:flex flex-1 items-center gap-4">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
-                                disabled={isTermAudioPlaying}
-                                className="h-8 w-8 flex-shrink-0"
-                              >
-                                {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
-                                <span className="sr-only">Play term audio</span>
-                              </Button>
+                              <div className="flex items-center">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
+                                  disabled={isTermAudioPlaying}
+                                  className="h-8 w-8 flex-shrink-0"
+                                >
+                                  {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
+                                  <span className="sr-only">Play term audio</span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => { e.stopPropagation(); playbackHook.toggleTranslation(definitionTranslationKey, word.definition); }}
+                                    disabled={isDefinitionTranslating}
+                                    className="h-8 w-8 flex-shrink-0"
+                                >
+                                    {isDefinitionTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                                    <span className="sr-only">Translate definition</span>
+                                </Button>
+                              </div>
                               <div className="flex-1 grid grid-cols-[minmax(200px,1.5fr),2fr] gap-x-6 items-center">
                                 <div>
                                     <div className="flex items-center gap-2">
@@ -501,6 +515,11 @@ const VocabularyListInternal: FC<{
                                 </div>
                                 <div className="text-sm text-muted-foreground">
                                   <p>{word.definition}</p>
+                                  {playbackHook.translations[definitionTranslationKey] && (
+                                    <p className="text-blue-600 mt-1">
+                                      <strong>Dịch:</strong> {playbackHook.translations[definitionTranslationKey]}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                           </div>

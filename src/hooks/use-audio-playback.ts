@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, type Dispatch, type SetStateAction } from "react";
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
+import { translateText } from "@/ai/flows/translate-text-flow";
 import { updateWord, type Word, type CombinedVocabulary } from "@/services/vocabulary";
 import { useSettings } from "@/context/settings-context";
 
@@ -14,6 +15,9 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
     const [highlightedRange, setHighlightedRange] = useState<{start: number, end: number} | null>(null);
     const [activePlaybackKey, setActivePlaybackKey] = useState<string | null>(null);
+
+    const [translations, setTranslations] = useState<Record<string, string | null>>({});
+    const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
 
     const { toast } = useToast();
     const { speechRate } = useSettings();
@@ -189,6 +193,24 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         }
     }, [setWords, speechRate]);
 
+    const toggleTranslation = async (key: string, text: string) => {
+        if (translations[key]) {
+            setTranslations(prev => ({ ...prev, [key]: null }));
+            return;
+        }
 
-    return { audioRef, isPlaying, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey };
+        setIsTranslating(prev => ({ ...prev, [key]: true }));
+        try {
+            const result = await translateText({ text });
+            setTranslations(prev => ({ ...prev, [key]: result.translation }));
+        } catch (error) {
+            console.error("Translation failed:", error);
+            toast({ variant: "destructive", title: "Translation Failed" });
+        } finally {
+            setIsTranslating(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
+
+    return { audioRef, isPlaying, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };
