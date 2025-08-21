@@ -455,22 +455,18 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="max-h-96 w-full rounded-lg border bg-muted/20">
-            <div className="p-4">
-              {isLoading === 'content' ? (
-              <div className="flex items-center justify-center h-full min-h-48">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              </div>
-              ) : hasContentForPractice ? (
-              currentLesson.content?.map(renderContentItem)
-              ) : (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                  Content you generate will appear here.
-              </div>
-              )}
-            </div>
-          </ScrollArea>
+        <CardContent className="space-y-4">
+            {isLoading === 'content' ? (
+                <div className="flex items-center justify-center h-full min-h-48">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            ) : hasContentForPractice ? (
+                currentLesson.content?.map(renderContentItem)
+            ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                    Content you generate will appear here.
+                </div>
+            )}
         </CardContent>
       </Card>
 
