@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState, useEffect } from "react";
 import type { FC } from "react";
 import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform } from "lucide-react";
