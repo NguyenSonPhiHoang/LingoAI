@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Edit } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ import type { CombinedVocabulary } from '@/services/vocabulary';
 import { getVocabulary } from '@/services/vocabulary';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import InteractiveText from '@/components/lingo/interactive-text';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 
 const LibraryDocPage: FC = () => {
@@ -36,6 +37,7 @@ const LibraryDocPage: FC = () => {
     const [contents, setContents] = useState<LibraryContent[]>([]);
     const [vocabulary, setVocabulary] = useState<CombinedVocabulary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
     useEffect(() => {
@@ -132,9 +134,19 @@ const LibraryDocPage: FC = () => {
                     </CardTitle>
                  </CardHeader>
                 {doc.summary && (
-                    <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground">{doc.summary}</p>
-                    </CardContent>
+                     <Collapsible open={isSummaryOpen} onOpenChange={setIsSummaryOpen} className="border-t">
+                        <CollapsibleTrigger asChild>
+                             <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-muted/50">
+                                <span className="text-sm font-medium">View Summary</span>
+                                <ChevronsUpDown className="h-4 w-4" />
+                            </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                             <div className="px-4 pb-4 pt-0">
+                                <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md">{doc.summary}</p>
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
                 )}
              </Card>
 
