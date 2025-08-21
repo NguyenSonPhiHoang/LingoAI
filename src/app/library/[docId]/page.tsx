@@ -2,23 +2,22 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Upload } from 'lucide-react';
-import mammoth from "mammoth";
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, PlusCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument, LibraryContent } from '@/services/library';
-import { getDocument, getContentForDocument, addContentToDocument, deleteContent } from '@/services/library';
-import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
+import { getDocument, getContentForDocument, deleteContent } from '@/services/library';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
+import AddNoteDialog from '@/components/lingo/add-note-dialog';
 
 
 const LibraryDocPage: FC = () => {
@@ -27,12 +26,10 @@ const LibraryDocPage: FC = () => {
     const router = useRouter();
     const params = useParams();
     const docId = params.docId as string;
-    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [doc, setDoc] = useState<LibraryDocument | null>(null);
     const [contents, setContents] = useState<LibraryContent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         if (!user || !docId) return;
@@ -65,50 +62,9 @@ const LibraryDocPage: FC = () => {
         fetchData();
     }, [user, docId, toast, router]);
     
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !user || !docId) return;
 
-        setIsUploading(true);
-        toast({ title: "Processing File...", description: "AI is reading your file. This might take a moment." });
-
-        try {
-            let extractedText = '';
-            if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                const arrayBuffer = await file.arrayBuffer();
-                const { value } = await mammoth.extractRawText({ arrayBuffer });
-                extractedText = value;
-            } else if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                const dataUri = await new Promise<string>((resolve) => {
-                    reader.onload = () => resolve(reader.result as string);
-                    reader.readAsDataURL(file);
-                });
-                const result = await extractTextFromFile({ imageDataUri: dataUri });
-                extractedText = result.text;
-            } else {
-                toast({ variant: "destructive", title: "Unsupported File", description: "Please upload a .docx or an image file." });
-                setIsUploading(false);
-                return;
-            }
-            
-            if (!extractedText.trim()) {
-                 toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the file." });
-                 setIsUploading(false);
-                 return;
-            }
-            
-            const newContent = await addContentToDocument(docId, file.name, extractedText);
-            setContents(prev => [newContent, ...prev]);
-            toast({ title: "Success!", description: "New note has been added to this document." });
-
-        } catch (error) {
-            console.error("Error processing file:", error);
-            toast({ variant: 'destructive', title: "Processing Failed", description: "Could not process and save the content." });
-        } finally {
-            setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
+    const handleNoteAdded = (newNote: LibraryContent) => {
+        setContents(prev => [newNote, ...prev]);
     };
 
     const handleDeleteContent = async (contentId: string) => {
@@ -147,17 +103,7 @@ const LibraryDocPage: FC = () => {
                  <Button variant="ghost" onClick={() => router.push('/library')} className="-ml-4">
                     <ArrowLeft className="mr-2" /> Back to Library
                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".docx,image/*"
-                  />
-                 <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                    {isUploading ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
-                    Add Note from File
-                 </Button>
+                 <AddNoteDialog docId={docId} onNoteAdded={handleNoteAdded} />
             </div>
              <Card>
                 <CardHeader>
@@ -167,6 +113,11 @@ const LibraryDocPage: FC = () => {
                        {doc.url}
                     </a>
                 </CardHeader>
+                {doc.summary && (
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">{doc.summary}</p>
+                    </CardContent>
+                )}
              </Card>
 
             <div className="space-y-4">
@@ -211,7 +162,7 @@ const LibraryDocPage: FC = () => {
                 ) : (
                     <div className="text-center py-10 border-2 border-dashed rounded-lg">
                         <p className="text-muted-foreground">No notes added yet.</p>
-                        <p className="text-sm text-muted-foreground mt-1">Upload a file to add your first note to this document.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Add your first note to this document.</p>
                     </div>
                 )}
             </div>
