@@ -20,12 +20,7 @@ export async function generateLessonContent(
   return generateLessonContentFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateLessonContentPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateLessonContentInputSchema},
-  output: {schema: GenerateLessonContentOutputSchema},
-  prompt: `You are an expert English language curriculum designer. Your task is to generate a complete set of learning materials for a single lesson based on the provided topic, skill, and user level.
+const lessonPrompt = `You are an expert English language curriculum designer. Your task is to generate a complete set of learning materials for a single lesson based on the provided topic, skill, and user level.
 
 Lesson Topic: "{{topic}}"
 Focus Skill: "{{skill}}"
@@ -42,8 +37,7 @@ User Level: "{{level}}"
     *   If 'Pronunciation', generate a short passage that includes many examples of the sounds or intonation patterns relevant to the lesson.
 
 Generate the complete learning materials now.
-`,
-});
+`;
 
 const generateLessonContentFlow = ai.defineFlow(
   {
@@ -52,7 +46,38 @@ const generateLessonContentFlow = ai.defineFlow(
     outputSchema: GenerateLessonContentOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+        // Attempt with the primary, more powerful model first.
+        const { output } = await ai.generate({
+            model: 'googleai/gemini-2.0-flash',
+            prompt: {
+                text: lessonPrompt,
+                input: input
+            },
+            output: {
+                format: 'json',
+                schema: GenerateLessonContentOutputSchema
+            },
+        });
+        if (!output) throw new Error("Primary model returned no output.");
+        return output;
+    } catch (error) {
+        console.warn("Primary model failed. Retrying with fallback model.", error);
+        
+        // If the primary model fails, try the fallback model.
+        const { output: fallbackOutput } = await ai.generate({
+            model: 'googleai/gemini-1.5-flash-latest', // Fallback model
+            prompt: {
+                text: lessonPrompt,
+                input: input
+            },
+            output: {
+                format: 'json',
+                schema: GenerateLessonContentOutputSchema
+            },
+        });
+        if (!fallbackOutput) throw new Error("Fallback model also returned no output.");
+        return fallbackOutput;
+    }
   }
 );
