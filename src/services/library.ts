@@ -16,7 +16,6 @@ import {
   getDoc,
   writeBatch,
 } from "firebase/firestore";
-import type { VocabularyEntry } from "@/ai/flows/schemas";
 
 export type LibrarySkill = "Reading" | "Writing" | "Listening" | "Speaking" | "Pronunciation";
 
@@ -38,8 +37,6 @@ export interface LibraryContent {
     fileName: string;
     extractedText: string;
     createdAt: any;
-    // This field from the old schema is no longer needed here
-    // vocabulary?: VocabularyEntry[];
 }
 
 
@@ -116,6 +113,12 @@ export const addDocument = async (userId: string, title: string, url: string, sk
         id: docRef.id,
         createdAt: new Date(),
     };
+};
+
+export const updateDocument = async (docId: string, updates: { title: string; url: string; }) => {
+    const docRef = doc(db, 'library', docId);
+    // Optional: Add a security check to ensure the user owns this document before updating.
+    await updateDoc(docRef, updates);
 };
 
 export const deleteDocument = async (docId: string) => {
