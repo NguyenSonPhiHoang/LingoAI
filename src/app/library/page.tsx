@@ -15,9 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument } from '@/services/library';
 import { addDocument, getDocuments, deleteDocument } from '@/services/library';
-import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
 import { formatDistanceToNow } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
 const LibraryPage: FC = () => {
@@ -48,38 +46,34 @@ const LibraryPage: FC = () => {
         if (!file || !user) return;
 
         setIsUploading(true);
-        toast({ title: "Processing File...", description: "The AI is extracting content from your document." });
+        toast({ title: "Processing File...", description: "Adding your document to the library." });
 
         try {
-            let textContent = '';
             if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
                 const arrayBuffer = await file.arrayBuffer();
                 const { value } = await mammoth.extractRawText({ arrayBuffer });
-                textContent = value;
+                if (!value.trim()) {
+                     toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the DOCX file." });
+                     setIsUploading(false);
+                     return;
+                }
+                const newDoc = await addDocument(user.uid, file.name, value);
+                setDocuments(prev => [newDoc, ...prev]);
+                toast({ title: "Success!", description: `"${file.name}" has been added and processed.` });
+                router.push(`/library/${newDoc.id}`);
             } else if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 const dataUri = await new Promise<string>((resolve) => {
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(file);
                 });
-                const result = await extractTextFromFile({ imageDataUri: dataUri });
-                textContent = result.text;
+                const newDoc = await addDocument(user.uid, file.name, "", dataUri);
+                setDocuments(prev => [newDoc, ...prev]);
+                toast({ title: "Image Added!", description: "Redirecting to process the image." });
+                router.push(`/library/${newDoc.id}?ocr=true`);
             } else {
                 toast({ variant: "destructive", title: "Unsupported File", description: "Please upload a .docx or an image file." });
-                setIsUploading(false);
-                return;
             }
-
-            if (!textContent.trim()) {
-                 toast({ variant: "destructive", title: "No Content Found", description: "Could not extract any text from the file." });
-                 setIsUploading(false);
-                 return;
-            }
-
-            const newDoc = await addDocument(user.uid, file.name, textContent);
-            setDocuments(prev => [newDoc, ...prev]);
-            toast({ title: "Success!", description: `"${file.name}" has been added to your library.` });
-
         } catch (error) {
             console.error("Error processing file:", error);
             toast({ variant: 'destructive', title: "Processing Failed", description: "Could not process the uploaded file." });

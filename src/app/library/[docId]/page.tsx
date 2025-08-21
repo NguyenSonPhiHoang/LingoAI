@@ -2,18 +2,18 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { FC } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ArrowLeft, BookCopy, List, PlusCircle, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument } from '@/services/library';
 import { getDocument, updateDocument } from '@/services/library';
 import { extractVocabularyFromFile } from '@/ai/flows/extract-vocabulary';
-import { generateWordDetails } from '@/ai/flows/generate-word-details';
-import type { VocabularyEntry, CombinedVocabulary } from '@/ai/flows/schemas';
-import { addWordToVocabulary, getVocabulary } from '@/services/vocabulary';
+import { extractTextFromFile } from '@/ai/flows/extract-text-from-file';
+import type { VocabularyEntry } from '@/ai/flows/schemas';
+import { addWordToVocabulary, getVocabulary, type CombinedVocabulary } from '@/services/vocabulary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -26,16 +26,18 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+    const searchParams = useSearchParams();
     
     const [doc, setDoc] = useState<LibraryDocument | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isProcessingOcr, setIsProcessingOcr] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [isAdding, setIsAdding] = useState<Record<string, boolean>>({});
 
     const [userVocabulary, setUserVocabulary] = useState<CombinedVocabulary[]>([]);
     const playbackHook = useAudioPlayback({ setWords: setUserVocabulary });
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (!user || !params.docId) return;
 
         const fetchData = async () => {
@@ -48,7 +50,7 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                 setDoc(fetchedDoc);
                 setUserVocabulary(fetchedVocab);
             } catch (error) {
-                console.error("Failed to fetch document", err);
+                console.error("Failed to fetch document", error);
                 toast({ variant: 'destructive', title: "Error", description: "Could not fetch the document." });
                 router.push('/library');
             } finally {
@@ -58,8 +60,31 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
         fetchData();
     }, [user, params.docId, toast, router]);
 
+    useEffect(() => {
+        const needsOcr = searchParams.get('ocr') === 'true';
+        if (needsOcr && doc && !doc.content && doc.imageUrl) {
+            const processOcr = async () => {
+                setIsProcessingOcr(true);
+                toast({ title: "Reading Image...", description: "AI is extracting text from your image. This may take a moment." });
+                try {
+                    const result = await extractTextFromFile({ imageDataUri: doc.imageUrl! });
+                    await updateDocument(doc.id, { content: result.text });
+                    setDoc(prev => prev ? { ...prev, content: result.text } : null);
+                    // Clean up URL
+                    router.replace(`/library/${doc.id}`);
+                } catch (error) {
+                    console.error("OCR failed:", error);
+                    toast({ variant: "destructive", title: "Text Extraction Failed", description: "Could not read text from the image." });
+                } finally {
+                    setIsProcessingOcr(false);
+                }
+            };
+            processOcr();
+        }
+    }, [doc, searchParams, router, toast]);
+
     const handleExtractVocabulary = async () => {
-        if (!doc) return;
+        if (!doc || !doc.content) return;
         setIsExtracting(true);
         toast({ title: "Extracting Vocabulary...", description: "The AI is reading your document to find key terms." });
         try {
@@ -83,7 +108,6 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
         try {
             await addWordToVocabulary(user.uid, word);
             
-            // Re-fetch user vocabulary to get the latest list with the new word
             const fetchedVocab = await getVocabulary(user.uid);
             setUserVocabulary(fetchedVocab);
 
@@ -115,6 +139,8 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
         )
     }
 
+    const hasContent = !!doc.content;
+
     return (
         <div className="space-y-6">
              <audio ref={playbackHook.audioRef} className="hidden" />
@@ -129,12 +155,28 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-                            <InteractiveText
-                                text={doc.content}
-                                vocabulary={userVocabulary}
-                                playbackHook={playbackHook}
-                                activePlaybackKey={`doc-${doc.id}`}
-                            />
+                            {isProcessingOcr && (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                    <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                                    <p>Extracting text from image...</p>
+                                </div>
+                            )}
+                            {hasContent ? (
+                                <InteractiveText
+                                    text={doc.content}
+                                    vocabulary={userVocabulary}
+                                    playbackHook={playbackHook}
+                                    activePlaybackKey={`doc-${doc.id}`}
+                                />
+                            ) : !isProcessingOcr && doc.imageUrl ? (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                    <p>This document is an image. Text extraction is required.</p>
+                                </div>
+                            ) : !isProcessingOcr && !hasContent ? (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                     <p>This document has no content.</p>
+                                </div>
+                            ): null}
                         </ScrollArea>
                     </CardContent>
                 </Card>
@@ -144,7 +186,7 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
                         <CardDescription>AI-extracted vocabulary from this document.</CardDescription>
                     </CardHeader>
                      <CardContent>
-                         <Button onClick={handleExtractVocabulary} disabled={isExtracting} className="w-full">
+                         <Button onClick={handleExtractVocabulary} disabled={isExtracting || !hasContent} className="w-full">
                             {isExtracting ? <Loader2 className="animate-spin mr-2" /> : <List className="mr-2" />}
                             {doc.vocabulary.length > 0 ? "Re-extract Vocabulary" : "Extract Vocabulary"}
                          </Button>
@@ -185,5 +227,3 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
 }
 
 export default LibraryDocPage;
-
-    

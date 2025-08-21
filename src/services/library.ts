@@ -24,6 +24,7 @@ export interface LibraryDocument {
   userId: string;
   title: string;
   content: string;
+  imageUrl?: string;
   createdAt: any;
   vocabulary: VocabularyEntry[];
 }
@@ -68,21 +69,24 @@ export const getDocument = async (docId: string): Promise<LibraryDocument | null
 }
 
 
-export const addDocument = async (userId: string, title: string, content: string): Promise<LibraryDocument> => {
-    const docData = {
+export const addDocument = async (userId: string, title: string, content: string, imageUrl?: string): Promise<LibraryDocument> => {
+    const docData: Omit<LibraryDocument, 'id' | 'createdAt'> = {
         userId,
         title,
         content,
-        createdAt: Timestamp.now(),
         vocabulary: [],
     };
-    const docRef = await addDoc(libraryCollection, docData);
+    if (imageUrl) {
+        docData.imageUrl = imageUrl;
+    }
+    const finalPayload = { ...docData, createdAt: Timestamp.now() };
+    const docRef = await addDoc(libraryCollection, finalPayload);
     
     return {
-        ...docData,
+        ...finalPayload,
         id: docRef.id,
         createdAt: new Date(),
-    };
+    } as LibraryDocument;
 };
 
 export const updateDocument = async (docId: string, updates: Partial<LibraryDocument>) => {
