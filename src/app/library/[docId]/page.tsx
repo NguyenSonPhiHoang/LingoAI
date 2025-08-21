@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown, LayoutGrid, List } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,34 @@ import { getVocabulary } from '@/services/vocabulary';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import InteractiveText from '@/components/lingo/interactive-text';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+const NoteActions: FC<{
+    note: LibraryContent;
+    onNoteUpdated: (note: LibraryContent) => void;
+    onDeleteContent: (id: string) => void;
+}> = ({ note, onNoteUpdated, onDeleteContent }) => (
+    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <EditNoteDialog note={note} onNoteUpdated={onNoteUpdated} />
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onDeleteContent(note.id)}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </div>
+);
 
 
 const LibraryDocPage: FC = () => {
@@ -38,6 +66,7 @@ const LibraryDocPage: FC = () => {
     const [vocabulary, setVocabulary] = useState<CombinedVocabulary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
     useEffect(() => {
@@ -151,57 +180,80 @@ const LibraryDocPage: FC = () => {
              </Card>
 
             <div className="space-y-4">
-                <h3 className="text-xl font-semibold">My Notes &amp; Content</h3>
+                 <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-semibold">My Notes &amp; Content</h3>
+                     <div className="flex items-center gap-1">
+                        <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                            <LayoutGrid className="h-5 w-5" />
+                            <span className="sr-only">Grid View</span>
+                        </Button>
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                            <List className="h-5 w-5" />
+                            <span className="sr-only">List View</span>
+                        </Button>
+                    </div>
+                </div>
+
                 {contents.length > 0 ? (
-                    contents.map(content => (
-                        <Card key={content.id} className="group">
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle className="text-lg flex items-center gap-2"><FileText /> {content.fileName}</CardTitle>
-                                        <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
+                    viewMode === 'grid' ? (
+                        contents.map(content => (
+                            <Card key={content.id} className="group">
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle className="text-lg flex items-center gap-2"><FileText /> {content.fileName}</CardTitle>
+                                            <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
+                                        </div>
+                                         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <EditNoteDialog note={content} onNoteUpdated={handleNoteUpdated} />
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteContent(content.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
-                                    <article className="prose prose-sm dark:prose-invert max-w-none">
-                                        <ReactMarkdown
-                                            components={{
-                                                p: ({node, ...props}) => <p {...props} />,
-                                                span: ({node, ...props}) => <span {...props} />,
-                                                text: ({node, ...props}) => {
-                                                    return <MarkdownRenderer>{String(node.value)}</MarkdownRenderer>;
-                                                },
-                                            }}
-                                        >
-                                            {content.extractedText}
-                                        </ReactMarkdown>
-                                    </article>
-                                </ScrollArea>
-                            </CardContent>
+                                </CardHeader>
+                                <CardContent>
+                                    <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
+                                        <article className="prose prose-sm dark:prose-invert max-w-none">
+                                            <ReactMarkdown
+                                                components={{
+                                                    p: ({node, ...props}) => <p {...props} />,
+                                                    span: ({node, ...props}) => <span {...props} />,
+                                                    text: ({node, ...props}) => {
+                                                        return <MarkdownRenderer>{String(node.value)}</MarkdownRenderer>;
+                                                    },
+                                                }}
+                                            >
+                                                {content.extractedText}
+                                            </ReactMarkdown>
+                                        </article>
+                                    </ScrollArea>
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : (
+                        <Card>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Note Title</TableHead>
+                                        <TableHead>Date Added</TableHead>
+                                        <TableHead className="text-right w-[100px]">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {contents.map(content => (
+                                        <TableRow key={content.id} className="group">
+                                            <TableCell className="font-medium">{content.fileName}</TableCell>
+                                            <TableCell>{format(new Date(content.createdAt), 'PPP')}</TableCell>
+                                            <TableCell className="text-right">
+                                                 <div className="flex items-center justify-end">
+                                                    <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </Card>
-                    ))
+                    )
                 ) : (
                     <div className="text-center py-10 border-2 border-dashed rounded-lg">
                         <p className="text-muted-foreground">No notes added yet.</p>
