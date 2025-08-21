@@ -17,9 +17,10 @@ import { Label } from '../ui/label';
 interface EditNoteDialogProps {
     note: LibraryContent;
     onNoteUpdated: (updatedNote: LibraryContent) => void;
+    children: React.ReactNode;
 }
 
-const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated }) => {
+const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated, children }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
@@ -49,10 +50,7 @@ const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated }) => {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                 <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Edit className="h-4 w-4" />
-                    <span className="sr-only">Edit Note</span>
-                </Button>
+                 {children}
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>

@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown, LayoutGrid, List } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown, LayoutGrid, List, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
@@ -31,9 +31,15 @@ const NoteActions: FC<{
     note: LibraryContent;
     onNoteUpdated: (note: LibraryContent) => void;
     onDeleteContent: (id: string) => void;
-}> = ({ note, onNoteUpdated, onDeleteContent }) => (
+    viewMode: 'grid' | 'list';
+}> = ({ note, onNoteUpdated, onDeleteContent, viewMode }) => (
     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <EditNoteDialog note={note} onNoteUpdated={onNoteUpdated} />
+         <EditNoteDialog note={note} onNoteUpdated={onNoteUpdated}>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Edit Note</span>
+            </Button>
+        </EditNoteDialog>
         <AlertDialog>
             <AlertDialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -220,26 +226,26 @@ const LibraryDocPage: FC = () => {
                             {contents.map(content => (
                                 <Card key={content.id} className="group flex flex-col">
                                     <CardHeader className="flex-grow">
-                                        <div className="flex justify-between items-start">
-                                            <CardTitle className="text-lg flex items-start gap-2 flex-1">
-                                                <FileText className="h-5 w-5 mt-1" />
-                                                <span className="flex-1">{content.fileName}</span>
-                                            </CardTitle>
-                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                        <CardTitle className="text-lg flex items-start gap-2">
+                                            <FileText className="h-5 w-5 mt-1 flex-shrink-0" />
+                                            <div className="flex-1">
+                                                <span className="line-clamp-2">{content.fileName}</span>
+                                                <p className="text-sm font-normal text-muted-foreground mt-1">{format(new Date(content.createdAt), 'PPP')}</p>
                                             </div>
-                                        </div>
-                                         <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="flex-grow">
                                         <div className="text-sm text-muted-foreground line-clamp-4 bg-muted/30 p-3 rounded-md h-24">
                                             {content.extractedText || "No content preview."}
                                         </div>
                                     </CardContent>
-                                    <CardFooter>
+                                    <CardFooter className="justify-between items-center">
                                         <ViewNoteDialog note={content}>
-                                             <Button variant="outline" className="w-full">View Details</Button>
+                                             <Button variant="outline" className="w-auto flex-grow">View Details</Button>
                                         </ViewNoteDialog>
+                                         <div className="flex-shrink-0">
+                                            <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} viewMode="grid" />
+                                        </div>
                                     </CardFooter>
                                 </Card>
                             ))}
@@ -265,7 +271,7 @@ const LibraryDocPage: FC = () => {
                                             <TableCell>{format(new Date(content.createdAt), 'PPP')}</TableCell>
                                             <TableCell className="text-right">
                                                  <div className="flex items-center justify-end">
-                                                    <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                                    <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} viewMode="list" />
                                                 </div>
                                             </TableCell>
                                         </TableRow>
