@@ -57,29 +57,35 @@ const generateAudioFlow = ai.defineFlow(
     outputSchema: GenerateAudioOutputSchema,
   },
   async ({ text }) => {
-    const {media, text: responseText} = await ai.generate({
-      model: 'googleai/gemini-2.5-flash-preview-tts',
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {voiceName: 'Algenib'},
-          },
+    try {
+        const {media, text: responseText} = await ai.generate({
+        model: 'googleai/gemini-2.5-flash-preview-tts',
+        config: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+            voiceConfig: {
+                prebuiltVoiceConfig: {voiceName: 'Algenib'},
+            },
+            },
         },
-      },
-      prompt: text,
-    });
-    if (!media) {
-      throw new Error(
-        `Audio generation failed. No media was returned. Response text: ${responseText}`
-      );
+        prompt: text,
+        });
+        if (!media) {
+            throw new Error(
+                `Audio generation failed. No media was returned. Response text: ${responseText}`
+            );
+        }
+        const audioBuffer = Buffer.from(
+        media.url.substring(media.url.indexOf(',') + 1),
+        'base64'
+        );
+        return {
+        audioUrl: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
+        };
+    } catch (error) {
+        console.warn(`AI audio generation failed for text "${text}". Will use browser TTS fallback. Error:`, error);
+        // Return an empty URL to signal fallback to the client
+        return { audioUrl: '' };
     }
-    const audioBuffer = Buffer.from(
-      media.url.substring(media.url.indexOf(',') + 1),
-      'base64'
-    );
-    return {
-      audioUrl: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
-    };
   }
 );

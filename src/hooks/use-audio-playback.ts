@@ -22,11 +22,11 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     const { toast } = useToast();
     const { speechRate } = useSettings();
     
-    const playAudioUrl = (key: string) => {
-        if (audioRef.current && audioUrls[key]) {
+    const playAudioUrl = (key: string, url: string) => {
+        if (audioRef.current) {
             setActivePlaybackKey(key);
             setHighlightedRange(null); // Clear previous highlighting
-            audioRef.current.src = audioUrls[key];
+            audioRef.current.src = url;
             audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
             audioRef.current.onended = () => {
                 setActivePlaybackKey(null);
@@ -78,7 +78,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         
         // Priority 1: Check for cached URL for general content
         if (audioUrls[key]) {
-            playAudioUrl(key);
+            playAudioUrl(key, audioUrls[key]);
             return;
         }
 
@@ -86,21 +86,15 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         try {
             // Priority 2: Generate with AI
             const result = await generateAudio({ text });
-            setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
-            
-            // Need to update state before playing
-            if (audioRef.current) {
-                 setActivePlaybackKey(key);
-                 setHighlightedRange(null);
-                 audioRef.current.src = result.audioUrl;
-                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
-                 audioRef.current.onended = () => {
-                    setActivePlaybackKey(null);
-                 };
+            if (result.audioUrl) {
+                setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
+                playAudioUrl(key, result.audioUrl);
+            } else {
+                 // Priority 3: Fallback to browser TTS if AI returns empty URL
+                 playWithBrowserTTS(key, text);
             }
-
         } catch (error: any) {
-             // Priority 3: Fallback to browser TTS
+             // Also fallback if the flow itself throws an unexpected error
              playWithBrowserTTS(key, text);
         } finally {
             setIsPlaying(prev => ({ ...prev, [key]: false }));
@@ -115,38 +109,28 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         
         // Priority 1: Check for saved audio URL on the word object
         if (word.audioUrl) {
-             if (audioRef.current) {
-                 setActivePlaybackKey(audioKey);
-                 audioRef.current.src = word.audioUrl;
-                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
-                  audioRef.current.onended = () => {
-                    setActivePlaybackKey(null);
-                 };
-            }
-            return;
+             playAudioUrl(audioKey, word.audioUrl);
+             return;
         }
 
         setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
         try {
             // Priority 2: Generate with AI
             const result = await generateAudio({ text: word.term });
-            const newAudioUrl = result.audioUrl;
-            
-             if (audioRef.current) {
-                 setActivePlaybackKey(audioKey);
-                 audioRef.current.src = newAudioUrl;
-                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
-                  audioRef.current.onended = () => {
-                    setActivePlaybackKey(null);
-                 };
+            if (result.audioUrl) {
+                const newAudioUrl = result.audioUrl;
+                playAudioUrl(audioKey, newAudioUrl);
+                
+                // Save the new URL to the database and update local state
+                await updateWord(word.id, { audioUrl: newAudioUrl });
+                setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
+            } else {
+                 // Priority 3: Fallback to browser TTS
+                 playWithBrowserTTS(audioKey, word.term);
             }
-            
-            // Save the new URL to the database and update local state
-            await updateWord(word.id, { audioUrl: newAudioUrl });
-            setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
 
         } catch (error: any) {
-             // Priority 3: Fallback to browser TTS
+             // Also fallback if the flow itself throws an unexpected error
              playWithBrowserTTS(audioKey, word.term);
         } finally {
              setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
@@ -159,33 +143,21 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         window.speechSynthesis.cancel();
         
          if (word.audioUrl) {
-            if (audioRef.current) {
-                 setActivePlaybackKey(audioKey);
-                 audioRef.current.src = word.audioUrl;
-                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
-                  audioRef.current.onended = () => {
-                    setActivePlaybackKey(null);
-                 };
-            }
+            playAudioUrl(audioKey, word.audioUrl);
             return;
         }
 
         setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
         try {
             const result = await generateAudio({ text: word.term });
-            const newAudioUrl = result.audioUrl;
-
-             if (audioRef.current) {
-                 setActivePlaybackKey(audioKey);
-                 audioRef.current.src = newAudioUrl;
-                 audioRef.current.play().catch(e => console.error("Error playing audio from URL:", e));
-                  audioRef.current.onended = () => {
-                    setActivePlaybackKey(null);
-                 };
+            if (result.audioUrl) {
+                const newAudioUrl = result.audioUrl;
+                playAudioUrl(audioKey, newAudioUrl);
+                await updateWord(word.id, { audioUrl: newAudioUrl });
+                setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
+            } else {
+                 playWithBrowserTTS(audioKey, word.term);
             }
-            
-            await updateWord(word.id, { audioUrl: newAudioUrl });
-            setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
         } catch (error: any) {
              playWithBrowserTTS(audioKey, word.term);
         } finally {
