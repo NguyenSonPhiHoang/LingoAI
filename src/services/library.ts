@@ -160,7 +160,7 @@ export const getContentForDocument = async (docId: string): Promise<LibraryConte
         return {
             id: doc.id,
             ...data,
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
         } as LibraryContent;
     });
 };

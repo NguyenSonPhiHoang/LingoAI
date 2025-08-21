@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Edit } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -19,6 +18,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { format } from 'date-fns';
 import AddNoteDialog from '@/components/lingo/add-note-dialog';
 import EditNoteDialog from '@/components/lingo/edit-note-dialog';
+import type { CombinedVocabulary } from '@/services/vocabulary';
+import { getVocabulary } from '@/services/vocabulary';
+import { useAudioPlayback } from '@/hooks/use-audio-playback';
+import InteractiveText from '@/components/lingo/interactive-text';
 
 
 const LibraryDocPage: FC = () => {
@@ -30,7 +33,9 @@ const LibraryDocPage: FC = () => {
     
     const [doc, setDoc] = useState<LibraryDocument | null>(null);
     const [contents, setContents] = useState<LibraryContent[]>([]);
+    const [vocabulary, setVocabulary] = useState<CombinedVocabulary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
     useEffect(() => {
         if (!user || !docId) return;
@@ -38,9 +43,10 @@ const LibraryDocPage: FC = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [fetchedDoc, fetchedContent] = await Promise.all([
+                const [fetchedDoc, fetchedContent, fetchedVocab] = await Promise.all([
                     getDocument(docId),
                     getContentForDocument(docId),
+                    getVocabulary(user.uid),
                 ]);
                 
                 if (!fetchedDoc) {
@@ -51,6 +57,7 @@ const LibraryDocPage: FC = () => {
                 
                 setDoc(fetchedDoc);
                 setContents(fetchedContent);
+                setVocabulary(fetchedVocab);
 
             } catch (error) {
                 console.error("Failed to fetch document data:", error);
@@ -104,6 +111,7 @@ const LibraryDocPage: FC = () => {
 
     return (
         <div className="space-y-6">
+             <audio ref={playbackHook.audioRef} className="hidden" />
             <div className="flex justify-between items-center">
                  <Button variant="ghost" onClick={() => router.push('/library')} className="-ml-4">
                     <ArrowLeft className="mr-2" /> Back to Library
@@ -161,7 +169,12 @@ const LibraryDocPage: FC = () => {
                             <CardContent>
                                 <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
                                     <article className="prose prose-sm dark:prose-invert max-w-none">
-                                        <ReactMarkdown>{content.extractedText}</ReactMarkdown>
+                                        <InteractiveText
+                                            text={content.extractedText}
+                                            vocabulary={vocabulary}
+                                            playbackHook={playbackHook}
+                                            activePlaybackKey={null}
+                                        />
                                     </article>
                                 </ScrollArea>
                             </CardContent>

@@ -60,9 +60,9 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
         };
 
         const vocabTerms = Array.from(vocabMap.keys());
-        if (vocabTerms.length === 0) {
-            processSegment(text, 0);
-            return finalParts;
+        if (vocabTerms.length === 0 || !text) {
+             if(text) processSegment(text, 0);
+             return finalParts;
         }
 
         const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -92,8 +92,8 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                                 <div className="flex items-center gap-2">
-                                    <div className="font-bold font-sans">{vocabWord.pronunciation}</div>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playTermAudio(vocabWord)} disabled={isTermPlaying}>
+                                    <div className="font-bold font-sans text-lg">{vocabWord.pronunciation}</div>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isTermPlaying}>
                                         {isTermPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                 </div>
