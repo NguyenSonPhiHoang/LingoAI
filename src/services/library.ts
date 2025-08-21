@@ -155,11 +155,14 @@ export const getContentForDocument = async (docId: string): Promise<LibraryConte
         orderBy("createdAt", "desc")
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        createdAt: doc.data().createdAt.toDate(),
-        ...doc.data()
-    } as LibraryContent));
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+        } as LibraryContent;
+    });
 };
 
 export const addContentToDocument = async (docId: string, fileName: string, extractedText: string): Promise<LibraryContent> => {
