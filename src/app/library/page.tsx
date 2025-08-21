@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useMemo, useEffect, type FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library, Edit, LayoutGrid, List } from 'lucide-react';
+import { Loader2, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library, Edit, LayoutGrid, List, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import EditDocumentDialog from '@/components/lingo/edit-document-dialog';
 import AddDocumentDialog from '@/components/lingo/add-document-dialog';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 
 
 const SKILLS: LibrarySkill[] = ["Reading", "Writing", "Listening", "Speaking", "Pronunciation"];
@@ -71,6 +72,7 @@ const LibraryPage: FC = () => {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         if (!user) return;
@@ -99,7 +101,6 @@ const LibraryPage: FC = () => {
 
             const newGroupedDocs = { ...prev };
 
-            // If skill changed, move doc between arrays
             if (oldDoc.skill !== updatedDoc.skill) {
                 newGroupedDocs[oldDoc.skill] = newGroupedDocs[oldDoc.skill].filter(d => d.id !== updatedDoc.id);
                 newGroupedDocs[updatedDoc.skill] = [updatedDoc, ...newGroupedDocs[updatedDoc.skill]];
@@ -126,6 +127,24 @@ const LibraryPage: FC = () => {
             });
     };
 
+    const filteredDocuments = useMemo(() => {
+        if (!searchTerm) {
+            return documents;
+        }
+        const lowercasedFilter = searchTerm.toLowerCase();
+        const filtered: Record<LibrarySkill, LibraryDocument[]> = {
+            Reading: [], Writing: [], Listening: [], Speaking: [], Pronunciation: []
+        };
+        for (const skill in documents) {
+            filtered[skill as LibrarySkill] = documents[skill as LibrarySkill].filter(doc => 
+                doc.title.toLowerCase().includes(lowercasedFilter) ||
+                (doc.summary && doc.summary.toLowerCase().includes(lowercasedFilter))
+            );
+        }
+        return filtered;
+    }, [searchTerm, documents]);
+
+
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-full">
@@ -134,7 +153,7 @@ const LibraryPage: FC = () => {
         );
     }
     
-    const totalDocs = Object.values(documents).reduce((sum, list) => sum + list.length, 0);
+    const totalDocs = Object.values(filteredDocuments).reduce((sum, list) => sum + list.length, 0);
 
     return (
         <div className="space-y-6">
@@ -158,20 +177,31 @@ const LibraryPage: FC = () => {
                         </div>
                     </div>
                 </CardHeader>
+                <CardContent>
+                     <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                            placeholder="Search library by title or summary..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </CardContent>
             </Card>
 
             {totalDocs === 0 ? (
                  <div className="text-center py-10 border-2 border-dashed rounded-lg">
                     <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">Your Library is Empty</h3>
+                    <h3 className="mt-4 text-lg font-medium">No Documents Found</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Add your first document to start building your personal learning space.
+                       {searchTerm ? "Try a different search term." : "Add your first document to start building your personal learning space."}
                     </p>
                 </div>
             ) : (
                 SKILLS.map(skill => {
                     const Icon = skillIcons[skill];
-                    const skillDocs = documents[skill];
+                    const skillDocs = filteredDocuments[skill];
 
                     if (skillDocs.length === 0) return null;
 
@@ -248,3 +278,5 @@ const LibraryPage: FC = () => {
 };
 
 export default LibraryPage;
+
+    
