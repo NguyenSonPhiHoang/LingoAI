@@ -267,47 +267,65 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             </div>
         );
 
+        const cardContent = () => {
+          switch (item.type) {
+            case 'vocabulary':
+              return (
+                <ul className="space-y-2 text-sm list-disc pl-5">
+                  {(data as { word: string; definition: string }[]).map((v, index) => (
+                    <li key={index}>
+                      <strong>{v.word}:</strong> <InteractiveText text={v.definition} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
+                    </li>
+                  ))}
+                </ul>
+              );
+            case 'keyPoints':
+              return (
+                <ul className="space-y-2 text-sm list-disc pl-5">
+                  {(data as string[]).map((point, index) => (
+                    <li key={index}>
+                      <InteractiveText text={point} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
+                    </li>
+                  ))}
+                </ul>
+              );
+            case 'passage':
+              return (
+                <div className="text-sm whitespace-pre-wrap">
+                  <InteractiveText text={data.body} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} />
+                  {playbackHook.translations[translationKey] && (
+                    <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
+                      <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
+                    </div>
+                  )}
+                </div>
+              );
+            default:
+              return null;
+          }
+        };
+
+        const cardTitle = () => {
+            switch(item.type) {
+                case 'vocabulary': return <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>;
+                case 'keyPoints': return <><Lightbulb className="h-5 w-5 text-primary" />Key Points</>;
+                case 'passage': return <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>;
+                default: return null;
+            }
+        }
+
         return (
             <Card key={item.id} className="mb-4 bg-background">
                 <CardHeader className="pb-2">
                      <div className="flex justify-between items-start">
-                        <div className="text-base flex items-center gap-2 flex-1">
-                           {item.type === 'vocabulary' && <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>}
-                           {item.type === 'keyPoints' && <><Lightbulb className="h-5 w-5 text-primary" />Key Points</>}
-                           {item.type === 'passage' && <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>}
+                        <div className="text-base font-semibold flex items-center gap-2 flex-1">
+                           {cardTitle()}
                         </div>
                         {item.type === 'passage' && renderToolbar(data.body)}
                      </div>
                 </CardHeader>
                 <CardContent>
-                    {item.type === 'vocabulary' && Array.isArray(data) && (
-                        <ul className="space-y-2 text-sm list-disc pl-5">
-                            {data.map((v: {word: string, definition: string}, index: number) => (
-                                <li key={index}>
-                                    <strong>{v.word}:</strong> <InteractiveText text={v.definition} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {item.type === 'keyPoints' && Array.isArray(data) && (
-                        <ul className="space-y-2 text-sm list-disc pl-5">
-                            {data.map((point: string, index: number) => (
-                                <li key={index}>
-                                    <InteractiveText text={point} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {item.type === 'passage' && (
-                        <div className="text-sm whitespace-pre-wrap">
-                            <InteractiveText text={data.body} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} />
-                        </div>
-                    )}
-                    {playbackHook.translations[translationKey] && (
-                        <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
-                            <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
-                        </div>
-                    )}
+                    {cardContent()}
                 </CardContent>
             </Card>
         )
@@ -426,31 +444,31 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       {/* Section 1: Learning Content */}
       <Card>
         <CardHeader>
-            <div className="flex items-center justify-between">
-                 <div>
-                    <CardTitle>1. Learning Content</CardTitle>
-                    <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-                 </div>
-                 <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
-                    {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-                    {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>1. Learning Content</CardTitle>
+              <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
             </div>
+            <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
+              {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+              {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-96 rounded-lg border bg-muted/20">
+          <ScrollArea className="max-h-96 w-full rounded-lg border bg-muted/20">
             <div className="p-4">
-                {isLoading === 'content' ? (
-                <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                </div>
-                ) : hasContentForPractice ? (
-                currentLesson.content?.map(renderContentItem)
-                ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                    Content you generate will appear here.
-                </div>
-                )}
+              {isLoading === 'content' ? (
+              <div className="flex items-center justify-center h-full min-h-48">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+              ) : hasContentForPractice ? (
+              currentLesson.content?.map(renderContentItem)
+              ) : (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                  Content you generate will appear here.
+              </div>
+              )}
             </div>
           </ScrollArea>
         </CardContent>
