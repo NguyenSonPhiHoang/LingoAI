@@ -235,8 +235,9 @@ const LibraryDocPage: FC = () => {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="flex-grow">
-                                        <div className="text-sm text-muted-foreground line-clamp-4 bg-muted/30 p-3 rounded-md h-24">
-                                            {content.extractedText || "No content preview."}
+                                        <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-3 rounded-md h-24 overflow-hidden relative">
+                                            <ReactMarkdown>{content.extractedText || "No content preview."}</ReactMarkdown>
+                                            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-muted/10 via-muted/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="justify-between items-center">
