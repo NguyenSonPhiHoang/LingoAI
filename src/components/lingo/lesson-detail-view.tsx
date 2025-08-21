@@ -259,8 +259,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
     try {
         const data = JSON.parse(item.value);
         const translationKey = `content-${item.id}`;
-        const isBeingTranslated = isTranslating[translationKey];
-        const isBeingSpoken = playbackHook.activePlaybackKey === translationKey;
 
         const renderToolbar = (textToProcess: string, customKey?: string) => (
              <div className="flex items-center">
