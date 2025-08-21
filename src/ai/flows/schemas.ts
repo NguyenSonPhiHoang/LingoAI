@@ -345,40 +345,15 @@ const VocabularySuggestionSchema = z.object({
     definition: z.string().describe("A simple English definition."),
 });
 
-const GrammarFocusSchema = z.object({
-    title: z.string().describe("The name of the grammar point."),
-    explanation: z.string().describe("A concise explanation of the rule."),
-    example: z.string().describe("An example sentence demonstrating the rule."),
-});
-
-const PronunciationFocusSchema = z.object({
-  wordPronunciation: z.object({
-    title: z.string().describe("The name of the sound being taught (e.g., 'The /æ/ sound in cat')."),
-    explanation: z.string().describe("How to make the sound."),
-    examples: z.array(z.string()).describe("A list of 3-5 example words with the sound."),
-  }).describe("Focus on a single word sound."),
-  sentencePronunciation: z.object({
-    title: z.string().describe("The name of the sentence-level concept (e.g., 'Linking sounds')."),
-    explanation: z.string().describe("An explanation of the concept."),
-    example: z.string().describe("An example sentence."),
-  }).describe("Focus on connected speech."),
-  sentenceIntonation: z.object({
-    title: z.string().describe("The name of the intonation concept (e.g., 'Rising intonation for questions')."),
-    explanation: z.string().describe("An explanation of the intonation rule."),
-    example: z.string().describe("An example sentence showing the pattern."),
-  }).describe("Focus on sentence intonation (rising/falling tone)."),
-});
-
 const PassageSchema = z.object({
     title: z.string().describe("A title for the passage or dialogue."),
     body: z.string().describe("The full text of the reading passage or dialogue script."),
 });
 
 export const GenerateLessonContentOutputSchema = z.object({
-    vocabularySuggestions: z.array(VocabularySuggestionSchema).optional().describe("A list of suggested vocabulary relevant to the topic."),
-    grammarFocus: GrammarFocusSchema.optional().describe("An explanation of a relevant grammar point. Used for Reading, Writing, Listening, Speaking skills."),
-    pronunciationFocus: PronunciationFocusSchema.optional().describe("A set of three pronunciation explanations. Used only for Pronunciation skill."),
-    passage: PassageSchema.optional().describe("A reading passage or dialogue. Not used for Pronunciation skill."),
+    vocabularySuggestions: z.array(VocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
+    keyPoints: z.array(z.string()).describe("A list of 3-5 key phrases or concepts central to the topic."),
+    passage: PassageSchema.describe("A reading passage or dialogue."),
 });
 export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;
 
