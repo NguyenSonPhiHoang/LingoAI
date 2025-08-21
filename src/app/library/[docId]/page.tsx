@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Upload } from 'lucide-react';
 import mammoth from "mammoth";
 import ReactMarkdown from 'react-markdown';
@@ -21,11 +21,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { format } from 'date-fns';
 
 
-const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
+const LibraryDocPage: FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
-    const docId = params.docId;
+    const params = useParams();
+    const docId = params.docId as string;
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [doc, setDoc] = useState<LibraryDocument | null>(null);
