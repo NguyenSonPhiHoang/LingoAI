@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import StorybookPage from "./storybook/page";
-import LibraryPage from "./library/page";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
 
 
@@ -165,8 +164,7 @@ const Home: FC = () => {
             ) : <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
         case "storybook":
             return <StorybookPage />;
-        case "library":
-            return <LibraryPage />;
+        // Library is now a separate page, so it's not rendered here.
         case "lesson-detail":
            return activeViewState.lesson ? (
             <LessonDetailView
@@ -198,3 +196,5 @@ const Home: FC = () => {
 };
 
 export default Home;
+
+    

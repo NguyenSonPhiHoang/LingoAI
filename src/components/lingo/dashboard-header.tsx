@@ -37,6 +37,8 @@ const viewTitles: Record<View, string> = {
   "settings": "Settings",
   "storybook": "AI Storybook",
   "placement-test": "Placement Test",
+  "review-test": "Review Test",
+  "library": "My Library",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }) => {
@@ -56,7 +58,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }
     if (user?.status === 'pending') {
       return "Waiting for Approval";
     }
-    return viewTitles[activeView];
+    return viewTitles[activeView] || "Dashboard";
   }
   
   return (
@@ -115,3 +117,5 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }
 };
 
 export default DashboardHeader;
+
+    
