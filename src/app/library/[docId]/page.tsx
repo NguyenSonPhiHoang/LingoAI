@@ -26,6 +26,7 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+    const docId = params.docId;
     
     const [doc, setDoc] = useState<LibraryDocument | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -36,13 +37,13 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
     const playbackHook = useAudioPlayback({ setWords: setUserVocabulary });
 
     useEffect(() => {
-        if (!user || !params.docId) return;
+        if (!user || !docId) return;
 
         const fetchData = async () => {
             setIsLoading(true);
             try {
                 const [fetchedDoc, fetchedVocab] = await Promise.all([
-                    getDocument(params.docId),
+                    getDocument(docId),
                     getVocabulary(user.uid),
                 ]);
                 setDoc(fetchedDoc);
@@ -56,7 +57,7 @@ const LibraryDocPage: FC<{ params: { docId: string } }> = ({ params }) => {
             }
         };
         fetchData();
-    }, [user, params.docId, toast, router]);
+    }, [user, docId, toast, router]);
 
     const handleExtractVocabulary = async () => {
         if (!doc || !doc.content) return;
