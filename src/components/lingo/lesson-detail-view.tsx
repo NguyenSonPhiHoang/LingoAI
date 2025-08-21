@@ -968,12 +968,16 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
     const [selectedIntonation, setSelectedIntonation] = useState<Record<string, 'rising' | 'falling'>>({});
     const [showIntonationResult, setShowIntonationResult] = useState(false);
 
+    if (!exercise || !exercise.wordExercise || !exercise.sentenceExercise || !exercise.intonationExercise) {
+        return <div className="p-4 text-center text-muted-foreground">The exercise is not available yet. Please try regenerating.</div>;
+    }
+
+    const { intonationExercise } = exercise;
+
     const handleSelectIntonation = (scenario: string, choice: 'rising' | 'falling') => {
         if (showIntonationResult) return;
         setSelectedIntonation(prev => ({...prev, [scenario]: choice}));
     }
-
-    const { intonationExercise } = exercise;
 
     return (
         <div className="p-4 space-y-8">
@@ -1076,3 +1080,5 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
+
+    
