@@ -183,5 +183,3 @@ export const deleteContent = async (contentId: string) => {
     // Add extra security check if needed by fetching the document first
     await deleteDoc(doc(db, "library_content", contentId));
 };
-
-    
