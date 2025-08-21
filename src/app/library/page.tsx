@@ -222,7 +222,7 @@ const LibraryPage: FC = () => {
                                                 <CardHeader className="flex-grow">
                                                      <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline block flex items-start gap-1.5 group">
                                                         <ExternalLink className="h-4 w-4 mt-1 flex-shrink-0 text-muted-foreground group-hover:text-primary" />
-                                                        <span className="flex-1 truncate">{doc.title}</span>
+                                                        <span className="flex-1 line-clamp-2">{doc.title}</span>
                                                      </a>
                                                       {doc.summary && (
                                                         <CardDescription className="mt-2 line-clamp-3">
@@ -249,10 +249,10 @@ const LibraryPage: FC = () => {
                                             {skillDocs.map(doc => (
                                                 <TableRow key={doc.id}>
                                                     <TableCell>
-                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline flex items-center gap-2 group">
+                                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline flex items-center gap-2 group max-w-md">
                                                             <ExternalLink className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-primary" />
-                                                            <div className="flex-1 truncate">
-                                                                <div className="truncate">{doc.title}</div>
+                                                            <div className="flex-1 overflow-hidden">
+                                                                <div className="font-semibold line-clamp-1">{doc.title}</div>
                                                                 {doc.summary && <p className="text-xs text-muted-foreground font-normal line-clamp-1">{doc.summary}</p>}
                                                             </div>
                                                         </a>
