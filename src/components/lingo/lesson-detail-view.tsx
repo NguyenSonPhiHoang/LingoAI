@@ -496,7 +496,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                  <ChevronDown className="h-4 w-4" />
                </AccordionTrigger>
               <AccordionContent className="pt-4">
-                <ScrollArea className="h-80 p-4 rounded-lg border bg-muted/20">
+                <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
                   {isLoading === 'content' ? (
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
