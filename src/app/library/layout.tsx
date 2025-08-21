@@ -5,6 +5,9 @@ import * as React from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import DashboardLayout from "@/components/lingo/dashboard-layout";
+import type { CombinedVocabulary } from "@/services/vocabulary";
+import type { View } from "@/app/page";
 
 export default function LibraryLayout({
   children,
@@ -13,6 +16,8 @@ export default function LibraryLayout({
 }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [activeView, setActiveView] = React.useState<View | 'storybook' | 'library'>('library');
+  const [words, setWords] = React.useState<CombinedVocabulary[]>([]);
 
   React.useEffect(() => {
     if (authLoading) return;
@@ -22,6 +27,17 @@ export default function LibraryLayout({
     }
   }, [user, authLoading, router]);
 
+  const handleSetActiveView = (view: View | 'storybook' | 'library') => {
+      if (view === 'library') {
+          router.push('/library');
+      } else if (view === 'storybook') {
+          router.push('/storybook');
+      }
+      else {
+          router.push('/');
+      }
+  }
+
   if (authLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -30,9 +46,13 @@ export default function LibraryLayout({
     );
   }
   
-  // This layout no longer needs the DashboardLayout as it's a sub-page of the main app.
-  // The root layout will provide the dashboard context.
-  return <>{children}</>;
+  return (
+      <DashboardLayout
+        activeView={activeView}
+        setActiveView={handleSetActiveView}
+        setWords={setWords}
+       >
+        {children}
+       </DashboardLayout>
+  );
 }
-
-    
