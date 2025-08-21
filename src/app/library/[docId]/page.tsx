@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Edit } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -109,6 +110,10 @@ const LibraryDocPage: FC = () => {
         )
     }
 
+    const MarkdownRenderer = ({children}: {children: string}) => (
+        <InteractiveText text={children} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
+    )
+
     return (
         <div className="space-y-6">
              <audio ref={playbackHook.audioRef} className="hidden" />
@@ -169,12 +174,18 @@ const LibraryDocPage: FC = () => {
                             <CardContent>
                                 <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
                                     <article className="prose prose-sm dark:prose-invert max-w-none">
-                                        <InteractiveText
-                                            text={content.extractedText}
-                                            vocabulary={vocabulary}
-                                            playbackHook={playbackHook}
-                                            activePlaybackKey={null}
-                                        />
+                                        <ReactMarkdown
+                                            components={{
+                                                p: ({node, ...props}) => <p {...props} />, // Use default p
+                                                span: ({node, ...props}) => <span {...props} />, // Use default span
+                                                // Override how text is rendered to use our interactive component
+                                                text: ({node, ...props}) => {
+                                                    return <MarkdownRenderer>{String(node.value)}</MarkdownRenderer>;
+                                                },
+                                            }}
+                                        >
+                                            {content.extractedText}
+                                        </ReactMarkdown>
                                     </article>
                                 </ScrollArea>
                             </CardContent>
