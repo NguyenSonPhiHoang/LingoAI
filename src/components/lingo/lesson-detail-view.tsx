@@ -118,14 +118,21 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const { toast } = useToast();
   const playbackHook = useAudioPlayback({ setWords });
   
+  useEffect(() => {
+    setCurrentLesson(lesson);
+    // Initialize temporary state with the current lesson's saved data
+    setTempContent(lesson.content || []);
+    setTempExercises(lesson.exercises || {});
+  }, [lesson]);
+
   const hasUnsavedChanges = useMemo(() => {
-    const contentChanged = tempContent !== null && !isEqual(tempContent, currentLesson.content);
-    const exercisesChanged = tempExercises !== null && !isEqual(tempExercises, currentLesson.exercises);
+    const contentChanged = !isEqual(tempContent, currentLesson.content);
+    const exercisesChanged = !isEqual(tempExercises, currentLesson.exercises);
     return contentChanged || exercisesChanged;
   }, [tempContent, tempExercises, currentLesson]);
 
-  const displayedContent = tempContent ?? currentLesson.content ?? [];
-  const displayedExercises = tempExercises ?? currentLesson.exercises ?? {};
+  const displayedContent = tempContent ?? [];
+  const displayedExercises = tempExercises ?? {};
   const Icon = skillIcons[currentLesson.skill as Skill];
 
   const handleStatusChange = async (newStatus: LessonStatus) => {
@@ -225,10 +232,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         // Commit temporary state to current state
         const updatedLesson = { ...currentLesson, content: finalContent, exercises: finalExercises };
         setCurrentLesson(updatedLesson);
-
-        // Reset temporary states
-        setTempContent(null);
-        setTempExercises(null);
         
         toast({ title: "Success!", description: "Your lesson has been saved." });
     } catch(error) {
@@ -1014,3 +1017,4 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
+
