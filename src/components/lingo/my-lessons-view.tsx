@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, type FC, type Dispatch, type SetStateActi
 import { useAuth } from '@/context/auth-context';
 import { getLessons, type Lesson, deleteLesson, updateLesson, type LessonStatus } from '@/services/lessons';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban, FileText } from 'lucide-react';
+import { Loader2, Search, ArrowRight, Headphones, Mic, BookOpen, FilePenLine, ListFilter, X, Sparkles, GraduationCap, MoreVertical, Edit, Trash2, LayoutGrid, List, CheckCircle, Circle, CircleDashed, Voicemail, Folder, Check, Ban, FileText, AudioWaveform } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +35,7 @@ const skillIcons: Record<Skill, React.ElementType> = {
     Speaking: Mic,
     Reading: BookOpen,
     Writing: FilePenLine,
-    Pronunciation: Voicemail,
+    Pronunciation: AudioWaveform,
 };
 
 const skillStyles: Record<Skill, string> = {

@@ -32,7 +32,7 @@ import {
   List,
   Voicemail,
   TrendingUp,
-  Waveform
+  AudioWaveform
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ const skillIcons: Record<Skill, React.ElementType> = {
   Speaking: Mic,
   Reading: BookOpen,
   Writing: FilePenLine,
-  Pronunciation: Voicemail,
+  Pronunciation: AudioWaveform,
 };
 
 const statusOptions: { value: LessonStatus; label: string; icon: React.ElementType }[] = [
@@ -159,7 +159,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             level: currentLesson.level,
         });
 
-        const newContent: LessonContent[] = [];
+        const newContent: any[] = [];
         if (result.vocabularySuggestions) {
             newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
         }
@@ -286,7 +286,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                         {/* Word Pronunciation */}
                         <div className="p-3 border rounded-lg bg-muted/50">
                             <div className="flex justify-between items-start">
-                                <h4 className="font-semibold flex items-center gap-2"><Waveform className="h-4 w-4" />{wordPronunciation.title}</h4>
+                                <h4 className="font-semibold flex items-center gap-2"><AudioWaveform className="h-4 w-4" />{wordPronunciation.title}</h4>
                                 {renderToolbar(wordPronunciation.explanation + ' ' + wordPronunciation.examples.join(', '), `${translationKey}-word`)}
                             </div>
                             <p className="text-sm mt-1"><InteractiveText text={wordPronunciation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-word`} /></p>
@@ -979,7 +979,7 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
         <div className="p-4 space-y-8">
             <Card className="bg-background">
                 <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2"><Waveform className="h-5 w-5" /> Word Pronunciation</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2"><AudioWaveform className="h-5 w-5" /> Word Pronunciation</CardTitle>
                     <CardDescription>Listen carefully to the difference between these words.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
