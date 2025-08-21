@@ -163,17 +163,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         if (result.vocabularySuggestions) {
             newContent.push({ id: `vocab-${Date.now()}`, type: 'vocabulary', value: JSON.stringify(result.vocabularySuggestions) });
         }
-        if (result.grammarFocus) {
-            newContent.push({ id: `grammar-${Date.now()}`, type: 'grammar', value: JSON.stringify(result.grammarFocus) });
-        }
-        if (result.pronunciationFocus) {
-             newContent.push({ id: `pronunciation-${Date.now()}`, type: 'pronunciation', value: JSON.stringify(result.pronunciationFocus) });
+        if (result.keyPoints) {
+            newContent.push({ id: `keypoints-${Date.now()}`, type: 'keyPoints', value: JSON.stringify(result.keyPoints) });
         }
         if (result.passage) {
             newContent.push({ id: `passage-${Date.now()}`, type: 'passage', value: JSON.stringify(result.passage) });
         }
         
-        await updateLessonContent(currentLesson.docId, newContent, currentLesson.exercises);
+        await updateLessonContent(currentLesson.docId, newContent);
         setCurrentLesson(prev => ({ ...prev, content: newContent }));
 
     } catch (error) {
@@ -270,56 +267,6 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                 </Button>
             </div>
         );
-        
-        if (item.type === 'pronunciation') {
-            if (!data.wordPronunciation || !data.sentencePronunciation || !data.sentenceIntonation) {
-                 return <div className="text-sm text-muted-foreground">The pronunciation exercise is not available. Please try regenerating.</div>;
-            }
-            const { wordPronunciation, sentencePronunciation, sentenceIntonation } = data;
-            return (
-                 <Card key={item.id} className="mb-4 bg-background">
-                    <CardHeader className="pb-2">
-                        <div className="text-base flex items-center gap-2 flex-1">
-                           <Voicemail className="h-5 w-5 text-primary" />Pronunciation Focus
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Word Pronunciation */}
-                        <div className="p-3 border rounded-lg bg-muted/50">
-                            <div className="flex justify-between items-start">
-                                <h4 className="font-semibold flex items-center gap-2"><AudioWaveform className="h-4 w-4" />{wordPronunciation.title}</h4>
-                                {renderToolbar(wordPronunciation.explanation + ' ' + wordPronunciation.examples.join(', '), `${translationKey}-word`)}
-                            </div>
-                            <p className="text-sm mt-1"><InteractiveText text={wordPronunciation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-word`} /></p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {wordPronunciation.examples.map((ex: string, i: number) => <Badge key={i} variant="secondary">{ex}</Badge>)}
-                            </div>
-                            {translations[`${translationKey}-word`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-word`]}</p>}
-                        </div>
-                        {/* Sentence Pronunciation */}
-                        <div className="p-3 border rounded-lg bg-muted/50">
-                            <div className="flex justify-between items-start">
-                                <h4 className="font-semibold flex items-center gap-2"><MessageSquareQuote className="h-4 w-4" />{sentencePronunciation.title}</h4>
-                                 {renderToolbar(sentencePronunciation.explanation + ' ' + sentencePronunciation.example, `${translationKey}-sentence`)}
-                            </div>
-                             <p className="text-sm mt-1"><InteractiveText text={sentencePronunciation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-sentence`} /></p>
-                             <p className="text-sm italic mt-2 bg-background p-2 rounded">"<InteractiveText text={sentencePronunciation.example} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-sentence`} />"</p>
-                             {translations[`${translationKey}-sentence`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-sentence`]}</p>}
-                        </div>
-                        {/* Sentence Intonation */}
-                         <div className="p-3 border rounded-lg bg-muted/50">
-                            <div className="flex justify-between items-start">
-                                <h4 className="font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" />{sentenceIntonation.title}</h4>
-                                {renderToolbar(sentenceIntonation.explanation + ' ' + sentenceIntonation.example, `${translationKey}-intonation`)}
-                            </div>
-                           <p className="text-sm mt-1"><InteractiveText text={sentenceIntonation.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-intonation`} /></p>
-                           <p className="text-sm italic mt-2 bg-background p-2 rounded">"<InteractiveText text={sentenceIntonation.example} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`${translationKey}-intonation`} />"</p>
-                           {translations[`${translationKey}-intonation`] && <p className="text-sm text-blue-600 mt-2"><strong>Dịch:</strong> {translations[`${translationKey}-intonation`]}</p>}
-                        </div>
-                    </CardContent>
-                 </Card>
-            );
-        }
 
         return (
             <Card key={item.id} className="mb-4 bg-background">
@@ -327,11 +274,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                      <div className="flex justify-between items-start">
                         <div className="text-base flex items-center gap-2 flex-1">
                            {item.type === 'vocabulary' && <><List className="h-5 w-5 text-primary" />Vocabulary Suggestions</>}
-                           {item.type === 'grammar' && <><BrainCircuit className="h-5 w-5 text-primary" />Grammar Focus</>}
+                           {item.type === 'keyPoints' && <><Lightbulb className="h-5 w-5 text-primary" />Key Points</>}
                            {item.type === 'passage' && <><FileText className="h-5 w-5 text-primary" />{data.title || 'Reading'}</>}
                         </div>
                         {item.type === 'passage' && renderToolbar(data.body)}
-                        {item.type === 'grammar' && renderToolbar(data.explanation + ' ' + data.example)}
                      </div>
                 </CardHeader>
                 <CardContent>
@@ -344,12 +290,14 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                             ))}
                         </ul>
                     )}
-                    {item.type === 'grammar' && (
-                        <div className="space-y-2 text-sm">
-                            <p className="font-semibold">{data.title}</p>
-                            <p><InteractiveText text={data.explanation} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} /></p>
-                            <p className="italic bg-muted/50 p-2 rounded">e.g., "<InteractiveText text={data.example} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} />"</p>
-                        </div>
+                    {item.type === 'keyPoints' && Array.isArray(data) && (
+                        <ul className="space-y-2 text-sm list-disc pl-5">
+                            {data.map((point: string, index: number) => (
+                                <li key={index}>
+                                    <InteractiveText text={point} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
+                                </li>
+                            ))}
+                        </ul>
                     )}
                     {item.type === 'passage' && (
                         <div className="text-sm whitespace-pre-wrap">
@@ -478,15 +426,17 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 
       {/* Section 1: Learning Content */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>1. Learning Content</CardTitle>
-            <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-          </div>
-          <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
-            {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-            {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-          </Button>
+        <CardHeader>
+            <div className="flex items-center justify-between">
+                 <div>
+                    <CardTitle>1. Learning Content</CardTitle>
+                    <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+                 </div>
+                 <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
+                    {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+                    {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+                </Button>
+            </div>
         </CardHeader>
         <CardContent>
           <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
