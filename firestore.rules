@@ -3,54 +3,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Helper Functions
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Check if the user document exists and has the admin role.
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-
-    // --- Collections ---
 
     match /users/{userId} {
       allow get: if request.auth.uid != null;
       allow list: if isAdmin();
-      allow write: if request.auth.uid == userId 
-                   && request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['displayName', 'photoURL']);
-      allow update(status): if isAdmin();
+      allow write: if request.auth.uid == userId; // Users can update their own info
+      allow update(status): if isAdmin(); // Admin can update user status
+    }
+
+    match /learningResources/{resourceId} {
+      allow read: if request.auth.uid != null;
+      allow write: if isAdmin(); // create, update, delete
     }
 
     match /words/{wordId} {
-      allow read: if request.auth.uid != null;
-      allow update: if isAdmin();
-      allow create, delete: if false;
+      allow read: if true; // Global words are public
+      allow create, update, delete: if isAdmin();
     }
-
+    
     match /userVocabulary/{userVocabId} {
-      allow read, write, delete: if request.auth.uid != null && request.auth.uid == resource.data.userId;
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
-
+    
     match /lessons/{lessonId} {
-      allow read, write, delete: if request.auth.uid != null && request.auth.uid == resource.data.userId;
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    match /library/{documentId} {
-      allow read, write, delete: if request.auth.uid != null && request.auth.uid == resource.data.userId;
+    match /library/{docId} {
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
 
     match /testResults/{resultId} {
-      allow read, create: if request.auth.uid != null && request.auth.uid == resource.data.userId;
-      allow update, delete: if false;
+        allow read, create: if request.auth.uid == request.resource.data.userId || request.auth.uid == resource.data.userId;
     }
-
+    
     match /user_activity/{activityId} {
-      allow read: if request.auth.uid != null && (request.auth.uid == resource.data.userId || isAdmin());
+      // Users can only create or update their own activity logs.
+      // request.resource.data refers to the data *after* the operation.
       allow write: if request.auth.uid != null && request.auth.uid == request.resource.data.userId;
-      allow delete: if false;
-    }
-
-    // Default catch-all rule
-    match /{document=**} {
-      allow read, write: if false;
+      // Admins can read any activity log. Users can read their own.
+      allow read: if request.auth.uid != null && (isAdmin() || request.auth.uid == resource.data.userId);
     }
   }
 }
