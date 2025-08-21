@@ -126,6 +126,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 
   const displayedContent = tempContent ?? currentLesson.content ?? [];
   const displayedExercises = tempExercises ?? currentLesson.exercises ?? {};
+  const Icon = skillIcons[currentLesson.skill as Skill];
 
   const handleStatusChange = async (newStatus: LessonStatus) => {
     if (currentLesson.status === newStatus) return;
@@ -463,7 +464,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
             ) : displayedContent.length > 0 ? (
-                displayedContent.map(renderContentItem)
+                <div className="space-y-4">
+                    {displayedContent.map(renderContentItem)}
+                </div>
             ) : (
                 <div className="text-sm text-muted-foreground text-center py-10">
                     <div className="mx-auto h-12 w-12 text-muted-foreground/50"><BrainCircuit /></div>
