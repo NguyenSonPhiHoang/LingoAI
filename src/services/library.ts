@@ -181,6 +181,14 @@ export const addContentToDocument = async (docId: string, fileName: string, extr
     };
 };
 
+export const updateContent = async (contentId: string, updates: { fileName: string; extractedText: string; }) => {
+    if (!auth.currentUser) throw new Error("Authentication required");
+    const contentDocRef = doc(db, "library_content", contentId);
+    // TODO: Add security rule to ensure user owns this content
+    await updateDoc(contentDocRef, updates);
+};
+
+
 export const deleteContent = async (contentId: string) => {
     if (!auth.currentUser) throw new Error("Authentication required");
     // Add extra security check if needed by fetching the document first

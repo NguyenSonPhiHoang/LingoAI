@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, PlusCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import AddNoteDialog from '@/components/lingo/add-note-dialog';
+import EditNoteDialog from '@/components/lingo/edit-note-dialog';
 
 
 const LibraryDocPage: FC = () => {
@@ -65,6 +66,10 @@ const LibraryDocPage: FC = () => {
 
     const handleNoteAdded = (newNote: LibraryContent) => {
         setContents(prev => [newNote, ...prev]);
+    };
+    
+    const handleNoteUpdated = (updatedNote: LibraryContent) => {
+        setContents(prev => prev.map(c => c.id === updatedNote.id ? updatedNote : c));
     };
 
     const handleDeleteContent = async (contentId: string) => {
@@ -131,23 +136,26 @@ const LibraryDocPage: FC = () => {
                                         <CardTitle className="text-lg flex items-center gap-2"><FileText /> {content.fileName}</CardTitle>
                                         <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
                                     </div>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-                                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteContent(content.id)}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <EditNoteDialog note={content} onNoteUpdated={handleNoteUpdated} />
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                                                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteContent(content.id)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent>

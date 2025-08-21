@@ -1,0 +1,84 @@
+
+"use client";
+
+import * as React from 'react';
+import { useState } from 'react';
+import type { FC } from 'react';
+import { Loader2, Edit } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import type { LibraryContent } from '@/services/library';
+import { updateContent } from '@/services/library';
+import { Label } from '../ui/label';
+
+interface EditNoteDialogProps {
+    note: LibraryContent;
+    onNoteUpdated: (updatedNote: LibraryContent) => void;
+}
+
+const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const { toast } = useToast();
+    
+    const [title, setTitle] = useState(note.fileName);
+    const [content, setContent] = useState(note.extractedText);
+
+    const handleSave = async () => {
+        if (!title || !content) {
+            toast({ variant: 'destructive', title: 'Missing fields', description: 'Title and content cannot be empty.' });
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await updateContent(note.id, { fileName: title, extractedText: content });
+            onNoteUpdated({ ...note, fileName: title, extractedText: content });
+            toast({ title: "Success!", description: 'Your note has been updated.' });
+            setIsOpen(false);
+        } catch (error) {
+            console.error("Failed to update note:", error);
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                 <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Edit className="h-4 w-4" />
+                    <span className="sr-only">Edit Note</span>
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Edit Note</DialogTitle>
+                    <DialogDescription>Update the title or content of your note below.</DialogDescription>
+                </DialogHeader>
+                 <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="title" className="text-right">Title</Label>
+                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
+                    </div>
+                     <div className="grid grid-cols-4 items-start gap-4">
+                        <Label htmlFor="content" className="text-right pt-2">Content</Label>
+                        <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} className="col-span-3" rows={15} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button type="button" onClick={handleSave} disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                        Save Changes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+export default EditNoteDialog;
