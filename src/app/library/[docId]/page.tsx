@@ -66,7 +66,7 @@ const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode }> = 
         <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>{note.fileName}</DialogTitle>
-                <DialogDescription>Added on {format(new Date(note.createdAt), 'PPP')}</DialogDescription>
+                <DialogDescription>Added on {format(new Date(note.createdAt), 'PP')}</DialogDescription>
             </DialogHeader>
             <div className="flex-1 relative">
                 <ScrollArea className="absolute inset-0 pr-6">
@@ -230,7 +230,7 @@ const LibraryDocPage: FC = () => {
                                             <FileText className="h-5 w-5 mt-0.5 flex-shrink-0" />
                                             <div className="flex-1">
                                                 <span className="line-clamp-2">{content.fileName}</span>
-                                                <p className="text-sm font-normal text-muted-foreground mt-1">{format(new Date(content.createdAt), 'PPP')}</p>
+                                                <p className="text-sm font-normal text-muted-foreground mt-1">{format(new Date(content.createdAt), 'PP')}</p>
                                             </div>
                                         </CardTitle>
                                     </CardHeader>
@@ -269,7 +269,7 @@ const LibraryDocPage: FC = () => {
                                                     <span className="cursor-pointer hover:underline">{content.fileName}</span>
                                                 </ViewNoteDialog>
                                             </TableCell>
-                                            <TableCell>{format(new Date(content.createdAt), 'PPP')}</TableCell>
+                                            <TableCell>{format(new Date(content.createdAt), 'PP')}</TableCell>
                                             <TableCell className="text-right">
                                                  <div className="flex items-center justify-end">
                                                     <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} viewMode="list" />

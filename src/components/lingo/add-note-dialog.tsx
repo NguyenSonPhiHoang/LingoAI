@@ -104,7 +104,7 @@ const AddNoteDialog: FC<{
     const { toast } = useToast();
     
     // State for manual entry
-    const [noteTitle, setNoteTitle] = useState(`Note - ${format(new Date(), 'PPP')}`);
+    const [noteTitle, setNoteTitle] = useState(`Note - ${format(new Date(), 'PP')}`);
     const [noteContent, setNoteContent] = useState('');
     const writeTextareaRef = useRef<HTMLTextAreaElement>(null);
     const pastedTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -117,7 +117,7 @@ const AddNoteDialog: FC<{
     const handleOpenChange = async (open: boolean) => {
         if (open) {
             // Reset state when opening
-            setNoteTitle(`Note - ${format(new Date(), 'PPP')}`);
+            setNoteTitle(`Note - ${format(new Date(), 'PP')}`);
             setNoteContent('');
             setClipboardText('');
             setClipboardImage(null);
