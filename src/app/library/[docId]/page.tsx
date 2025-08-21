@@ -26,6 +26,17 @@ import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import InteractiveText from '@/components/lingo/interactive-text';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+
+
+const NOTE_BG_COLORS = [
+    "bg-yellow-50/70",
+    "bg-blue-50/70",
+    "bg-green-50/70",
+    "bg-purple-50/70",
+    "bg-red-50/70",
+    "bg-indigo-50/70",
+];
 
 const NoteActions: FC<{
     note: LibraryContent;
@@ -223,8 +234,8 @@ const LibraryDocPage: FC = () => {
                 {contents.length > 0 ? (
                     viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {contents.map(content => (
-                                <Card key={content.id} className="group flex flex-col">
+                            {contents.map((content, index) => (
+                                <Card key={content.id} className={cn("group flex flex-col", NOTE_BG_COLORS[index % NOTE_BG_COLORS.length])}>
                                     <CardHeader className="flex-grow">
                                         <CardTitle className="text-base flex items-start gap-2">
                                             <FileText className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -235,14 +246,14 @@ const LibraryDocPage: FC = () => {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="flex-grow">
-                                        <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-3 rounded-md h-24 overflow-hidden relative">
+                                        <div className="prose prose-sm dark:prose-invert max-w-none bg-background/50 p-3 rounded-md h-24 overflow-hidden relative">
                                             <ReactMarkdown>{content.extractedText || "No content preview."}</ReactMarkdown>
                                             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="justify-between items-center">
                                         <ViewNoteDialog note={content}>
-                                             <Button variant="outline" className="w-auto flex-grow">View Details</Button>
+                                             <Button variant="default" className="w-auto flex-grow">View Details</Button>
                                         </ViewNoteDialog>
                                          <div className="flex-shrink-0">
                                             <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} viewMode="grid" />
@@ -293,3 +304,5 @@ const LibraryDocPage: FC = () => {
 }
 
 export default LibraryDocPage;
+
+    
