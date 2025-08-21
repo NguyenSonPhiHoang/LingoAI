@@ -13,9 +13,10 @@ import { useAuth } from '@/context/auth-context';
 import type { LibraryDocument, LibraryContent } from '@/services/library';
 import { getDocument, getContentForDocument, deleteContent } from '@/services/library';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import AddNoteDialog from '@/components/lingo/add-note-dialog';
 import EditNoteDialog from '@/components/lingo/edit-note-dialog';
@@ -51,6 +52,25 @@ const NoteActions: FC<{
             </AlertDialogContent>
         </AlertDialog>
     </div>
+);
+
+const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode }> = ({ note, children }) => (
+    <Dialog>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>{note.fileName}</DialogTitle>
+                <DialogDescription>Added on {format(new Date(note.createdAt), 'PPP')}</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 relative">
+                <ScrollArea className="absolute inset-0 pr-6">
+                    <article className="prose dark:prose-invert max-w-none">
+                       <ReactMarkdown>{note.extractedText}</ReactMarkdown>
+                    </article>
+                </ScrollArea>
+            </div>
+        </DialogContent>
+    </Dialog>
 );
 
 
@@ -196,38 +216,34 @@ const LibraryDocPage: FC = () => {
 
                 {contents.length > 0 ? (
                     viewMode === 'grid' ? (
-                        contents.map(content => (
-                            <Card key={content.id} className="group">
-                                <CardHeader>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <CardTitle className="text-lg flex items-center gap-2"><FileText /> {content.fileName}</CardTitle>
-                                            <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {contents.map(content => (
+                                <Card key={content.id} className="group flex flex-col">
+                                    <CardHeader className="flex-grow">
+                                        <div className="flex justify-between items-start">
+                                            <CardTitle className="text-lg flex items-start gap-2 flex-1">
+                                                <FileText className="h-5 w-5 mt-1" />
+                                                <span className="flex-1">{content.fileName}</span>
+                                            </CardTitle>
+                                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                            </div>
                                         </div>
-                                         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <NoteActions note={content} onNoteUpdated={handleNoteUpdated} onDeleteContent={handleDeleteContent} />
+                                         <CardDescription>Added on {format(new Date(content.createdAt), 'PPP')}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-grow">
+                                        <div className="text-sm text-muted-foreground line-clamp-4 bg-muted/30 p-3 rounded-md h-24">
+                                            {content.extractedText || "No content preview."}
                                         </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <ScrollArea className="h-60 rounded-md border bg-muted/30 p-4">
-                                        <article className="prose prose-sm dark:prose-invert max-w-none">
-                                            <ReactMarkdown
-                                                components={{
-                                                    p: ({node, ...props}) => <p {...props} />,
-                                                    span: ({node, ...props}) => <span {...props} />,
-                                                    text: ({node, ...props}) => {
-                                                        return <MarkdownRenderer>{String(node.value)}</MarkdownRenderer>;
-                                                    },
-                                                }}
-                                            >
-                                                {content.extractedText}
-                                            </ReactMarkdown>
-                                        </article>
-                                    </ScrollArea>
-                                </CardContent>
-                            </Card>
-                        ))
+                                    </CardContent>
+                                    <CardFooter>
+                                        <ViewNoteDialog note={content}>
+                                             <Button variant="outline" className="w-full">View Details</Button>
+                                        </ViewNoteDialog>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
                     ) : (
                         <Card>
                             <Table>
@@ -241,7 +257,11 @@ const LibraryDocPage: FC = () => {
                                 <TableBody>
                                     {contents.map(content => (
                                         <TableRow key={content.id} className="group">
-                                            <TableCell className="font-medium">{content.fileName}</TableCell>
+                                             <TableCell className="font-medium">
+                                                <ViewNoteDialog note={content}>
+                                                    <span className="cursor-pointer hover:underline">{content.fileName}</span>
+                                                </ViewNoteDialog>
+                                            </TableCell>
                                             <TableCell>{format(new Date(content.createdAt), 'PPP')}</TableCell>
                                             <TableCell className="text-right">
                                                  <div className="flex items-center justify-end">
