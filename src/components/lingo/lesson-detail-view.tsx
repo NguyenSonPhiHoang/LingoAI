@@ -477,40 +477,32 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
       </div>
 
       {/* Section 1: Learning Content */}
-        <Card>
-            <Accordion type="single" collapsible defaultValue="learning-content" className="w-full">
-                <AccordionItem value="learning-content" className="border-b-0">
-                    <div className="flex items-center p-6 group">
-                        <AccordionTrigger className="flex-1 hover:no-underline">
-                            <div>
-                                <CardTitle>1. Learning Content</CardTitle>
-                                <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
-                            </div>
-                        </AccordionTrigger>
-                        <Button onClick={(e) => { e.stopPropagation(); handleGenerateContent(); }} disabled={!!isLoading} size="sm" className="ml-4">
-                            {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
-                            {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
-                        </Button>
-                    </div>
-                    <AccordionContent>
-                        <CardContent>
-                            <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
-                              {isLoading === 'content' ? (
-                                <div className="flex items-center justify-center h-full">
-                                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                </div>
-                              ) : hasContentForPractice ? (
-                                currentLesson.content?.map(renderContentItem)
-                              ) : (
-                                <div className="text-sm text-muted-foreground text-center py-4">
-                                  Content you generate will appear here.
-                                </div>
-                              )}
-                            </ScrollArea>
-                        </CardContent>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>1. Learning Content</CardTitle>
+            <CardDescription>Generate supporting content with AI, then practice below.</CardDescription>
+          </div>
+          <Button onClick={handleGenerateContent} disabled={!!isLoading} size="sm">
+            {isLoading === 'content' ? <Loader2 className="mr-2 animate-spin"/> : <Sparkles className="mr-2"/>}
+            {hasContentForPractice ? 'Regenerate Content' : 'Generate Content'}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="max-h-96 p-4 rounded-lg border bg-muted/20">
+            {isLoading === 'content' ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+            ) : hasContentForPractice ? (
+              currentLesson.content?.map(renderContentItem)
+            ) : (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                Content you generate will appear here.
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
       </Card>
 
 
@@ -1078,7 +1070,3 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
-
-    
-
-    
