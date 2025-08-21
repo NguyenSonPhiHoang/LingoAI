@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -7,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, PlusCircle, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library } from 'lucide-react';
+import { Loader2, PlusCircle, BookOpen, FilePenLine, Headphones, Mic, AudioWaveform, Trash2, ExternalLink, Library, Edit, List } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +44,7 @@ const AddDocumentDialog: FC<{
     const [isOpen, setIsOpen] = useState(false);
     const { user } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
 
     const form = useForm<z.infer<typeof addDocSchema>>({
         resolver: zodResolver(addDocSchema),
@@ -59,6 +59,8 @@ const AddDocumentDialog: FC<{
             toast({ title: "Success!", description: `"${values.title}" has been added.`});
             form.reset();
             setIsOpen(false);
+            // Don't navigate immediately, let user stay on the library page
+            // router.push(`/library/${newDoc.id}`);
         } catch (error) {
              console.error("Error saving document:", error);
              toast({ variant: 'destructive', title: "Save Failed" });
@@ -305,6 +307,3 @@ const LibraryPage: FC = () => {
 };
 
 export default LibraryPage;
-
-    
-    
