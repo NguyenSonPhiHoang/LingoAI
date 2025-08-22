@@ -98,15 +98,18 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           <SidebarMenu>
             {user?.status === 'approved' && availableMenuItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <Link href={item.href} passHref legacyBehavior>
+                <Link href={item.href} passHref>
                     <SidebarMenuButton
                     // @ts-ignore
                     onClick={() => item.href === "/" && handleViewChange(item.id as View)}
                     isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
                     tooltip={item.label}
+                    asChild
                     >
-                    <item.icon />
-                    <span>{item.label}</span>
+                     <p>
+                        <item.icon />
+                        <span>{item.label}</span>
+                     </p>
                     </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
