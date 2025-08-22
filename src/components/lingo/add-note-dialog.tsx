@@ -35,23 +35,23 @@ const MarkdownToolbar: FC<{ textareaRef: React.RefObject<HTMLTextAreaElement>, o
 
         switch (formatType) {
             case 'bold':
-                newText = `**${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}**`;
+                newText = `**${selectedText}**`;
                 newCursorPos = start + 2;
                 break;
             case 'italic':
-                newText = `*${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}*`;
+                newText = `*${selectedText}*`;
                 newCursorPos = start + 1;
                 break;
             case 'heading':
-                newText = `## ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
+                newText = `## ${selectedText}`;
                 newCursorPos = start + 3;
                 break;
             case 'ul':
-                newText = `- ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
+                newText = `- ${selectedText}`;
                 newCursorPos = start + 2;
                 break;
             case 'ol':
-                newText = `1. ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
+                newText = `1. ${selectedText}`;
                 newCursorPos = start + 3;
                 break;
         }
@@ -284,15 +284,6 @@ const AddNoteDialog: FC<{
                         )}
                     </TabsContent>
                     <TabsContent value="draw" className="space-y-4 pt-4">
-                        <div className="border rounded-lg overflow-hidden">
-                             <ReactSketchCanvas
-                                ref={canvasRef}
-                                strokeWidth={strokeWidth}
-                                strokeColor={strokeColor}
-                                height="300px"
-                                width="100%"
-                            />
-                        </div>
                         <div className="flex flex-wrap items-center gap-4">
                              <div className="flex items-center gap-2">
                                 <Label>Color:</Label>
@@ -312,6 +303,15 @@ const AddNoteDialog: FC<{
                                      <span className="sr-only">Clear</span>
                                 </Button>
                             </div>
+                        </div>
+                        <div className="border rounded-lg overflow-hidden">
+                             <ReactSketchCanvas
+                                ref={canvasRef}
+                                strokeWidth={strokeWidth}
+                                strokeColor={strokeColor}
+                                height="300px"
+                                width="100%"
+                            />
                         </div>
                          <Button className="w-full" onClick={handleSaveCanvas} disabled={isSaving}>
                             {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
