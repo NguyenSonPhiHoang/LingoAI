@@ -80,6 +80,8 @@ import { cn } from "@/lib/utils";
 import AddWordDialog from "./add-word-dialog";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import InteractiveText from "./interactive-text";
+import remarkGfm from "remark-gfm";
+import ReactMarkdown from "react-markdown";
 
 
 interface LessonDetailViewProps {
@@ -110,8 +112,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
   
   // State for temporary, unsaved content and exercises
-  const [tempContent, setTempContent] = useState<LessonContent[] | null>(null);
-  const [tempExercises, setTempExercises] = useState<Lesson['exercises'] | null>(null);
+  const [tempContent, setTempContent] = useState<LessonContent[] | null>(lesson.content || []);
+  const [tempExercises, setTempExercises] = useState<Lesson['exercises'] | null>(lesson.exercises || {});
 
   const [isLoading, setIsLoading] = useState<Skill | 'content' | 'saving' | null>(null);
   const [focusPoints, setFocusPoints] = useState("");
@@ -284,7 +286,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
             case 'passage':
               return (
                 <div className="text-sm whitespace-pre-wrap">
-                  <InteractiveText text={data.body} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} />
+                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {data.body}
+                    </ReactMarkdown>
                   {playbackHook.translations[translationKey] && (
                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                       <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
@@ -1017,4 +1021,5 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
+
 
