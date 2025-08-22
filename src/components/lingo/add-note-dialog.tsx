@@ -2,9 +2,10 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useRef, type FC } from 'react';
-import { Loader2, PlusCircle, Wand2, Clipboard, Image as ImageIcon, Bold, Italic, Heading2, List, ListOrdered } from 'lucide-react';
+import { useState, useRef, type FC, type RefObject } from 'react';
+import { Loader2, PlusCircle, Wand2, Clipboard, Image as ImageIcon, Bold, Italic, Heading2, List, ListOrdered, Undo, Trash2, Save } from 'lucide-react';
 import Image from 'next/image';
+import { ReactSketchCanvas, type ReactSketchCanvasRef } from 'react-sketch-canvas';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,23 +35,23 @@ const MarkdownToolbar: FC<{ textareaRef: React.RefObject<HTMLTextAreaElement>, o
 
         switch (formatType) {
             case 'bold':
-                newText = `**${selectedText}**`;
+                newText = `**${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}**`;
                 newCursorPos = start + 2;
                 break;
             case 'italic':
-                newText = `*${selectedText}*`;
+                newText = `*${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}*`;
                 newCursorPos = start + 1;
                 break;
             case 'heading':
-                newText = `## ${selectedText}`;
+                newText = `## ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
                 newCursorPos = start + 3;
                 break;
             case 'ul':
-                newText = `- ${selectedText}`;
+                newText = `- ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
                 newCursorPos = start + 2;
                 break;
             case 'ol':
-                newText = `1. ${selectedText}`;
+                newText = `1. ${'\'\'\''}${selectedText}${'\'\'\''}${selectedText}`;
                 newCursorPos = start + 3;
                 break;
         }
@@ -113,6 +114,11 @@ const AddNoteDialog: FC<{
     const [clipboardText, setClipboardText] = useState('');
     const [clipboardImage, setClipboardImage] = useState<string | null>(null);
     const [isExtracting, setIsExtracting] = useState(false);
+
+    // State for handwriting
+    const canvasRef = useRef<ReactSketchCanvasRef>(null);
+    const [strokeColor, setStrokeColor] = useState("#444");
+    const [strokeWidth, setStrokeWidth] = useState(4);
     
     const handleOpenChange = async (open: boolean) => {
         if (open) {
@@ -122,6 +128,7 @@ const AddNoteDialog: FC<{
             setClipboardText('');
             setClipboardImage(null);
             setIsExtracting(false);
+            canvasRef.current?.clearCanvas();
         }
         setIsOpen(open);
     }
@@ -178,14 +185,14 @@ const AddNoteDialog: FC<{
         }
     };
     
-    const handleSaveNote = async (contentToSave: string, titleToSave: string) => {
+    const handleSaveNote = async (contentToSave: string, titleToSave: string, type: 'markdown' | 'image' = 'markdown') => {
         if (!contentToSave || !titleToSave) {
             toast({ variant: 'destructive', title: 'Missing Content', description: 'Please provide a title and content for the note.' });
             return;
         }
         setIsSaving(true);
         try {
-            const newNote = await addContentToDocument(docId, titleToSave, contentToSave);
+            const newNote = await addContentToDocument(docId, titleToSave, contentToSave, type);
             onNoteAdded(newNote);
             toast({ title: "Success", description: "Your note has been added." });
             setIsOpen(false);
@@ -196,6 +203,17 @@ const AddNoteDialog: FC<{
             setIsSaving(false);
         }
     };
+    
+    const handleSaveCanvas = async () => {
+        if (!canvasRef.current) return;
+        try {
+            const dataUrl = await canvasRef.current.exportImage('png');
+            handleSaveNote(dataUrl, `Handwritten Note - ${format(new Date(), 'PP')}`, 'image');
+        } catch (error) {
+            console.error("Error exporting canvas image:", error);
+            toast({ variant: 'destructive', title: "Save Drawing Failed" });
+        }
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -208,13 +226,14 @@ const AddNoteDialog: FC<{
                 <DialogHeader>
                     <DialogTitle>Add a New Note</DialogTitle>
                     <DialogDescription>
-                        Write a note manually with Markdown, or paste text/images from your clipboard.
+                        Write with Markdown, paste from clipboard, or use a stylus to write by hand.
                     </DialogDescription>
                 </DialogHeader>
                 <Tabs defaultValue="write">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="write">Write Note</TabsTrigger>
-                        <TabsTrigger value="paste" onClick={handlePasteFromClipboard}>Paste from Clipboard</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="write">Write</TabsTrigger>
+                        <TabsTrigger value="paste" onClick={handlePasteFromClipboard}>Paste</TabsTrigger>
+                        <TabsTrigger value="draw">Handwriting</TabsTrigger>
                     </TabsList>
                     <TabsContent value="write" className="space-y-4 pt-4">
                          <div className="space-y-2">
@@ -228,7 +247,7 @@ const AddNoteDialog: FC<{
                                 <Textarea id="note-content" ref={writeTextareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
                              </div>
                         </div>
-                        <Button className="w-full" onClick={() => handleSaveNote(noteContent, noteTitle)} disabled={isSaving}>
+                        <Button className="w-full" onClick={() => handleSaveNote(noteContent, noteTitle, 'markdown')} disabled={isSaving}>
                             {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
                             Save Written Note
                         </Button>
@@ -257,12 +276,47 @@ const AddNoteDialog: FC<{
                                        <Textarea id="clipboard-content" ref={pastedTextareaRef} value={clipboardText} onChange={(e) => setClipboardText(e.target.value)} rows={10} placeholder="Click the 'Paste from Clipboard' tab header to read clipboard data..." />
                                     </div>
                                 </div>
-                                <Button className="w-full" onClick={() => handleSaveNote(clipboardText, noteTitle)} disabled={isSaving || !clipboardText}>
+                                <Button className="w-full" onClick={() => handleSaveNote(clipboardText, noteTitle, 'markdown')} disabled={isSaving || !clipboardText}>
                                      {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
                                      Save Pasted Note
                                 </Button>
                              </>
                         )}
+                    </TabsContent>
+                    <TabsContent value="draw" className="space-y-4 pt-4">
+                        <div className="border rounded-lg overflow-hidden">
+                             <ReactSketchCanvas
+                                ref={canvasRef}
+                                strokeWidth={strokeWidth}
+                                strokeColor={strokeColor}
+                                height="300px"
+                                width="100%"
+                            />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4">
+                             <div className="flex items-center gap-2">
+                                <Label>Color:</Label>
+                                <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-14 h-9 p-1" />
+                            </div>
+                             <div className="flex items-center gap-2 flex-1">
+                                <Label>Size:</Label>
+                                <Input type="range" min="1" max="20" value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="flex-1" />
+                            </div>
+                             <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" onClick={() => canvasRef.current?.undo()}>
+                                    <Undo className="h-4 w-4" />
+                                    <span className="sr-only">Undo</span>
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => canvasRef.current?.clearCanvas()}>
+                                    <Trash2 className="h-4 w-4" />
+                                     <span className="sr-only">Clear</span>
+                                </Button>
+                            </div>
+                        </div>
+                         <Button className="w-full" onClick={handleSaveCanvas} disabled={isSaving}>
+                            {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Drawing
+                        </Button>
                     </TabsContent>
                 </Tabs>
             </DialogContent>

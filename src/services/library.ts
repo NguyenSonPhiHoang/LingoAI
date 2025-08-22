@@ -30,13 +30,14 @@ export interface LibraryDocument {
   createdAt: any;
 }
 
-// Represents a piece of content extracted from a file, associated with a LibraryDocument.
+// Represents a piece of content, which can be text or an image.
 export interface LibraryContent {
     id: string;
     docId: string; // The ID of the parent LibraryDocument
     userId: string;
     fileName: string;
-    extractedText: string;
+    type: 'markdown' | 'image';
+    content: string; // For markdown, this is text. For image, this is a data URI.
     createdAt: any;
 }
 
@@ -165,14 +166,15 @@ export const getContentForDocument = async (docId: string): Promise<LibraryConte
     });
 };
 
-export const addContentToDocument = async (docId: string, fileName: string, extractedText: string): Promise<LibraryContent> => {
+export const addContentToDocument = async (docId: string, fileName: string, content: string, type: 'markdown' | 'image'): Promise<LibraryContent> => {
     if (!auth.currentUser) throw new Error("Authentication required");
 
     const contentData = {
         docId,
         userId: auth.currentUser.uid,
         fileName,
-        extractedText,
+        type,
+        content,
         createdAt: Timestamp.now(),
     };
     const contentRef = await addDoc(collection(db, "library_content"), contentData);
@@ -184,7 +186,7 @@ export const addContentToDocument = async (docId: string, fileName: string, extr
     };
 };
 
-export const updateContent = async (contentId: string, updates: { fileName: string; extractedText: string; }) => {
+export const updateContent = async (contentId: string, updates: { fileName: string; content: string; }) => {
     if (!auth.currentUser) throw new Error("Authentication required");
     const contentDocRef = doc(db, "library_content", contentId);
     // TODO: Add security rule to ensure user owns this content

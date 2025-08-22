@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Loader2, ArrowLeft, Trash2, FileText, ExternalLink, ChevronsUpDown, LayoutGrid, List, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import Image from 'next/image';
 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -82,11 +83,15 @@ const ViewNoteDialog: FC<{ note: LibraryContent, children: React.ReactNode, voca
             </DialogHeader>
             <div className="flex-1 relative">
                 <ScrollArea className="absolute inset-0 pr-6">
-                    <article className="prose dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {note.extractedText}
-                        </ReactMarkdown>
-                    </article>
+                    {note.type === 'image' ? (
+                        <Image src={note.content} alt={note.fileName} width={800} height={600} className="w-full h-auto object-contain rounded-md border" />
+                    ) : (
+                         <article className="prose dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {note.content}
+                            </ReactMarkdown>
+                        </article>
+                    )}
                 </ScrollArea>
             </div>
         </DialogContent>
@@ -246,9 +251,13 @@ const LibraryDocPage: FC = () => {
                                     </CardHeader>
                                     <CardContent className="flex-grow">
                                         <div className="prose prose-sm dark:prose-invert max-w-none bg-background/50 p-3 rounded-md h-24 overflow-hidden relative">
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {content.extractedText || "No content preview."}
-                                            </ReactMarkdown>
+                                            {content.type === 'image' ? (
+                                                 <Image src={content.content} alt={content.fileName} layout="fill" objectFit="contain" className="rounded-md" />
+                                            ) : (
+                                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                    {content.content || "No content preview."}
+                                                </ReactMarkdown>
+                                            )}
                                             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card via-card/80 to-transparent pointer-events-none" />
                                         </div>
                                     </CardContent>

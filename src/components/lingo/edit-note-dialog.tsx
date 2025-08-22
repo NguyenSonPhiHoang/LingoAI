@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { LibraryContent } from '@/services/library';
 import { updateContent } from '@/services/library';
 import { Label } from '../ui/label';
+import Image from 'next/image';
 
 interface EditNoteDialogProps {
     note: LibraryContent;
@@ -26,7 +27,7 @@ const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated, children
     const { toast } = useToast();
     
     const [title, setTitle] = useState(note.fileName);
-    const [content, setContent] = useState(note.extractedText);
+    const [content, setContent] = useState(note.content);
 
     const handleSave = async () => {
         if (!title || !content) {
@@ -35,8 +36,8 @@ const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated, children
         }
         setIsSaving(true);
         try {
-            await updateContent(note.id, { fileName: title, extractedText: content });
-            onNoteUpdated({ ...note, fileName: title, extractedText: content });
+            await updateContent(note.id, { fileName: title, content: content });
+            onNoteUpdated({ ...note, fileName: title, content: content });
             toast({ title: "Success!", description: 'Your note has been updated.' });
             setIsOpen(false);
         } catch (error) {
@@ -64,12 +65,19 @@ const EditNoteDialog: FC<EditNoteDialogProps> = ({ note, onNoteUpdated, children
                     </div>
                      <div className="grid grid-cols-4 items-start gap-4">
                         <Label htmlFor="content" className="text-right pt-2">Content</Label>
-                        <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} className="col-span-3" rows={15} />
+                        {note.type === 'image' ? (
+                            <div className="col-span-3 border rounded-md p-2">
+                                <Image src={note.content} alt={note.fileName} width={500} height={300} className="w-full h-auto object-contain" />
+                                <p className="text-xs text-muted-foreground mt-2 text-center">Handwritten notes cannot be edited.</p>
+                            </div>
+                        ) : (
+                             <Textarea id="content" value={content} onChange={(e) => setContent(e.target.value)} className="col-span-3" rows={15} />
+                        )}
                     </div>
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button type="button" onClick={handleSave} disabled={isSaving}>
+                    <Button type="button" onClick={handleSave} disabled={isSaving || note.type === 'image'}>
                         {isSaving && <Loader2 className="mr-2 animate-spin" />}
                         Save Changes
                     </Button>
