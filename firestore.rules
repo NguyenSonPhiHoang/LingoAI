@@ -1,61 +1,52 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Default deny
+    // Default deny all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Users can read/update their own info
+    // USERS: Can read/update their own profile
     match /users/{userId} {
-      allow read, update: if isOwner(userId);
+      allow read, update: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Global data, readable by any authenticated user
+    // GLOBAL: Authenticated users can read, admins can write
     match /words/{wordId} {
       allow read: if request.auth != null;
-    }
-    match /learningResources/{resourceId} {
-        allow read: if request.auth != null;
-        // Allow any logged-in user to rate
-        allow update: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // User-specific collections
-    match /userVocabulary/{docId} {
-      allow get, write: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+    match /learningResources/{resourceId} {
+      allow read: if request.auth != null;
+      // Allow write for admins, and update for any authenticated user (for rating)
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow update: if request.auth != null;
+    }
+    
+    // USER-OWNED CONTENT: User can read/write their own documents.
+    // This single rule applies to get, list, create, update, delete.
+    match /storybooks/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     match /lessons/{docId} {
-      allow get, write: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-    match /storybooks/{docId} {
-      allow get, write: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+    match /userVocabulary/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-     match /library/{docId} {
-      allow get, write: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+    match /library/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
-     match /library_content/{docId} {
-      allow get, write: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+    match /library_content/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
     match /testResults/{docId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow get: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
      match /user_activity/{docId} {
-      allow write: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow get: if isOwner(resource.data.userId);
-      allow list: if request.auth != null && request.query.where.get('userId')[2] == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
