@@ -136,7 +136,7 @@ const WordManagement: FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const { audioRef, isPlaying, playGlobalWordAudio } = useAudioPlayback({ setWords: () => {} });
+    const { audioRef, isLoadingAudio, playGlobalWordAudio } = useAudioPlayback({ setWords: () => {} });
 
 
     useEffect(() => {
@@ -230,10 +230,10 @@ const WordManagement: FC = () => {
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => playGlobalWordAudio(word)}
-                                        disabled={isPlaying[word.id]}
+                                        disabled={isLoadingAudio[word.id]}
                                         className={word.audioUrl ? 'text-primary' : 'text-muted-foreground'}
                                     >
-                                        {isPlaying[word.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                        {isLoadingAudio[word.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                 </TableCell>
                                 <TableCell className="text-right">

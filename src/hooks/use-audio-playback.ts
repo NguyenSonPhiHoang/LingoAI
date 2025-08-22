@@ -11,7 +11,7 @@ type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 // --- Audio Playback Helper ---
 export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
-    const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
+    const [isLoadingAudio, setIsLoadingAudio] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
     const [highlightedRange, setHighlightedRange] = useState<{start: number, end: number} | null>(null);
     const [activePlaybackKey, setActivePlaybackKey] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             return;
         }
 
-        setIsPlaying(prev => ({ ...prev, [key]: true }));
+        setIsLoadingAudio(prev => ({ ...prev, [key]: true }));
         try {
             // Priority 2: Generate with AI
             const result = await generateAudio({ text });
@@ -97,7 +97,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
              // Also fallback if the flow itself throws an unexpected error
              playWithBrowserTTS(key, text);
         } finally {
-            setIsPlaying(prev => ({ ...prev, [key]: false }));
+            setIsLoadingAudio(prev => ({ ...prev, [key]: false }));
         }
     };
     
@@ -113,7 +113,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
              return;
         }
 
-        setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
+        setIsLoadingAudio(prev => ({ ...prev, [audioKey]: true }));
         try {
             // Priority 2: Generate with AI
             const result = await generateAudio({ text: word.term });
@@ -133,7 +133,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
              // Also fallback if the flow itself throws an unexpected error
              playWithBrowserTTS(audioKey, word.term);
         } finally {
-             setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
+             setIsLoadingAudio(prev => ({ ...prev, [audioKey]: false }));
         }
     }, [setWords, speechRate]);
     
@@ -147,7 +147,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             return;
         }
 
-        setIsPlaying(prev => ({ ...prev, [audioKey]: true }));
+        setIsLoadingAudio(prev => ({ ...prev, [audioKey]: true }));
         try {
             const result = await generateAudio({ text: word.term });
             if (result.audioUrl) {
@@ -161,7 +161,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         } catch (error: any) {
              playWithBrowserTTS(audioKey, word.term);
         } finally {
-             setIsPlaying(prev => ({ ...prev, [audioKey]: false }));
+             setIsLoadingAudio(prev => ({ ...prev, [audioKey]: false }));
         }
     }, [setWords, speechRate]);
 
@@ -184,5 +184,5 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
 
-    return { audioRef, isPlaying, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
+    return { audioRef, isLoadingAudio, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };

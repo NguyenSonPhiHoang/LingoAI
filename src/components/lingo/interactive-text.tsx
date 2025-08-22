@@ -21,7 +21,7 @@ interface InteractiveTextProps {
 }
 
 const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary, playbackHook, activePlaybackKey }) => {
-    const { playTermAudio, isPlaying, highlightedRange, activePlaybackKey: currentActiveKey } = playbackHook;
+    const { playTermAudio, isLoadingAudio, highlightedRange, activePlaybackKey: currentActiveKey } = playbackHook;
 
     const vocabMap = useMemo(() => {
         const map = new Map<string, CombinedVocabulary>();
@@ -52,7 +52,7 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
             if (vocabMap.has(lowerPart)) {
                 const vocabWord = vocabMap.get(lowerPart)!;
                 const audioKey = vocabWord.userVocabularyId || vocabWord.id;
-                const isTermPlaying = isPlaying[audioKey];
+                const isAudioLoading = isLoadingAudio[audioKey];
                 finalParts.push(
                     <TooltipProvider key={`${activePlaybackKey}-vocab-${index}`}>
                         <Tooltip>
@@ -64,8 +64,8 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
                             <TooltipContent className="max-w-xs">
                                 <div className="flex items-center gap-2">
                                     <div className="font-bold font-sans text-lg">{vocabWord.pronunciation}</div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isTermPlaying}>
-                                        {isTermPlaying ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isAudioLoading}>
+                                        {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </TooltipContent>
@@ -79,7 +79,7 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
 
         return finalParts;
 
-    }, [text, vocabMap, playTermAudio, isPlaying, activePlaybackKey]);
+    }, [text, vocabMap, playTermAudio, isLoadingAudio, activePlaybackKey]);
 
     return <>{parts}</>;
 });

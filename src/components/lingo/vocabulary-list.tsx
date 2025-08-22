@@ -379,7 +379,7 @@ const RelatedWordBadge: FC<{
 
     if (relatedWordData) {
         const audioKey = relatedWordData.userVocabularyId || relatedWordData.id;
-        const isAudioPlaying = playbackHook.activePlaybackKey === audioKey;
+        const isAudioLoading = playbackHook.isLoadingAudio[audioKey];
         return (
             <TooltipProvider>
                 <Tooltip>
@@ -397,9 +397,9 @@ const RelatedWordBadge: FC<{
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(relatedWordData); }}
-                                disabled={isAudioPlaying}
+                                disabled={isAudioLoading}
                             >
-                                {isAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                                {isAudioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
                             </Button>
                         </div>
                     </TooltipContent>
@@ -470,8 +470,8 @@ const VocabularyListInternal: FC<{
                 const termAudioKey = `${word.userVocabularyId}-term`;
                 const sentenceAudioKey = `${word.userVocabularyId}-sentence`;
                 const definitionTranslationKey = `${word.userVocabularyId}-definition`;
-                const isTermAudioPlaying = playbackHook.activePlaybackKey === termAudioKey;
-                const isSentenceAudioPlaying = playbackHook.activePlaybackKey === sentenceAudioKey;
+                const isTermAudioLoading = playbackHook.isLoadingAudio[termAudioKey];
+                const isSentenceAudioLoading = playbackHook.isLoadingAudio[sentenceAudioKey];
                 const isDefinitionTranslating = playbackHook.isTranslating[definitionTranslationKey];
 
                 return (
@@ -488,10 +488,10 @@ const VocabularyListInternal: FC<{
                                   variant="ghost"
                                   size="icon"
                                   onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
-                                  disabled={isTermAudioPlaying}
+                                  disabled={isTermAudioLoading}
                                   className="h-8 w-8 flex-shrink-0"
                                 >
-                                  {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
+                                  {isTermAudioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
                                   <span className="sr-only">Play term audio</span>
                                 </Button>
                                 <Button
@@ -529,10 +529,10 @@ const VocabularyListInternal: FC<{
                                   variant="ghost"
                                   size="icon"
                                   onClick={(e) => { e.stopPropagation(); playbackHook.playTermAudio(word); }}
-                                  disabled={isTermAudioPlaying}
+                                  disabled={isTermAudioLoading}
                                   className="h-8 w-8 flex-shrink-0"
                                 >
-                                  {isTermAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
+                                  {isTermAudioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.audioUrl && "text-primary")} />}
                                   <span className="sr-only">Play term audio</span>
                                 </Button>
                                 <div>
@@ -573,10 +573,10 @@ const VocabularyListInternal: FC<{
                                   <Button
                                       variant="ghost" size="icon"
                                       onClick={(e) => { e.stopPropagation(); playbackHook.playAudio(sentenceAudioKey, word.sentence); }}
-                                      disabled={isSentenceAudioPlaying}
+                                      disabled={isSentenceAudioLoading}
                                       className="h-8 w-8 flex-shrink-0 -ml-2"
                                   >
-                                      {isSentenceAudioPlaying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
+                                      {isSentenceAudioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
                                       <span className="sr-only">Play sentence audio</span>
                                   </Button>
                                   <p className="italic pt-1.5">

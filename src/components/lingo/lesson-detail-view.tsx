@@ -258,8 +258,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
 
         const renderToolbar = (textToProcess: string, customKey?: string) => (
              <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(customKey || translationKey, textToProcess)} disabled={playbackHook.activePlaybackKey === (customKey || translationKey)}>
-                    {playbackHook.activePlaybackKey === (customKey || translationKey) ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(customKey || translationKey, textToProcess)} disabled={playbackHook.isLoadingAudio[customKey || translationKey]}>
+                    {playbackHook.isLoadingAudio[customKey || translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(customKey || translationKey, textToProcess)} disabled={playbackHook.isTranslating[customKey || translationKey]}>
                     {playbackHook.isTranslating[customKey || translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -606,8 +606,8 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                         <div className="flex justify-between items-start">
                             <div className="font-semibold mb-3 flex-1">{qIndex + 1}. <InteractiveText text={q.question} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} /></div>
                             <div className="flex items-center">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, q.question)} disabled={playbackHook.activePlaybackKey === translationKey}>
-                                    {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, q.question)} disabled={playbackHook.isLoadingAudio[translationKey]}>
+                                    {playbackHook.isLoadingAudio[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, q.question)} disabled={playbackHook.isTranslating[translationKey]}>
                                     {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -652,8 +652,8 @@ const ReadingPractice: FC<{ questions: ReadingComprehensionQuestion[], passage: 
                                      <div className="flex items-center">
                                          {feedback[qIndex] && (
                                             <>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playbackHook.playAudio(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={playbackHook.activePlaybackKey === `feedback-${qIndex}`}>
-                                                {playbackHook.activePlaybackKey === `feedback-${qIndex}` ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playbackHook.playAudio(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={playbackHook.isLoadingAudio[`feedback-${qIndex}`]}>
+                                                {playbackHook.isLoadingAudio[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                             </Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-red-900 hover:bg-red-100" onClick={() => playbackHook.toggleTranslation(`feedback-${qIndex}`, feedback[qIndex]!)} disabled={playbackHook.isTranslating[`feedback-${qIndex}`]}>
                                                 {playbackHook.isTranslating[`feedback-${qIndex}`] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -728,8 +728,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                         <div className="font-semibold"><InteractiveText text={prompt.vietnamesePrompt} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={promptKey} /></div>
                     </div>
                      <div className="flex items-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(promptKey, prompt.vietnamesePrompt)} disabled={playbackHook.activePlaybackKey === promptKey}>
-                           {playbackHook.activePlaybackKey === promptKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(promptKey, prompt.vietnamesePrompt)} disabled={playbackHook.isLoadingAudio[promptKey]}>
+                           {playbackHook.isLoadingAudio[promptKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </Button>
                      </div>
                 </div>
@@ -738,8 +738,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                 <div className="flex items-start gap-2 text-sm p-2 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-r-md">
                    <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
                    <div className="flex-1"><strong>Hint:</strong> <InteractiveText text={prompt.englishHint} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={hintKey}/></div>
-                   <Button variant="ghost" size="icon" className="h-5 w-5 -mr-1 -mt-1 text-yellow-800 hover:bg-yellow-100" onClick={() => playbackHook.playAudio(hintKey, prompt.englishHint)} disabled={playbackHook.activePlaybackKey === hintKey}>
-                      {playbackHook.activePlaybackKey === hintKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                   <Button variant="ghost" size="icon" className="h-5 w-5 -mr-1 -mt-1 text-yellow-800 hover:bg-yellow-100" onClick={() => playbackHook.playAudio(hintKey, prompt.englishHint)} disabled={playbackHook.isLoadingAudio[hintKey]}>
+                      {playbackHook.isLoadingAudio[hintKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                    </Button>
                 </div>
                  <Textarea 
@@ -761,8 +761,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                              <div className="flex justify-between items-start">
                                 <div className="font-bold mb-1 flex-1">AI Feedback</div>
                                  <div className="flex items-center">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playbackHook.playAudio(feedbackKey, feedback.feedback)} disabled={playbackHook.activePlaybackKey === feedbackKey}>
-                                        {playbackHook.activePlaybackKey === feedbackKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playbackHook.playAudio(feedbackKey, feedback.feedback)} disabled={playbackHook.isLoadingAudio[feedbackKey]}>
+                                        {playbackHook.isLoadingAudio[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-900 hover:bg-blue-100" onClick={() => playbackHook.toggleTranslation(feedbackKey, feedback.feedback)} disabled={playbackHook.isTranslating[feedbackKey]}>
                                         {playbackHook.isTranslating[feedbackKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -780,8 +780,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                             <div className="flex justify-between items-start">
                                 <div className="font-bold mb-1 flex-1">Suggested Answer</div>
                                 <div className="flex items-center">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playbackHook.playAudio(correctedKey, feedback.correctedText)} disabled={playbackHook.activePlaybackKey === correctedKey}>
-                                        {playbackHook.activePlaybackKey === correctedKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playbackHook.playAudio(correctedKey, feedback.correctedText)} disabled={playbackHook.isLoadingAudio[correctedKey]}>
+                                        {playbackHook.isLoadingAudio[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-green-900 hover:bg-green-100" onClick={() => playbackHook.toggleTranslation(correctedKey, feedback.correctedText)} disabled={playbackHook.isTranslating[correctedKey]}>
                                         {playbackHook.isTranslating[correctedKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -802,8 +802,8 @@ const WritingPracticePrompt: FC<{ prompt: WritingPrompt } & PracticeComponentPro
                 <div className="flex justify-between w-full">
                     <div className="text-xs text-muted-foreground flex-1">Example answer: "<InteractiveText text={prompt.exampleAnswer} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={answerKey} />"</div>
                      <div className="flex items-center">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playbackHook.playAudio(answerKey, prompt.exampleAnswer)} disabled={playbackHook.activePlaybackKey === answerKey}>
-                            {playbackHook.activePlaybackKey === answerKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playbackHook.playAudio(answerKey, prompt.exampleAnswer)} disabled={playbackHook.isLoadingAudio[answerKey]}>
+                            {playbackHook.isLoadingAudio[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </Button>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => playbackHook.toggleTranslation(answerKey, prompt.exampleAnswer)} disabled={playbackHook.isTranslating[answerKey]}>
                             {playbackHook.isTranslating[answerKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -882,8 +882,8 @@ const SpeakingPracticeLine: FC<{ line: any; index: number } & PracticeComponentP
                                     <Clipboard className="h-4 w-4" />
                                 </Button>
                             )}
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, line.line)} disabled={playbackHook.activePlaybackKey === translationKey}>
-                                {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, line.line)} disabled={playbackHook.isLoadingAudio[translationKey]}>
+                                {playbackHook.isLoadingAudio[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, line.line)} disabled={playbackHook.isTranslating[translationKey]}>
                                 {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
@@ -956,15 +956,15 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
                                 <div className="flex items-center justify-center flex-col gap-1">
                                     <div className="font-bold text-xl">{pair.word1}</div>
                                     <div className="font-sans text-muted-foreground">{pair.pronunciation1}</div>
-                                    <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`pair-${index}-1`, pair.word1)} disabled={playbackHook.activePlaybackKey === `pair-${index}-1`}>
-                                       {playbackHook.activePlaybackKey === `pair-${index}-1` ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                    <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`pair-${index}-1`, pair.word1)} disabled={playbackHook.isLoadingAudio[`pair-${index}-1`]}>
+                                       {playbackHook.isLoadingAudio[`pair-${index}-1`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
                                     </Button>
                                 </div>
                                 <div className="flex items-center justify-center flex-col gap-1">
                                     <div className="font-bold text-xl">{pair.word2}</div>
                                     <div className="font-sans text-muted-foreground">{pair.pronunciation2}</div>
-                                    <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`pair-${index}-2`, pair.word2)} disabled={playbackHook.activePlaybackKey === `pair-${index}-2`}>
-                                       {playbackHook.activePlaybackKey === `pair-${index}-2` ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                    <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`pair-${index}-2`, pair.word2)} disabled={playbackHook.isLoadingAudio[`pair-${index}-2`]}>
+                                       {playbackHook.isLoadingAudio[`pair-${index}-2`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -982,8 +982,8 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
                     {exercise.sentenceExercise.map((sentence, index) => (
                          <Card key={index} className="bg-muted/50">
                              <CardContent className="p-4 flex items-center gap-4">
-                                <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`sentence-${index}`, sentence)} disabled={playbackHook.activePlaybackKey === `sentence-${index}`}>
-                                   {playbackHook.activePlaybackKey === `sentence-${index}` ? <Loader2 className="animate-spin" /> : <Volume2 />}
+                                <Button size="icon" variant="ghost" onClick={() => playbackHook.playAudio(`sentence-${index}`, sentence)} disabled={playbackHook.isLoadingAudio[`sentence-${index}`]}>
+                                   {playbackHook.isLoadingAudio[`sentence-${index}`] ? <Loader2 className="animate-spin" /> : <Volume2 />}
                                 </Button>
                                 <p className="italic flex-1">"<InteractiveText text={sentence} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={`sentence-${index}`} />"</p>
                             </CardContent>
