@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect } from "react";
 import type { FC } from "react";
-import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform, Star, Youtube } from "lucide-react";
+import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform, Star, Youtube, Globe } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -137,14 +137,17 @@ const getResourceType = (url: string): ResourceType => {
 }
 
 const DriveIcon: FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="m10.4 12.6-1.8 3.2 3.8-2.4-1.8-3.2-3.8 2.4z"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 28" fill="none" {...props}>
+        <path d="M21.927 0H10.07L0 17.434H11.857L21.927 0Z" fill="#FFC107"/>
+        <path d="M31.428 17.279L23.812 4.145L15.996 17.28H31.428V17.279Z" fill="#FFC107"/>
+        <path d="M5.875 28L15.945 10.566L23.705 23.597L17.757 28H5.875Z" fill="#4CAF50"/>
+        <path d="M25.751 19.467L19.822 28H32L25.751 19.467Z" fill="#1976D2"/>
     </svg>
 );
 
 const TikTokIcon: FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-        <path d="M12 12a4 4 0 1 0 4 4V8a8 8 0 1 1-8-8"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
+        <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-2.43.05-4.84-.95-6.43-2.8-1.59-1.87-2.32-4.2-1.86-6.53.46-2.32 2.14-4.27 4.12-5.12 1.98-.85 4.23-.9 6.2-.02.03 2.38-.02 4.76.01 7.14.01.21.05.42.12.62.18.5.54.95 1.04 1.15.5.2 1.05.25 1.58.25.61 0 1.22-.16 1.76-.48.54-.32.95-.77 1.19-1.32.24-.55.28-1.15.28-1.75.01-2.58.01-5.16.01-7.74 0-2.38.01-4.76.02-7.14z"/>
     </svg>
 );
 
@@ -153,7 +156,7 @@ const resourceIcons: Record<ResourceType, React.ElementType> = {
     youtube: Youtube,
     tiktok: TikTokIcon,
     drive: DriveIcon,
-    link: LinkIcon
+    link: Globe
 };
 
 const resourceFormSchema = z.object({
@@ -530,5 +533,3 @@ const LevelView: FC = () => {
 };
 
 export default LevelView;
-
-    
