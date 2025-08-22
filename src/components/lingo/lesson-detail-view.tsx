@@ -34,7 +34,9 @@ import {
   TrendingUp,
   AudioWaveform,
   Save,
-  AlertCircle
+  AlertCircle,
+  Square,
+  Play
 } from "lucide-react";
 import isEqual from 'lodash.isequal';
 
@@ -70,7 +72,6 @@ import {
   type WritingPrompt,
   type GenerateListeningExerciseOutput,
   type GenerateSpeakingExerciseOutput,
-  type GeneratePronunciationExerciseOutput,
   type GenerateWritingFeedbackOutput,
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
@@ -82,6 +83,7 @@ import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import InteractiveText from "./interactive-text";
 import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
+import { useAudioRecorder } from "@/hooks/use-audio-recorder";
 
 
 interface LessonDetailViewProps {
@@ -852,14 +854,60 @@ const ListeningPractice: FC<{ exercise: GenerateListeningExerciseOutput, passage
 };
 
 
-const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & PracticeComponentProps> = ({ exercise, vocabulary, playbackHook }) => {
+const SpeakingPracticeLine: FC<{ line: any; index: number } & PracticeComponentProps> = ({ line, index, vocabulary, playbackHook }) => {
     const { toast } = useToast();
+    const { isRecording, audioURL, startRecording, stopRecording } = useAudioRecorder();
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: "Copied!", description: "Line copied to clipboard." });
     }
-    
+
+    const translationKey = `line-${index}`;
+
+    return (
+        <div>
+            <div className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
+                {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
+                <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
+                    <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} /></div>
+                        <div className="flex">
+                            {line.role === 'You' && (
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(line.line)}>
+                                    <Clipboard className="h-4 w-4" />
+                                </Button>
+                            )}
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, line.line)} disabled={playbackHook.activePlaybackKey === translationKey}>
+                                {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, line.line)} disabled={playbackHook.isTranslating[translationKey]}>
+                                {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {playbackHook.translations[translationKey] && (
+                <div className={`text-sm text-blue-600 p-2 mt-1 max-w-sm ${line.role === 'You' ? 'ml-auto' : 'ml-11'}`}>
+                    <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
+                </div>
+            )}
+            {line.role === 'You' && (
+                <div className="flex justify-end mt-2">
+                    <div className="flex items-center gap-2 bg-background border p-2 rounded-lg">
+                        <Button size="icon" variant={isRecording ? 'destructive' : 'outline'} onClick={isRecording ? stopRecording : startRecording}>
+                            {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                        </Button>
+                        {audioURL && <audio src={audioURL} controls className="h-9" />}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & PracticeComponentProps> = ({ exercise, vocabulary, playbackHook }) => {
     return (
         <div className="space-y-6">
             <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
@@ -867,39 +915,9 @@ const SpeakingPractice: FC<{ exercise: GenerateSpeakingExerciseOutput } & Practi
                 <div className="text-sm text-blue-800"><InteractiveText text={exercise.scenario} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} /></div>
             </div>
             <div className="space-y-4">
-            {exercise.dialogue.map((line, index) => {
-                const translationKey = `line-${index}`;
-                return (
-                    <div key={index}>
-                        <div className={`flex gap-3 ${line.role === 'You' ? 'justify-end' : ''}`}>
-                            {line.role !== 'You' && <div className="bg-primary text-primary-foreground h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">AI</div>}
-                            <div className={`relative max-w-sm p-3 rounded-lg ${line.role === 'You' ? 'bg-muted' : 'bg-primary/10'}`}>
-                               <div className="flex justify-between items-start gap-2">
-                                  <div className="flex-1"><strong className="font-semibold">{line.role}:</strong> <InteractiveText text={line.line} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={translationKey} /></div>
-                                  <div className="flex">
-                                      {line.role === 'You' && (
-                                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => copyToClipboard(line.line)}>
-                                               <Clipboard className="h-4 w-4" />
-                                           </Button>
-                                       )}
-                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.playAudio(translationKey, line.line)} disabled={playbackHook.activePlaybackKey === translationKey}>
-                                            {playbackHook.activePlaybackKey === translationKey ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                        </Button>
-                                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => playbackHook.toggleTranslation(translationKey, line.line)} disabled={playbackHook.isTranslating[translationKey]}>
-                                            {playbackHook.isTranslating[translationKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Languages className="h-4 w-4" />}
-                                       </Button>
-                                  </div>
-                               </div>
-                            </div>
-                        </div>
-                        {playbackHook.translations[translationKey] && (
-                            <div className={`text-sm text-blue-600 p-2 mt-1 max-w-sm ${line.role === 'You' ? 'ml-auto' : 'ml-11'}`}>
-                                <strong>Dịch:</strong> {playbackHook.translations[translationKey]}
-                            </div>
-                        )}
-                    </div>
-                )
-            })}
+                {exercise.dialogue.map((line, index) => (
+                    <SpeakingPracticeLine key={index} line={line} index={index} vocabulary={vocabulary} playbackHook={playbackHook} />
+                ))}
             </div>
         </div>
     );
@@ -1022,4 +1040,4 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 export default LessonDetailView;
 
-
+    
