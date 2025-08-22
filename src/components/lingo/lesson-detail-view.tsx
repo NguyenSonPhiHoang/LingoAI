@@ -91,6 +91,7 @@ interface LessonDetailViewProps {
   vocabulary: CombinedVocabulary[];
   onBack: () => void;
   setWords: React.Dispatch<React.SetStateAction<CombinedVocabulary[]>>;
+  onLessonUpdate: (updatedLesson: Lesson) => void;
 }
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
@@ -110,7 +111,7 @@ const statusOptions: { value: LessonStatus; label: string; icon: React.ElementTy
 ];
 
 
-const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords }) => {
+const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords, onLessonUpdate }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
   
   // State for temporary, unsaved content and exercises
@@ -142,13 +143,15 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const handleStatusChange = async (newStatus: LessonStatus) => {
     if (currentLesson.status === newStatus) return;
     const previousStatus = currentLesson.status;
-    setCurrentLesson(prev => ({ ...prev, status: newStatus }));
+    const updatedLesson = { ...currentLesson, status: newStatus };
+    setCurrentLesson(updatedLesson);
 
     try {
         await updateLesson(currentLesson.docId, { status: newStatus });
+        onLessonUpdate(updatedLesson); // Propagate change to parent
         toast({ title: "Status Updated" });
     } catch (error) {
-        setCurrentLesson(prev => ({ ...prev, status: previousStatus }));
+        setCurrentLesson(prev => ({ ...prev, status: previousStatus })); // Revert on failure
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update lesson status.' });
     }
   };
@@ -236,6 +239,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         // Commit temporary state to current state
         const updatedLesson = { ...currentLesson, content: finalContent, exercises: finalExercises };
         setCurrentLesson(updatedLesson);
+        onLessonUpdate(updatedLesson);
         
         toast({ title: "Success!", description: "Your lesson has been saved." });
     } catch(error) {
@@ -1039,5 +1043,3 @@ const PronunciationPractice: FC<{ exercise: GeneratePronunciationExerciseOutput 
 
 
 export default LessonDetailView;
-
-    

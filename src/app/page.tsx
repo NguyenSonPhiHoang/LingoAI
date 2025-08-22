@@ -120,6 +120,11 @@ const Home: FC = () => {
       setActiveViewState({ view });
   }
 
+  const handleLessonUpdate = (updatedLesson: Lesson) => {
+    setLessons(prev => prev.map(l => l.id === updatedLesson.id ? updatedLesson : l));
+  };
+
+
   const renderContent = () => {
     if (user.status === 'approved' && isLoading) {
         return (
@@ -168,6 +173,7 @@ const Home: FC = () => {
               vocabulary={words}
               onBack={() => setActiveViewState({ view: "my-lessons" })}
               setWords={setWords}
+              onLessonUpdate={handleLessonUpdate}
             />
           ) : (
             <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />
