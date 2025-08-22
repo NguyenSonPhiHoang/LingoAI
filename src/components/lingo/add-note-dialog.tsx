@@ -225,119 +225,115 @@ const AddNoteDialog: FC<{
                     <PlusCircle className="mr-2" /> Add New Note
                 </Button>
             </DialogTrigger>
-            <DialogContent className={cn("sm:max-w-2xl", isCanvasFullscreen && "w-screen h-screen max-w-full")}>
-                <div className={cn(isCanvasFullscreen && "hidden")}>
+            <DialogContent className={cn("sm:max-w-2xl", isCanvasFullscreen && "w-screen h-screen max-w-full p-0 flex flex-col")}>
+                <div className={cn("space-y-4", isCanvasFullscreen && "hidden")}>
                     <DialogHeader>
                         <DialogTitle>Add a New Note</DialogTitle>
                         <DialogDescription>
                             Write with Markdown, paste from clipboard, or use a stylus to write by hand.
                         </DialogDescription>
                     </DialogHeader>
-                    <Tabs defaultValue="write">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="write">Write</TabsTrigger>
-                            <TabsTrigger value="paste" onClick={handlePasteFromClipboard}>Paste</TabsTrigger>
-                            <TabsTrigger value="draw">Handwriting</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="write" className="space-y-4 pt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="note-title">Note Title</Label>
-                                <Input id="note-title" value={noteTitle} onChange={e => setNoteTitle(e.target.value)} />
+                </div>
+                 <Tabs defaultValue="write" className={cn("flex flex-col", isCanvasFullscreen ? "flex-1" : "space-y-4")}>
+                    <TabsList className={cn("grid w-full grid-cols-3", isCanvasFullscreen && "hidden")}>
+                        <TabsTrigger value="write">Write</TabsTrigger>
+                        <TabsTrigger value="paste" onClick={handlePasteFromClipboard}>Paste</TabsTrigger>
+                        <TabsTrigger value="draw">Handwriting</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="write" className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="note-title">Note Title</Label>
+                            <Input id="note-title" value={noteTitle} onChange={e => setNoteTitle(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="note-content">Content (Markdown supported)</Label>
+                            <div className="space-y-1">
+                                <MarkdownToolbar textareaRef={writeTextareaRef} onContentChange={setNoteContent} />
+                                <Textarea id="note-content" ref={writeTextareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="note-content">Content (Markdown supported)</Label>
-                                <div className="space-y-1">
-                                    <MarkdownToolbar textareaRef={writeTextareaRef} onContentChange={setNoteContent} />
-                                    <Textarea id="note-content" ref={writeTextareaRef} value={noteContent} onChange={e => setNoteContent(e.target.value)} rows={10} />
-                                </div>
-                            </div>
+                        </div>
+                        <DialogFooter>
                             <Button className="w-full" onClick={() => handleSaveNote(noteContent, noteTitle, 'markdown')} disabled={isSaving}>
                                 {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
                                 Save Written Note
                             </Button>
-                        </TabsContent>
-                        <TabsContent value="paste" className="space-y-4 pt-4">
-                            {clipboardImage ? (
-                                <div className="space-y-4 text-center">
-                                    <div className="relative border-2 border-dashed rounded-lg p-2 max-h-60 overflow-hidden">
-                                        <Image src={clipboardImage} alt="Clipboard image" width={300} height={200} className="w-full h-auto object-contain max-h-56" />
-                                    </div>
-                                    <Button onClick={handleExtractText} disabled={isExtracting} className="w-full">
-                                        {isExtracting ? <Loader2 className="mr-2 animate-spin" /> : <Wand2 className="mr-2" />}
-                                        Extract Text from Image
-                                    </Button>
+                        </DialogFooter>
+                    </TabsContent>
+                    <TabsContent value="paste" className="space-y-4 pt-4">
+                        {clipboardImage ? (
+                            <div className="space-y-4 text-center">
+                                <div className="relative border-2 border-dashed rounded-lg p-2 max-h-60 overflow-hidden">
+                                    <Image src={clipboardImage} alt="Clipboard image" width={300} height={200} className="w-full h-auto object-contain max-h-56" />
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="clipboard-title">Note Title</Label>
-                                        <Input id="clipboard-title" value={noteTitle} onChange={e => setNoteTitle(e.target.value)} />
+                                <Button onClick={handleExtractText} disabled={isExtracting} className="w-full">
+                                    {isExtracting ? <Loader2 className="mr-2 animate-spin" /> : <Wand2 className="mr-2" />}
+                                    Extract Text from Image
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="clipboard-title">Note Title</Label>
+                                    <Input id="clipboard-title" value={noteTitle} onChange={e => setNoteTitle(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="clipboard-content">Pasted Content</Label>
+                                    <div className="space-y-1">
+                                    <MarkdownToolbar textareaRef={pastedTextareaRef} onContentChange={setClipboardText} />
+                                    <Textarea id="clipboard-content" ref={pastedTextareaRef} value={clipboardText} onChange={(e) => setClipboardText(e.target.value)} rows={10} placeholder="Click the 'Paste from Clipboard' tab header to read clipboard data..." />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="clipboard-content">Pasted Content</Label>
-                                        <div className="space-y-1">
-                                        <MarkdownToolbar textareaRef={pastedTextareaRef} onContentChange={setClipboardText} />
-                                        <Textarea id="clipboard-content" ref={pastedTextareaRef} value={clipboardText} onChange={(e) => setClipboardText(e.target.value)} rows={10} placeholder="Click the 'Paste from Clipboard' tab header to read clipboard data..." />
-                                        </div>
-                                    </div>
+                                </div>
+                                 <DialogFooter>
                                     <Button className="w-full" onClick={() => handleSaveNote(clipboardText, noteTitle, 'markdown')} disabled={isSaving || !clipboardText}>
                                         {isSaving ? <Loader2 className="mr-2 animate-spin" /> : null}
                                         Save Pasted Note
                                     </Button>
-                                </>
-                            )}
-                        </TabsContent>
-                        <TabsContent value="draw" className="space-y-4 pt-4">
-                             {/* This content is now handled by the fullscreen view logic below */}
-                        </TabsContent>
-                    </Tabs>
-                </div>
-
-                {/* Handwriting Canvas Area (conditionally fullscreen) */}
-                <div className={cn(
-                    "space-y-4", 
-                    isCanvasFullscreen 
-                        ? "fixed inset-0 bg-background z-50 p-4 flex flex-col" 
-                        : "relative"
-                )}>
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Label>Color:</Label>
-                            <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-14 h-9 p-1" />
+                                </DialogFooter>
+                            </>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="draw" className={cn("pt-4 flex flex-col", isCanvasFullscreen ? "flex-1 h-full" : "space-y-4")}>
+                        <div className={cn("flex flex-wrap items-center gap-4", isCanvasFullscreen && "p-4 border-b")}>
+                            <div className="flex items-center gap-2">
+                                <Label>Color:</Label>
+                                <Input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} className="w-14 h-9 p-1" />
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                                <Label>Size:</Label>
+                                <Input type="range" min="1" max="20" value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="flex-1" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" onClick={() => canvasRef.current?.undo()}>
+                                    <Undo className="h-4 w-4" />
+                                    <span className="sr-only">Undo</span>
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => canvasRef.current?.clearCanvas()}>
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Clear</span>
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setIsCanvasFullscreen(prev => !prev)}>
+                                    {isCanvasFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                                    <span className="sr-only">{isCanvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+                                </Button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-1">
-                            <Label>Size:</Label>
-                            <Input type="range" min="1" max="20" value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))} className="flex-1" />
+                        <div className={cn("border rounded-lg overflow-hidden", isCanvasFullscreen && "flex-1 border-0 rounded-none")}>
+                                <ReactSketchCanvas
+                                ref={canvasRef}
+                                strokeWidth={strokeWidth}
+                                strokeColor={strokeColor}
+                                height={isCanvasFullscreen ? "100%" : "300px"}
+                                width="100%"
+                            />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => canvasRef.current?.undo()}>
-                                <Undo className="h-4 w-4" />
-                                <span className="sr-only">Undo</span>
+                         <DialogFooter className={cn(isCanvasFullscreen && "p-4 border-t")}>
+                            <Button className="w-full" onClick={handleSaveCanvas} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Save Drawing
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => canvasRef.current?.clearCanvas()}>
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Clear</span>
-                            </Button>
-                             <Button variant="outline" size="icon" onClick={() => setIsCanvasFullscreen(prev => !prev)}>
-                                {isCanvasFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                                <span className="sr-only">{isCanvasFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
-                            </Button>
-                        </div>
-                    </div>
-                    <div className={cn("border rounded-lg overflow-hidden", isCanvasFullscreen && "flex-1")}>
-                            <ReactSketchCanvas
-                            ref={canvasRef}
-                            strokeWidth={strokeWidth}
-                            strokeColor={strokeColor}
-                            height={isCanvasFullscreen ? "100%" : "300px"}
-                            width="100%"
-                        />
-                    </div>
-                    <Button className="w-full" onClick={handleSaveCanvas} disabled={isSaving}>
-                        {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Drawing
-                    </Button>
-                </div>
+                        </DialogFooter>
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );
