@@ -1,46 +1,75 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check ownership
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is the owner of the document
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
-
-    // Helper function to check if the user is an admin
+    
+    // Helper function to check if user is an admin
     function isAdmin() {
-      // In a real app, this should check a custom claim or a role field in the user's doc.
-      // For this context, we'll assume a specific UID is the admin.
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // In a real app, this should use custom claims. For now, we check the 'role' field in the user's doc.
+      // This allows admins to read data for management purposes.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users can read their own data and admins can read anyone's.
-    // Users can only create their own user doc and update their own data.
+    // Users can only read/update their own profile data.
+    // Admin can read any user profile.
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      // Deny delete by default for safety.
-      allow delete: if isAdmin();
+      allow read, update: if isOwner(userId) || isAdmin();
     }
     
-    // Anyone can read global words and learning resources
-    match /words/{wordId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin(); // Only admins can modify global words
+    // For all user-specific data, only the owner can read/write.
+    // Admins can read for management.
+    match /lessons/{lessonId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
     }
     
-    match /learningResources/{resourceId} {
-       allow read: if request.auth != null;
-       allow create, update, delete: if isAdmin();
-       // Rating is handled within the resource document
+    match /storybooks/{storybookId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    // User-specific data: User can manage their own documents.
-    // This rule applies to all collections where documents have a `userId` field.
-    match /{collection}/{docId} {
-       allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /library/{docId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    match /library_content/{contentId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    match /userVocabulary/{vocabId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    match /testResults/{resultId} {
+      allow read, write: if isOwner(resource.data.userId) || isAdmin();
+    }
+    
+    match /user_activity/{activityId} {
+        // userId is part of the document ID in the format `userId_YYYY-MM-DD`
+        allow read, write: if isOwner(activityId.split('_')[0]) || isAdmin();
+    }
+
+    // Global 'words' collection can be read by any authenticated user.
+    // Only admins can create, update, or delete global words.
+    match /words/{wordId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Learning resources can be read by any authenticated user.
+    // Only admins can create, update, or delete them.
+    match /learningResources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }
