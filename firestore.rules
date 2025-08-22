@@ -2,57 +2,78 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check for admin role
+
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Helper function to check if the user is an admin
     function isAdmin() {
+      // Make sure to create a 'users' collection where each document ID is the user's UID
+      // and each document has a 'role' field.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Users can read/update their own data. Admins can do anything.
+    // Default to denying all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users can read/update their own info. Admins can read all.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow list, create, delete: if isAdmin();
-    }
-
-    // Collections where users can only access their own documents
-    match /lessons/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
+      allow read: if isAdmin() || isOwner(userId);
+      // Allow create for any authenticated user during signup
+      allow create: if request.auth != null;
+      // Allow user to update their own document
+      allow update: if isOwner(userId);
     }
     
-    match /storybooks/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    match /userVocabulary/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
-    }
-    
-    match /library/{docId} {
-       allow read, write: if request.auth.uid == resource.data.userId;
-    }
-    
-    match /library_content/{docId} {
-       allow read, write: if request.auth.uid == resource.data.userId;
-    }
-    
-    match /testResults/{docId} {
-       allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    match /user_activity/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Global collections that are read-only for users, writable by admin
-    match /words/{wordId} {
-      allow read: if request.auth.uid != null;
+    // Public resources readable by any authenticated user
+    match /learningResources/{docId} {
+      allow read: if request.auth != null;
       allow write: if isAdmin();
     }
     
-    match /learningResources/{resourceId} {
-        allow read: if request.auth.uid != null;
-        // Writing (add, update, delete) handled by service-side logic/admin check
+    match /words/{docId} {
+        allow read: if request.auth != null;
         allow write: if isAdmin();
+    }
+    
+    // --- User-specific data collections ---
+    
+    // Storybooks: Users can read/write their own stories.
+    // The 'list' rule is crucial for querying collections.
+    match /storybooks/{docId} {
+      allow create, update, delete, read: if request.auth.uid == resource.data.userId;
+      allow list: if request.query.where.left == "userId" &&
+                     request.query.where.op == "==" &&
+                     request.query.where.right == request.auth.uid;
+    }
+
+    // Other user-specific collections
+    match /lessons/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+    }
+    
+    match /userVocabulary/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+    }
+    
+    match /library/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+    }
+    
+    match /library_content/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+    }
+    
+    match /testResults/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
+    }
+    
+    match /user_activity/{docId} {
+        allow read, write: if isOwner(resource.data.userId);
     }
   }
 }
