@@ -3,50 +3,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Deny all access by default
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function to check for admin role
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // USER DATA: Users can update their own info. Only admins can see the full list.
+    // Users can read/update their own data. Admins can do anything.
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId;
-      // allow list: if request.auth.token.role == 'admin'; // For future admin functionality
+      allow list, create, delete: if isAdmin();
     }
 
-    // SHARED RESOURCES: Any authenticated user can read, only admin can write.
+    // Collections where users can only access their own documents
+    match /lessons/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /storybooks/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    match /userVocabulary/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /library/{docId} {
+       allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /library_content/{docId} {
+       allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /testResults/{docId} {
+       allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    match /user_activity/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // Global collections that are read-only for users, writable by admin
     match /words/{wordId} {
       allow read: if request.auth.uid != null;
-      allow write: if request.auth.token.role == 'admin';
+      allow write: if isAdmin();
     }
+    
     match /learningResources/{resourceId} {
-      allow read: if request.auth.uid != null;
-      allow write: if request.auth.token.role == 'admin';
-    }
-
-    // USER-OWNED COLLECTIONS: Users can only CUD their own documents, and can only read their own.
-    // This rule applies to get (single doc) and list (query) operations.
-    // Firestore ensures that any query will only return documents that match this condition.
-    match /lessons/{lessonId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-    match /userVocabulary/{vocabId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-     match /storybooks/{storybookId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-     match /library/{docId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-    match /library_content/{contentId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-    match /testResults/{resultId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
-    }
-    match /user_activity/{activityId} {
-      allow read, write: if request.auth.uid == request.resource.data.userId;
+        allow read: if request.auth.uid != null;
+        // Writing (add, update, delete) handled by service-side logic/admin check
+        allow write: if isAdmin();
     }
   }
 }
