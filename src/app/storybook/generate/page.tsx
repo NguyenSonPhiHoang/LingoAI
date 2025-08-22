@@ -26,6 +26,8 @@ import { addStorybook } from '@/services/storybooks';
 import { StorybookFormatSchema, UserLevelSchema, type GenerateStorybookOutput } from '@/ai/flows/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const formSchema = z.object({
@@ -321,5 +323,3 @@ const GenerateStorybookPage: FC = () => {
 }
 
 export default GenerateStorybookPage;
-
-    
