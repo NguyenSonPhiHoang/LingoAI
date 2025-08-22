@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect } from "react";
 import type { FC } from "react";
-import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform, Star } from "lucide-react";
+import { BookOpen, FilePenLine, Headphones, Mic, Loader2, Plus, Link as LinkIcon, Trash2, Upload, Wand2, AudioWaveform, Star, Youtube } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -41,6 +41,8 @@ import { cn } from '@/lib/utils';
 
 type Skill = "Listening" | "Speaking" | "Reading" | "Writing" | "Pronunciation";
 type LevelKey = 'a1' | 'a2' | 'b1' | 'b2' | 'c1' | 'c2';
+type ResourceType = 'youtube' | 'tiktok' | 'drive' | 'link';
+
 
 const levelsData: Record<LevelKey, { level: string; cefr: string; outcomes: string; skills: Record<Skill, { icon: React.ElementType, description: string }> }> = {
   a1: {
@@ -125,6 +127,34 @@ const levelColors = [
   "bg-red-50/70",
   "bg-indigo-50/70",
 ];
+
+const getResourceType = (url: string): ResourceType => {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return 'youtube';
+    if (lowerUrl.includes('tiktok.com')) return 'tiktok';
+    if (lowerUrl.includes('drive.google.com')) return 'drive';
+    return 'link';
+}
+
+const DriveIcon: FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="m10.4 12.6-1.8 3.2 3.8-2.4-1.8-3.2-3.8 2.4z"></path>
+    </svg>
+);
+
+const TikTokIcon: FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 12a4 4 0 1 0 4 4V8a8 8 0 1 1-8-8"></path>
+    </svg>
+);
+
+
+const resourceIcons: Record<ResourceType, React.ElementType> = {
+    youtube: Youtube,
+    tiktok: TikTokIcon,
+    drive: DriveIcon,
+    link: LinkIcon
+};
 
 const resourceFormSchema = z.object({
     label: z.string().min(3, "Label must be at least 3 characters."),
@@ -454,30 +484,33 @@ const LevelView: FC = () => {
                                             <CardContent>
                                                 {skillResources.length > 0 ? (
                                                     <ul className="space-y-2">
-                                                        {skillResources.map(resource => (
-                                                            <li key={resource.id} className="text-sm group flex items-center justify-between gap-2">
-                                                                <div className="flex items-center gap-2 flex-1 truncate">
-                                                                    <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors flex-1 truncate">
-                                                                        <LinkIcon className="h-4 w-4" />
-                                                                        <span className="truncate">{resource.label}</span>
-                                                                    </Link>
-                                                                    <StarRating
-                                                                        resourceId={resource.id}
-                                                                        averageRating={resource.averageRating}
-                                                                        ratingCount={resource.ratingCount}
-                                                                        userRating={resource.ratings[user?.uid || '']}
-                                                                        onRate={handleResourceRated}
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-2 flex-shrink-0">
-                                                                    {user?.role === 'admin' && (
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleResourceDeleted(resource.id)}>
-                                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            </li>
-                                                        ))}
+                                                        {skillResources.map(resource => {
+                                                            const ResourceIcon = resourceIcons[getResourceType(resource.url)];
+                                                            return (
+                                                                <li key={resource.id} className="text-sm group flex items-center justify-between gap-2">
+                                                                    <div className="flex items-center gap-2 flex-1 truncate">
+                                                                        <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors flex-1 truncate">
+                                                                            <ResourceIcon className="h-4 w-4 flex-shrink-0" />
+                                                                            <span className="truncate">{resource.label}</span>
+                                                                        </Link>
+                                                                        <StarRating
+                                                                            resourceId={resource.id}
+                                                                            averageRating={resource.averageRating}
+                                                                            ratingCount={resource.ratingCount}
+                                                                            userRating={resource.ratings[user?.uid || '']}
+                                                                            onRate={handleResourceRated}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                                        {user?.role === 'admin' && (
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleResourceDeleted(resource.id)}>
+                                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </li>
+                                                            )
+                                                        })}
                                                     </ul>
                                                 ) : (
                                                     <p className="text-sm text-muted-foreground text-center py-2">No resources added yet.</p>
@@ -497,3 +530,5 @@ const LevelView: FC = () => {
 };
 
 export default LevelView;
+
+    
