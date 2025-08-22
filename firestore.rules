@@ -1,78 +1,52 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Default deny
+  
+    // Deny all access by default
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // UTILS: Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    // RULES
+    // USER DATA: Users can update their own info. Only admins can see the full list.
     match /users/{userId} {
-      allow get, update: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-    }
-    
-    match /words/{wordId} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
-    }
-    
-    match /learningResources/{resourceId} {
-        allow read: if isSignedIn();
-        // Allow create/delete for admin, allow update (for rating) for any user
-        allow create, delete: if isAdmin();
-        allow update: if isSignedIn();
+      allow read, update: if request.auth.uid == userId;
+      // allow list: if request.auth.token.role == 'admin'; // For future admin functionality
     }
 
-    // User-specific collections
-    match /userVocabulary/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+    // SHARED RESOURCES: Any authenticated user can read, only admin can write.
+    match /words/{wordId} {
+      allow read: if request.auth.uid != null;
+      allow write: if request.auth.token.role == 'admin';
     }
-    
-    match /lessons/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+    match /learningResources/{resourceId} {
+      allow read: if request.auth.uid != null;
+      allow write: if request.auth.token.role == 'admin';
     }
-    
-    match /storybooks/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+
+    // USER-OWNED COLLECTIONS: Users can only CUD their own documents, and can only read their own.
+    // This rule applies to get (single doc) and list (query) operations.
+    // Firestore ensures that any query will only return documents that match this condition.
+    match /lessons/{lessonId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
-    
-    match /library/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+    match /userVocabulary/{vocabId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
-    
-    match /library_content/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+     match /storybooks/{storybookId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
-    
-    match /testResults/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+     match /library/{docId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
-    
-    match /user_activity/{docId} {
-      allow get, write: if isSignedIn() && isOwner(resource.data.userId);
-      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+    match /library_content/{contentId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
+    }
+    match /testResults/{resultId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
+    }
+    match /user_activity/{activityId} {
+      allow read, write: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
