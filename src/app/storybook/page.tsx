@@ -68,9 +68,6 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                 </div>
             </CardHeader>
             <CardContent className="flex-grow">
-                 <p className="text-sm text-muted-foreground line-clamp-3">
-                    {story.storyContent}...
-                </p>
                  <p className="text-xs text-muted-foreground mt-4">
                     Created {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
                 </p>
