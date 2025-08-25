@@ -72,13 +72,19 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
     // Generic play function for non-vocabulary text. Caches in-session.
-    const playAudio = async (key: string, text: string) => {
+    // Returns the generated URL if AI was used.
+    const playAudio = async (key: string, text: string, existingUrl?: string): Promise<string | undefined> => {
         if (audioRef.current) audioRef.current.pause();
         window.speechSynthesis.cancel();
         
+        if (existingUrl) {
+            playAudioUrl(key, existingUrl);
+            return existingUrl;
+        }
+
         if (audioUrls[key]) {
             playAudioUrl(key, audioUrls[key]);
-            return;
+            return audioUrls[key];
         }
 
         setIsLoadingAudio(prev => ({ ...prev, [key]: true }));
@@ -87,6 +93,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             if (result.audioUrl) {
                 setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
                 playAudioUrl(key, result.audioUrl);
+                return result.audioUrl;
             } else {
                  playWithBrowserTTS(key, text);
             }
@@ -95,6 +102,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         } finally {
             setIsLoadingAudio(prev => ({ ...prev, [key]: false }));
         }
+        return undefined;
     };
     
     // Specific function for vocabulary terms with database caching logic.
@@ -109,13 +117,17 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
              return;
         }
         
+        // Play immediately with browser TTS
         playWithBrowserTTS(audioKey, word.term);
 
+        // Generate high-quality audio in the background
         try {
             const result = await generateAudio({ text: word.term });
             if (result.audioUrl) {
                 const newAudioUrl = result.audioUrl;
+                // Save to DB for future use
                 await updateWord(word.id, { audioUrl: newAudioUrl });
+                // Update local state so next click uses the cached URL
                 setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
             }
         } catch (error: any) {
@@ -135,13 +147,17 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             return;
         }
 
+        // Play immediately with browser TTS
         playWithBrowserTTS(audioKey, word.sentence);
         
+        // Generate high-quality audio in the background
         try {
             const result = await generateAudio({ text: word.sentence });
             if (result.audioUrl) {
                 const newAudioUrl = result.audioUrl;
+                // Save to the user's specific vocabulary entry
                 await updateUserVocabulary(word.userVocabularyId, { sentenceAudioUrl: newAudioUrl });
+                 // Update local state
                 setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, sentenceAudioUrl: newAudioUrl } : w));
             }
         } catch (error: any) {

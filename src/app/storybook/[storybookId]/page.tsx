@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { getStorybook, type Storybook } from '@/services/storybooks';
+import { getStorybook, updateStorybook, type Storybook } from '@/services/storybooks';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { Skeleton } from '@/components/ui/skeleton';
 import InteractiveText from '@/components/lingo/interactive-text';
@@ -39,7 +39,6 @@ const StorybookDetailPage: FC = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                // Now we fetch the full storybook details here
                 const [fetchedStorybook, fetchedVocab] = await Promise.all([
                     getStorybook(storybookId),
                     getVocabulary(user.uid),
@@ -62,6 +61,31 @@ const StorybookDetailPage: FC = () => {
         fetchData();
 
     }, [user, storybookId, toast, router]);
+
+    const playAndCacheStoryAudio = async (
+        key: 'title' | 'content', 
+        text: string, 
+        existingUrl: string | undefined
+    ) => {
+        const audioKey = `${storybookId}-${key}`;
+        
+        if (existingUrl) {
+            playbackHook.playAudio(audioKey, text, existingUrl);
+            return;
+        }
+
+        const newUrl = await playbackHook.playAudio(audioKey, text);
+
+        if (newUrl && storybook) {
+            try {
+                const updates = key === 'title' ? { titleAudioUrl: newUrl } : { contentAudioUrl: newUrl };
+                await updateStorybook(storybook.id, updates);
+                setStorybook(prev => prev ? { ...prev, ...updates } : null);
+            } catch (error) {
+                 console.warn(`Failed to save new audio URL for ${key}`, error);
+            }
+        }
+    };
 
     if (isLoading) {
         return (
@@ -93,8 +117,8 @@ const StorybookDetailPage: FC = () => {
         );
     }
     
-    const titleAudioKey = `title-${storybook.id}`;
-    const storyAudioKey = `story-${storybook.id}`;
+    const titleAudioKey = `${storybook.id}-title`;
+    const storyAudioKey = `${storybook.id}-content`;
 
     return (
         <div className="space-y-6">
@@ -113,11 +137,11 @@ const StorybookDetailPage: FC = () => {
                             <CardTitle className="text-4xl font-bold">{storybook.title}</CardTitle>
                         </div>
                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Button variant="outline" onClick={() => playbackHook.playAudio(titleAudioKey, storybook.title)} disabled={playbackHook.isLoadingAudio[titleAudioKey]}>
+                            <Button variant="outline" onClick={() => playAndCacheStoryAudio('title', storybook.title, storybook.titleAudioUrl)} disabled={playbackHook.isLoadingAudio[titleAudioKey]}>
                                 {playbackHook.isLoadingAudio[titleAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <BookHeart className="mr-2" />}
                                 Listen to Title
                             </Button>
-                             <Button variant="outline" onClick={() => playbackHook.playAudio(storyAudioKey, storybook.storyContent)} disabled={playbackHook.isLoadingAudio[storyAudioKey]}>
+                             <Button variant="outline" onClick={() => playAndCacheStoryAudio('content', storybook.storyContent, storybook.contentAudioUrl)} disabled={playbackHook.isLoadingAudio[storyAudioKey]}>
                                 {playbackHook.isLoadingAudio[storyAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
                                 Read Aloud
                             </Button>
