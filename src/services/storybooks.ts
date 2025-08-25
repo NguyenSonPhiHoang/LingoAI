@@ -34,7 +34,6 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   );
   const snapshot = await getDocs(q);
   
-  // Map documents safely, providing default values for potentially missing fields.
   return snapshot.docs.map((doc) => {
     const data = doc.data();
     return {
@@ -43,8 +42,7 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
       level: data.level || 'beginner',
       format: data.format || 'bilingual',
       title: data.title || 'Untitled Story',
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0), // Default to epoch if invalid
-      // Ensure complex fields default to empty values for the list view to prevent errors.
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
       keyVocabulary: [], 
       storyContent: '', 
     } as Storybook;
@@ -64,7 +62,6 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         throw new Error("Permission denied.");
     }
     
-    // Safe mapping for the detail view
     return {
         id: docSnap.id,
         userId: data.userId || '',
@@ -78,7 +75,6 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
 }
 
 export const addStorybook = async (userId: string, storyData: GenerateStorybookOutput, level: UserLevel, format: 'bilingual' | 'interspersed'): Promise<Storybook> => {
-    // Ensure data is a plain JavaScript object before sending to Firestore
     const plainStoryData = JSON.parse(JSON.stringify(storyData));
 
     const payload = {
