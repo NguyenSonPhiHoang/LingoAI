@@ -33,17 +33,18 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
     orderBy("createdAt", "desc")
   );
   const snapshot = await getDocs(q);
+  
+  // Map documents safely, providing default values for potentially missing fields.
   return snapshot.docs.map((doc) => {
     const data = doc.data();
-    // Only fetch minimal data for the list view to improve performance and avoid errors.
     return {
       id: doc.id,
-      userId: data.userId,
-      level: data.level,
-      format: data.format,
-      title: data.title,
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-      // Explicitly set these to empty/default values as they are not fetched here
+      userId: data.userId || '',
+      level: data.level || 'beginner',
+      format: data.format || 'bilingual',
+      title: data.title || 'Untitled Story',
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0), // Default to epoch if invalid
+      // Ensure complex fields default to empty values for the list view to prevent errors.
       keyVocabulary: [], 
       storyContent: '', 
     } as Storybook;
@@ -63,15 +64,16 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         throw new Error("Permission denied.");
     }
     
+    // Safe mapping for the detail view
     return {
         id: docSnap.id,
-        userId: data.userId,
-        level: data.level,
-        format: data.format,
-        title: data.title,
+        userId: data.userId || '',
+        level: data.level || 'beginner',
+        format: data.format || 'bilingual',
+        title: data.title || 'Untitled Story',
         keyVocabulary: data.keyVocabulary || [],
-        storyContent: data.storyContent,
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        storyContent: data.storyContent || 'No content available.',
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
     } as Storybook;
 }
 
