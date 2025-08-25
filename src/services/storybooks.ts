@@ -26,7 +26,8 @@ export interface Storybook extends GenerateStorybookOutput {
   level: UserLevel;
   format: StorybookFormat;
   titleAudioUrl?: string;
-  contentAudioUrl?: string;
+  englishContentAudioUrl?: string;
+  vietnameseContentAudioUrl?: string;
 }
 
 export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'keyVocabulary' | 'englishStory' | 'vietnameseStory' | 'interspersedStory' | 'fullEnglishStory'>[]> => {
@@ -77,7 +78,8 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         fullEnglishStory: data.fullEnglishStory,
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
         titleAudioUrl: data.titleAudioUrl,
-        contentAudioUrl: data.contentAudioUrl,
+        englishContentAudioUrl: data.englishContentAudioUrl,
+        vietnameseContentAudioUrl: data.vietnameseContentAudioUrl,
     } as Storybook;
 }
 
@@ -99,7 +101,7 @@ export const addStorybook = async (userId: string, storyData: GenerateStorybookO
     };
 };
 
-export const updateStorybook = async (id: string, updates: Partial<Pick<Storybook, 'titleAudioUrl' | 'contentAudioUrl'>>) => {
+export const updateStorybook = async (id: string, updates: Partial<Pick<Storybook, 'titleAudioUrl' | 'englishContentAudioUrl' | 'vietnameseContentAudioUrl'>>) => {
     const docRef = doc(db, "storybooks", id);
     const storybook = await getDoc(docRef);
     if (storybook.exists() && storybook.data().userId !== auth.currentUser?.uid) {

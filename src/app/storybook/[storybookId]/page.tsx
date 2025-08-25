@@ -110,16 +110,24 @@ const StorybookDetailPage: FC = () => {
 
 
     const playAndCacheStoryAudio = async (
-        key: 'title' | 'content', 
+        key: 'title' | 'englishContent' | 'vietnameseContent', 
         text: string, 
-        existingUrl: string | undefined
     ) => {
-        const audioKey = `${storybookId}-${key}`;
+        if (!storybook || !text) return;
         
-        // For bilingual, only allow browser TTS to read and highlight english
-        if (storybook?.format === 'bilingual' && key === 'content' && text) {
-            playbackHook.playWithBrowserTTS(audioKey, text);
-            return;
+        const audioKey = `${storybook.id}-${key}`;
+        let existingUrl: string | undefined;
+        let updateField: keyof Pick<Storybook, 'titleAudioUrl' | 'englishContentAudioUrl' | 'vietnameseContentAudioUrl'> | null = null;
+        
+        if (key === 'title') {
+            existingUrl = storybook.titleAudioUrl;
+            updateField = 'titleAudioUrl';
+        } else if (key === 'englishContent') {
+            existingUrl = storybook.englishContentAudioUrl;
+            updateField = 'englishContentAudioUrl';
+        } else if (key === 'vietnameseContent') {
+            existingUrl = storybook.vietnameseContentAudioUrl;
+            updateField = 'vietnameseContentAudioUrl';
         }
 
         if (existingUrl) {
@@ -127,11 +135,14 @@ const StorybookDetailPage: FC = () => {
             return;
         }
 
-        const newUrl = await playbackHook.playAudio(audioKey, text);
+        // Use browser TTS for immediate feedback while generating AI audio
+        playbackHook.playWithBrowserTTS(audioKey, text);
 
-        if (newUrl && storybook) {
+        const newUrl = await playbackHook.generateAndCacheAudio(audioKey, text);
+
+        if (newUrl && storybook && updateField) {
             try {
-                const updates = key === 'title' ? { titleAudioUrl: newUrl } : { contentAudioUrl: newUrl };
+                const updates = { [updateField]: newUrl };
                 await updateStorybook(storybook.id, updates);
                 setStorybook(prev => prev ? { ...prev, ...updates } : null);
             } catch (error) {
@@ -171,10 +182,12 @@ const StorybookDetailPage: FC = () => {
     }
     
     const titleAudioKey = `${storybook.id}-title`;
-    const storyAudioKey = `${storybook.id}-content`;
     const storyContentToPlay = storybook.format === 'bilingual' 
         ? storybook.englishStory 
         : storybook.interspersedStory;
+    
+    const englishAudioKey = `${storybook.id}-englishContent`;
+    const vietnameseAudioKey = `${storybook.id}-vietnameseContent`;
 
     return (
         <div className="space-y-6">
@@ -193,13 +206,13 @@ const StorybookDetailPage: FC = () => {
                             <CardTitle className="text-4xl font-bold">{storybook.title}</CardTitle>
                         </div>
                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <Button variant="outline" onClick={() => playAndCacheStoryAudio('title', storybook.title, storybook.titleAudioUrl)} disabled={playbackHook.isLoadingAudio[titleAudioKey]}>
+                            <Button variant="outline" onClick={() => playAndCacheStoryAudio('title', storybook.title)} disabled={playbackHook.isLoadingAudio[titleAudioKey]}>
                                 {playbackHook.isLoadingAudio[titleAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <BookHeart className="mr-2" />}
                                 Listen to Title
                             </Button>
-                             {storyContentToPlay && (
-                                 <Button variant="outline" onClick={() => playAndCacheStoryAudio('content', storyContentToPlay, storybook.contentAudioUrl)} disabled={playbackHook.isLoadingAudio[storyAudioKey]}>
-                                    {playbackHook.isLoadingAudio[storyAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
+                             {storybook.format === 'interspersed' && storyContentToPlay && (
+                                 <Button variant="outline" onClick={() => playAndCacheStoryAudio('englishContent', storyContentToPlay)} disabled={playbackHook.isLoadingAudio[englishAudioKey]}>
+                                    {playbackHook.isLoadingAudio[englishAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
                                     Read Aloud
                                 </Button>
                              )}
@@ -280,13 +293,25 @@ const StorybookDetailPage: FC = () => {
                     {storybook.format === 'bilingual' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                             <div>
-                                <h3 className="font-bold text-xl mb-2">English</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="font-bold text-xl">English</h3>
+                                    <Button variant="ghost" size="icon" onClick={() => playAndCacheStoryAudio('englishContent', storybook.englishStory || '')} disabled={playbackHook.isLoadingAudio[englishAudioKey]}>
+                                        {playbackHook.isLoadingAudio[englishAudioKey] ? <Loader2 className="animate-spin h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                                        <span className="sr-only">Read English Story</span>
+                                    </Button>
+                                </div>
                                 <article className="prose dark:prose-invert max-w-none">
-                                    <InteractiveText text={storybook.englishStory || ''} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={storyAudioKey}/>
+                                    <InteractiveText text={storybook.englishStory || ''} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={englishAudioKey}/>
                                 </article>
                             </div>
                              <div className="border-t md:border-l md:border-t-0 md:pl-8 pt-4 md:pt-0">
-                                <h3 className="font-bold text-xl mb-2">Vietnamese</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                     <h3 className="font-bold text-xl">Vietnamese</h3>
+                                     <Button variant="ghost" size="icon" onClick={() => playAndCacheStoryAudio('vietnameseContent', storybook.vietnameseStory || '')} disabled={playbackHook.isLoadingAudio[vietnameseAudioKey]}>
+                                        {playbackHook.isLoadingAudio[vietnameseAudioKey] ? <Loader2 className="animate-spin h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                                        <span className="sr-only">Read Vietnamese Story</span>
+                                    </Button>
+                                </div>
                                 <article className="prose dark:prose-invert max-w-none">
                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                         {storybook.vietnameseStory || ''}

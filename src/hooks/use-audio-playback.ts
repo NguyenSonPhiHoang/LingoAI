@@ -48,17 +48,6 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             // Cancel any previous speech
             window.speechSynthesis.cancel();
             
-            // Check for mixed content
-            if (isVietnamese(text) && isEnglish(text)) {
-                toast({
-                    title: "AI Audio Required",
-                    description: "This text contains both English and Vietnamese. High-quality AI audio will be generated for the best experience.",
-                });
-                // Do not attempt to play with browser TTS for mixed content.
-                // The calling function will handle fetching AI audio.
-                return;
-            }
-
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = isVietnamese(text) ? 'vi-VN' : 'en-US';
             utterance.rate = speechRate;
@@ -107,23 +96,26 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             return audioUrls[key];
         }
 
+        playWithBrowserTTS(key, text); // Play immediately with browser TTS
+        return generateAndCacheAudio(key, text);
+    };
+
+    // Generates AI audio and caches it in the session. Returns the URL.
+    const generateAndCacheAudio = async (key: string, text: string): Promise<string | undefined> => {
         setIsLoadingAudio(prev => ({ ...prev, [key]: true }));
         try {
             const result = await generateAudio({ text });
             if (result.audioUrl) {
                 setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
-                playAudioUrl(key, result.audioUrl);
                 return result.audioUrl;
-            } else {
-                 playWithBrowserTTS(key, text);
             }
         } catch (error: any) {
-             playWithBrowserTTS(key, text);
+             console.warn(`Failed to generate AI audio for key "${key}".`, error);
         } finally {
             setIsLoadingAudio(prev => ({ ...prev, [key]: false }));
         }
         return undefined;
-    };
+    }
     
     // Specific function for vocabulary terms with database caching logic.
     const playTermAudio = useCallback(async (word: CombinedVocabulary) => {
@@ -233,5 +225,5 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
 
-    return { audioRef, isLoadingAudio, playAudio, playWithBrowserTTS, playTermAudio, playSentenceAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
+    return { audioRef, isLoadingAudio, playAudio, playWithBrowserTTS, playTermAudio, playSentenceAudio, playGlobalWordAudio, generateAndCacheAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };
