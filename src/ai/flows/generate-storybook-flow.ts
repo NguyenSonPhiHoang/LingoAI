@@ -40,14 +40,13 @@ The story must be generated based on one of the following inputs:
 
 You must format the story according to the specified format: "{{format}}".
 
-- If the format is 'bilingual', you must provide the full story in English, and then a full Vietnamese translation. The 'storyContent' field should contain both versions.
-- If the format is 'interspersed' (truyện chêm), you must write the story primarily in Vietnamese, but strategically insert key English words or phrases (from the vocabulary list if provided, or relevant to the topic). These English words should be naturally woven into the Vietnamese sentences. This version goes into the 'storyContent' field. Additionally, you must generate a complete, normal English version of the story and put it in the 'fullEnglishStory' field.
+- If the format is 'bilingual', you must provide the full story in English in the 'englishStory' field, and then a full Vietnamese translation in the 'vietnameseStory' field.
+- If the format is 'interspersed' (truyện chêm), you must write the story primarily in Vietnamese, but strategically insert key English words or phrases (from the vocabulary list if provided, or relevant to the topic). This version goes into the 'interspersedStory' field. Additionally, you must generate a complete, normal English version of the story and put it in the 'fullEnglishStory' field.
 
 The output must contain:
 1.  A short, catchy title for the story in English.
 2.  A list of 5-10 key vocabulary words from the story. For each word, provide its simple English definition, part of speech, and IPA pronunciation.
-3.  The full story content, formatted as requested.
-4.  If the format is 'interspersed', the full English version of the story.
+3.  The story content, formatted as requested in the correct fields.
 
 Generate the storybook now.
 `,
@@ -64,4 +63,3 @@ const generateStorybookFlow = ai.defineFlow(
     return output!;
   }
 );
-

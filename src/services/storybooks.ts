@@ -27,10 +27,9 @@ export interface Storybook extends GenerateStorybookOutput {
   format: StorybookFormat;
   titleAudioUrl?: string;
   contentAudioUrl?: string;
-  fullEnglishStory?: string;
 }
 
-export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'storyContent' | 'keyVocabulary'>[]> => {
+export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'keyVocabulary' | 'englishStory' | 'vietnameseStory' | 'interspersedStory' | 'fullEnglishStory'>[]> => {
   const q = query(
     storybooksCollection,
     where("userId", "==", userId),
@@ -47,7 +46,7 @@ export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'st
       format: data.format || 'bilingual',
       title: data.title || 'Untitled Story',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
-    } as Omit<Storybook, 'storyContent' | 'keyVocabulary'>;
+    } as Omit<Storybook, 'keyVocabulary' | 'englishStory' | 'vietnameseStory' | 'interspersedStory' | 'fullEnglishStory'>;
   });
 };
 
@@ -72,11 +71,13 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         format: data.format || 'bilingual',
         title: data.title || 'Untitled Story',
         keyVocabulary: data.keyVocabulary || [],
-        storyContent: data.storyContent || 'No content available.',
+        englishStory: data.englishStory,
+        vietnameseStory: data.vietnameseStory,
+        interspersedStory: data.interspersedStory,
+        fullEnglishStory: data.fullEnglishStory,
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
         titleAudioUrl: data.titleAudioUrl,
         contentAudioUrl: data.contentAudioUrl,
-        fullEnglishStory: data.fullEnglishStory,
     } as Storybook;
 }
 

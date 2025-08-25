@@ -413,8 +413,12 @@ const StorybookVocabularySchema = z.object({
 export const GenerateStorybookOutputSchema = z.object({
     title: z.string(),
     keyVocabulary: z.array(StorybookVocabularySchema),
-    storyContent: z.string(),
-    fullEnglishStory: z.string().optional().describe("The full English version of the story, only used for 'interspersed' format."),
+    // Bilingual story fields
+    englishStory: z.string().optional().describe("The full story in English. Used for 'bilingual' format."),
+    vietnameseStory: z.string().optional().describe("The full story in Vietnamese. Used for 'bilingual' format."),
+    // Interspersed story fields
+    interspersedStory: z.string().optional().describe("The story primarily in Vietnamese with interspersed English words. Used for 'interspersed' format."),
+    fullEnglishStory: z.string().optional().describe("The full English version of the interspersed story. Used for 'interspersed' format."),
 });
 export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSchema>;
 

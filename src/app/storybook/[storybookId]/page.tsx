@@ -88,9 +88,6 @@ const StorybookDetailPage: FC = () => {
                 vietnameseDefinition: details.vietnameseDefinition,
                 sentence: details.sentence,
                 vietnameseSentence: details.vietnameseSentence,
-                synonyms: details.synonyms || [],
-                antonyms: details.antonyms || [],
-                irregularForms: details.irregularForms,
             };
 
             // 3. Save to database
@@ -119,6 +116,12 @@ const StorybookDetailPage: FC = () => {
     ) => {
         const audioKey = `${storybookId}-${key}`;
         
+        // For bilingual, only allow browser TTS to read and highlight english
+        if (storybook?.format === 'bilingual' && key === 'content' && text) {
+            playbackHook.playWithBrowserTTS(audioKey, text);
+            return;
+        }
+
         if (existingUrl) {
             playbackHook.playAudio(audioKey, text, existingUrl);
             return;
@@ -169,6 +172,9 @@ const StorybookDetailPage: FC = () => {
     
     const titleAudioKey = `${storybook.id}-title`;
     const storyAudioKey = `${storybook.id}-content`;
+    const storyContentToPlay = storybook.format === 'bilingual' 
+        ? storybook.englishStory 
+        : storybook.interspersedStory;
 
     return (
         <div className="space-y-6">
@@ -191,10 +197,12 @@ const StorybookDetailPage: FC = () => {
                                 {playbackHook.isLoadingAudio[titleAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <BookHeart className="mr-2" />}
                                 Listen to Title
                             </Button>
-                             <Button variant="outline" onClick={() => playAndCacheStoryAudio('content', storybook.storyContent, storybook.contentAudioUrl)} disabled={playbackHook.isLoadingAudio[storyAudioKey]}>
-                                {playbackHook.isLoadingAudio[storyAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
-                                Read Aloud
-                            </Button>
+                             {storyContentToPlay && (
+                                 <Button variant="outline" onClick={() => playAndCacheStoryAudio('content', storyContentToPlay, storybook.contentAudioUrl)} disabled={playbackHook.isLoadingAudio[storyAudioKey]}>
+                                    {playbackHook.isLoadingAudio[storyAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
+                                    Read Aloud
+                                </Button>
+                             )}
                         </div>
                     </div>
                 </CardHeader>
@@ -228,7 +236,7 @@ const StorybookDetailPage: FC = () => {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-7 w-7 flex-shrink-0"
-                                                    onClick={() => playbackHook.playAudio(vocabAudioKey, v.word)}
+                                                    onClick={() => playbackHook.playTermAudio(v)}
                                                     disabled={isAudioLoading}
                                                 >
                                                     {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}
@@ -268,11 +276,34 @@ const StorybookDetailPage: FC = () => {
                             </ul>
                         </CardContent>
                     </Card>
-                     <article className="prose dark:prose-invert max-w-none">
-                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {storybook.storyContent}
-                         </ReactMarkdown>
-                    </article>
+                     
+                    {storybook.format === 'bilingual' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                            <div>
+                                <h3 className="font-bold text-xl mb-2">English</h3>
+                                <article className="prose dark:prose-invert max-w-none">
+                                    <InteractiveText text={storybook.englishStory || ''} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={storyAudioKey}/>
+                                </article>
+                            </div>
+                             <div className="border-t md:border-l md:border-t-0 md:pl-8 pt-4 md:pt-0">
+                                <h3 className="font-bold text-xl mb-2">Vietnamese</h3>
+                                <article className="prose dark:prose-invert max-w-none">
+                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {storybook.vietnameseStory || ''}
+                                     </ReactMarkdown>
+                                </article>
+                            </div>
+                        </div>
+                    )}
+
+                    {storybook.format === 'interspersed' && storybook.interspersedStory && (
+                        <article className="prose dark:prose-invert max-w-none">
+                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {storybook.interspersedStory}
+                             </ReactMarkdown>
+                        </article>
+                    )}
+
                      {storybook.format === 'interspersed' && storybook.fullEnglishStory && (
                         <Collapsible>
                             <CollapsibleTrigger asChild>
