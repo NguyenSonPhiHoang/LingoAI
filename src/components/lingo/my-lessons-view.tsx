@@ -602,7 +602,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent>
                      <div className="flex flex-col gap-4">
                         <div className="flex flex-wrap gap-2">
                             <DropdownMenu open={isGroupFilterOpen} onOpenChange={setIsGroupFilterOpen}>
@@ -713,7 +713,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                                 Generate New Lessons
                             </Button>
                         </div>
-                        <div className="relative flex-grow w-full">
+                        <div className="relative w-full">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             <Input 
                                 placeholder="Search by lesson or group..."
