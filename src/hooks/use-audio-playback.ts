@@ -8,6 +8,10 @@ import { useSettings } from "@/context/settings-context";
 
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 
+const VIETNAMESE_CHAR_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+
+const isVietnamese = (text: string) => VIETNAMESE_CHAR_REGEX.test(text);
+
 // --- Audio Playback Helper ---
 export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -40,7 +44,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             window.speechSynthesis.cancel();
             
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
+            utterance.lang = isVietnamese(text) ? 'vi-VN' : 'en-US';
             utterance.rate = speechRate;
             
             utterance.onstart = () => {
