@@ -2,9 +2,9 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect, type FC } from 'react';
+import { useState, useEffect, useMemo, type FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle, CheckCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import InteractiveText from '@/components/lingo/interactive-text';
 import { getVocabulary, addWordToVocabulary, type CombinedVocabulary } from '@/services/vocabulary';
 import type { VocabularyEntry } from '@/ai/flows/schemas';
+import { cn } from '@/lib/utils';
 
 
 const StorybookDetailPage: FC = () => {
@@ -63,6 +64,10 @@ const StorybookDetailPage: FC = () => {
         fetchData();
 
     }, [user, storybookId, toast, router]);
+    
+    const userVocabularySet = useMemo(() => {
+        return new Map(vocabulary.map(v => [v.term.toLowerCase(), v]));
+    }, [vocabulary]);
 
     const handleAddWord = async (vocabItem: { word: string, definition: string, partOfSpeech: string, pronunciation: string }) => {
         if (!user) return;
@@ -70,7 +75,7 @@ const StorybookDetailPage: FC = () => {
         try {
             // We need to create a full VocabularyEntry object.
             // Some fields will be blank and can be filled in later by the user or another AI call.
-            const newWord: VocabularyEntry = {
+            const newWordData: VocabularyEntry = {
                 term: vocabItem.word,
                 definition: vocabItem.definition,
                 partOfSpeech: vocabItem.partOfSpeech,
@@ -80,7 +85,8 @@ const StorybookDetailPage: FC = () => {
                 vietnameseSentence: '...', // Placeholder
             };
 
-            await addWordToVocabulary(user.uid, newWord);
+            const savedWord = await addWordToVocabulary(user.uid, newWordData);
+            setVocabulary(prev => [...prev, savedWord]); // Optimistically update the list
             toast({
                 title: 'Word Added!',
                 description: `"${vocabItem.word}" has been saved to your vocabulary.`,
@@ -193,6 +199,8 @@ const StorybookDetailPage: FC = () => {
                                      const isAudioLoading = playbackHook.isLoadingAudio[vocabAudioKey];
                                      const isTranslating = playbackHook.isTranslating[definitionTranslationKey];
                                      const isSaving = isSavingWord[v.word];
+                                     const existingWord = userVocabularySet.get(v.word.toLowerCase());
+                                     const hasAudio = !!existingWord?.audioUrl;
 
                                     return (
                                         <li key={i} className="flex flex-col gap-2 break-inside-avoid-column p-3 rounded-md bg-background border">
@@ -211,7 +219,7 @@ const StorybookDetailPage: FC = () => {
                                                     onClick={() => playbackHook.playAudio(vocabAudioKey, v.word)}
                                                     disabled={isAudioLoading}
                                                 >
-                                                    {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                                    {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}
                                                 </Button>
                                             </div>
                                             <p>{v.definition}</p>
@@ -236,10 +244,10 @@ const StorybookDetailPage: FC = () => {
                                                     variant="secondary"
                                                     className="w-full"
                                                     onClick={() => handleAddWord(v)}
-                                                    disabled={isSaving}
+                                                    disabled={isSaving || !!existingWord}
                                                 >
-                                                    {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : <PlusCircle className="mr-2" />}
-                                                    Add to List
+                                                    {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : (existingWord ? <CheckCircle className="mr-2" /> : <PlusCircle className="mr-2" />)}
+                                                    {existingWord ? 'Added' : 'Add to List'}
                                                 </Button>
                                             </div>
                                         </li>
@@ -260,5 +268,3 @@ const StorybookDetailPage: FC = () => {
 }
 
 export default StorybookDetailPage;
-
-    
