@@ -602,17 +602,8 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search by lesson or group..."
-                                className="pl-10"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                <CardContent className="space-y-4">
+                     <div className="flex flex-col gap-4">
                         <div className="flex flex-wrap gap-2">
                             <DropdownMenu open={isGroupFilterOpen} onOpenChange={setIsGroupFilterOpen}>
                                 <DropdownMenuTrigger asChild>
@@ -705,22 +696,32 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                                     </div>
                                 </DropdownMenuContent>
                             </DropdownMenu>
+                            <div className="flex-grow"></div>
+                             <Button
+                                className="w-full sm:w-auto"
+                                onClick={handleCreateReviewTest}
+                                disabled={isGeneratingTest}
+                            >
+                                {isGeneratingTest ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                                Create Review Test
+                            </Button>
+                            <Button
+                                className="w-full sm:w-auto"
+                                onClick={() => setActiveViewState({view: 'ai-suggester'})}
+                            >
+                                <Sparkles className="mr-2" />
+                                Generate New Lessons
+                            </Button>
                         </div>
-                        <Button
-                            className="w-full sm:w-auto"
-                            onClick={handleCreateReviewTest}
-                            disabled={isGeneratingTest}
-                        >
-                            {isGeneratingTest ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                            Create Review Test
-                        </Button>
-                        <Button
-                            className="w-full sm:w-auto"
-                            onClick={() => setActiveViewState({view: 'ai-suggester'})}
-                        >
-                            <Sparkles className="mr-2" />
-                            Generate New Lessons
-                        </Button>
+                        <div className="relative flex-grow w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by lesson or group..."
+                                className="pl-10 w-full"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </CardContent>
             </Card>
