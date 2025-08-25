@@ -36,14 +36,15 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   return snapshot.docs.map((doc) => {
     const data = doc.data();
     // Manually construct the object to ensure correct structure
+    // Only return a snippet of storyContent for the list view
     return {
       id: doc.id,
       userId: data.userId,
       level: data.level,
       format: data.format,
       title: data.title,
-      keyVocabulary: data.keyVocabulary || [],
-      storyContent: data.storyContent,
+      keyVocabulary: [], // Don't load full vocabulary on list page
+      storyContent: data.storyContent.substring(0, 150), // Return a snippet for preview
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
     } as Storybook;
   });
@@ -64,7 +65,12 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
     
     return {
         id: docSnap.id,
-        ...data,
+        userId: data.userId,
+        level: data.level,
+        format: data.format,
+        title: data.title,
+        keyVocabulary: data.keyVocabulary || [],
+        storyContent: data.storyContent,
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
     } as Storybook;
 }
@@ -90,6 +96,9 @@ export const addStorybook = async (userId: string, storyData: GenerateStorybookO
 
 export const deleteStorybook = async (id: string): Promise<void> => {
     const docRef = doc(db, "storybooks", id);
-    // Optional: Add security check to ensure user owns this doc
+    const storybook = await getDoc(docRef);
+    if (storybook.exists() && storybook.data().userId !== auth.currentUser?.uid) {
+        throw new Error("Permission denied.");
+    }
     await deleteDoc(docRef);
 };

@@ -39,6 +39,7 @@ const StorybookDetailPage: FC = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
+                // Now we fetch the full storybook details here
                 const [fetchedStorybook, fetchedVocab] = await Promise.all([
                     getStorybook(storybookId),
                     getVocabulary(user.uid),
