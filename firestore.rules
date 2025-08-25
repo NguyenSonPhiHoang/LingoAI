@@ -3,68 +3,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function for admin check
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    // USERS:
-    // - Authenticated users can create their own user document.
-    // - Users can only read/update their own document.
-    // - Admins can read all user documents.
+
+    // Allow users to manage their own profile information
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can read user profiles (e.g., for display names)
+      allow read: if request.auth != null;
+      // Users can only create their own user document
+      allow create: if isOwner(userId);
+      // Users can only update their own document
+      allow update: if isOwner(userId);
     }
 
-    // SHARED RESOURCES:
-    // - Authenticated users can read.
-    // - Admins can write.
-    match /learningResources/{docId} {
-       allow read: if request.auth != null;
-       allow write: if request.auth != null && isAdmin();
-    }
-    match /words/{docId} {
-       allow read: if request.auth != null;
-       allow write: if request.auth != null && isAdmin();
-    }
-    
-    // USER-OWNED CONTENT:
-    // - Users can read/write their own documents.
-    // - Admins can read all documents.
-    function isOwner() {
-        return request.auth != null && resource.data.userId == request.auth.uid;
-    }
-
-    match /lessons/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
-    }
+    // Rules for user-specific data collections.
+    // The user must be authenticated and their UID must match the 'userId' field in the document.
     match /storybooks/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
+      allow read, write: if isOwner(resource.data.userId);
     }
-    match /library/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
-    }
-     match /library_content/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
+    match /lessons/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
     }
     match /userVocabulary/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
+      allow read, write: if isOwner(resource.data.userId);
+    }
+    match /library/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
+    match /library_content/{docId} {
+      allow read, write: if isOwner(resource.data.userId);
     }
     match /testResults/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
+       allow read, create: if isOwner(request.resource.data.userId);
+       allow update, delete: if isOwner(resource.data.userId);
     }
     match /user_activity/{docId} {
-        allow read: if isOwner() || isAdmin();
-        allow write: if isOwner();
+       allow read, write: if isOwner(resource.data.userId);
+    }
+
+    // Rules for global data collections
+    match /words/{wordId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+    }
+    match /learningResources/{resourceId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
     }
   }
 }
