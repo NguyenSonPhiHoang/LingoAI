@@ -3,44 +3,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
+    // Users can only read their own user doc, but anyone can create one (signup).
+    // Admins can read/write any user doc.
     match /users/{userId} {
+      allow read: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      allow read, update: if request.auth.uid == userId || isAdmin();
-      allow delete: if isAdmin();
+      allow update: if request.auth.uid == userId;
+      // Admin override for status changes etc.
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    match /lessons/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
-    match /userVocabulary/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
-    match /library/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
-    match /library_content/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
-    match /testResults/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
-    match /user_activity/{docId} { allow read, write: if request.auth.uid == resource.data.userId; }
 
+    // Lessons are private to the user who created them.
+    match /lessons/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // Storybooks are private to the user who created them.
     match /storybooks/{docId} {
-      // Allow list queries only when filtered by the user's own ID.
-      // The application code in `getStorybooks` already includes this filter.
-      allow list: if request.auth != null && request.query.where.left == "userId" && request.query.where.op == "==" && request.query.where.right == request.auth.uid;
-      
-      // Allow get, create, update, delete only for the owner of the document.
-      allow get, update, delete: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    match /words/{wordId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+    // Library documents are private to the user.
+    match /library/{docId} {
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    match /learningResources/{resourceId} {
-      allow read: if request.auth != null;
-      // Allow create/delete for admin, allow update (for rating) for any authenticated user.
-      allow create, delete: if isAdmin();
-      allow update: if request.auth != null;
+    // Library content (notes) are private to the user.
+    match /library_content/{docId} {
+        allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // Words are public to read, but only admins can write.
+    match /words/{docId} {
+        allow read: if request.auth != null;
+        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // User-specific vocabulary entries are private.
+    match /userVocabulary/{docId} {
+        allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // Learning resources are public to read, but only admins can write.
+    match /learningResources/{docId} {
+        allow read: if request.auth != null;
+        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Test results are private to the user.
+    match /testResults/{docId} {
+         allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // User activity logs are private to the user.
+    match /user_activity/{docId} {
+        allow read, write: if request.auth.uid == resource.data.userId;
     }
   }
 }
