@@ -572,11 +572,10 @@ const VocabularyListInternal: FC<{
                               <div className="flex items-start gap-2">
                                   <Button
                                       variant="ghost" size="icon"
-                                      onClick={(e) => { e.stopPropagation(); playbackHook.playAudio(sentenceAudioKey, word.sentence); }}
-                                      disabled={isSentenceAudioLoading}
+                                      onClick={(e) => { e.stopPropagation(); playbackHook.playSentenceAudio(word); }}
                                       className="h-8 w-8 flex-shrink-0 -ml-2"
                                   >
-                                      {isSentenceAudioLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />}
+                                      <Volume2 className={cn("h-4 w-4", word.sentenceAudioUrl && "text-primary")} />
                                       <span className="sr-only">Play sentence audio</span>
                                   </Button>
                                   <p className="italic pt-1.5">

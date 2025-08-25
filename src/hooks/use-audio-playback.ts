@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, type Dispatch, type SetStateAction } fro
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { translateText } from "@/ai/flows/translate-text-flow";
-import { updateWord, type Word, type CombinedVocabulary } from "@/services/vocabulary";
+import { updateWord, updateUserVocabulary, type Word, type CombinedVocabulary } from "@/services/vocabulary";
 import { useSettings } from "@/context/settings-context";
 
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
@@ -71,12 +71,11 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         }
     };
 
+    // Generic play function for non-vocabulary text. Caches in-session.
     const playAudio = async (key: string, text: string) => {
-        // Stop any currently playing audio
         if (audioRef.current) audioRef.current.pause();
         window.speechSynthesis.cancel();
         
-        // Priority 1: Check for cached URL for general content
         if (audioUrls[key]) {
             playAudioUrl(key, audioUrls[key]);
             return;
@@ -84,46 +83,38 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
 
         setIsLoadingAudio(prev => ({ ...prev, [key]: true }));
         try {
-            // Priority 2: Generate with AI
             const result = await generateAudio({ text });
             if (result.audioUrl) {
                 setAudioUrls(prev => ({ ...prev, [key]: result.audioUrl }));
                 playAudioUrl(key, result.audioUrl);
             } else {
-                 // Priority 3: Fallback to browser TTS if AI returns empty URL
                  playWithBrowserTTS(key, text);
             }
         } catch (error: any) {
-             // Also fallback if the flow itself throws an unexpected error
              playWithBrowserTTS(key, text);
         } finally {
             setIsLoadingAudio(prev => ({ ...prev, [key]: false }));
         }
     };
     
+    // Specific function for vocabulary terms with database caching logic.
     const playTermAudio = useCallback(async (word: CombinedVocabulary) => {
         const audioKey = word.userVocabularyId || word.id;
         
         if (audioRef.current) audioRef.current.pause();
         window.speechSynthesis.cancel();
         
-        // Priority 1: If we have a high-quality audio URL, use it immediately.
         if (word.audioUrl) {
              playAudioUrl(audioKey, word.audioUrl);
              return;
         }
         
-        // Priority 2: If no URL, use Browser TTS for instant feedback.
         playWithBrowserTTS(audioKey, word.term);
 
-        // Priority 3: In the background, start generating the high-quality AI audio.
-        // Don't show a loading spinner for this background task.
         try {
             const result = await generateAudio({ text: word.term });
             if (result.audioUrl) {
                 const newAudioUrl = result.audioUrl;
-                
-                // Save the new URL to the database and update local state for next time.
                 await updateWord(word.id, { audioUrl: newAudioUrl });
                 setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
             }
@@ -131,6 +122,33 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
              console.warn(`Failed to generate background audio for "${word.term}":`, error);
         }
     }, [setWords, speechRate]);
+
+    // Specific function for example sentences with database caching logic.
+    const playSentenceAudio = useCallback(async (word: CombinedVocabulary) => {
+        const audioKey = `${word.userVocabularyId}-sentence`;
+
+        if (audioRef.current) audioRef.current.pause();
+        window.speechSynthesis.cancel();
+
+        if (word.sentenceAudioUrl) {
+            playAudioUrl(audioKey, word.sentenceAudioUrl);
+            return;
+        }
+
+        playWithBrowserTTS(audioKey, word.sentence);
+        
+        try {
+            const result = await generateAudio({ text: word.sentence });
+            if (result.audioUrl) {
+                const newAudioUrl = result.audioUrl;
+                await updateUserVocabulary(word.userVocabularyId, { sentenceAudioUrl: newAudioUrl });
+                setWords(prev => prev.map(w => w.userVocabularyId === word.userVocabularyId ? { ...w, sentenceAudioUrl: newAudioUrl } : w));
+            }
+        } catch (error: any) {
+             console.warn(`Failed to generate background audio for sentence:`, error);
+        }
+    }, [setWords, speechRate]);
+
     
     const playGlobalWordAudio = useCallback(async (word: Word) => {
         const audioKey = word.id;
@@ -179,5 +197,5 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
 
-    return { audioRef, isLoadingAudio, playAudio, playTermAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
+    return { audioRef, isLoadingAudio, playAudio, playTermAudio, playSentenceAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };
