@@ -1,4 +1,6 @@
 
+"use client";
+
 import { useState, useRef, useCallback, type Dispatch, type SetStateAction } from "react";
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
@@ -9,8 +11,11 @@ import { useSettings } from "@/context/settings-context";
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 
 const VIETNAMESE_CHAR_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+const ENGLISH_CHAR_REGEX = /[a-z]/i;
 
 const isVietnamese = (text: string) => VIETNAMESE_CHAR_REGEX.test(text);
+const isEnglish = (text: string) => ENGLISH_CHAR_REGEX.test(text);
+
 
 // --- Audio Playback Helper ---
 export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => {
@@ -43,6 +48,17 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             // Cancel any previous speech
             window.speechSynthesis.cancel();
             
+            // Check for mixed content
+            if (isVietnamese(text) && isEnglish(text)) {
+                toast({
+                    title: "AI Audio Required",
+                    description: "This text contains both English and Vietnamese. High-quality AI audio will be generated for the best experience.",
+                });
+                // Do not attempt to play with browser TTS for mixed content.
+                // The calling function will handle fetching AI audio.
+                return;
+            }
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = isVietnamese(text) ? 'vi-VN' : 'en-US';
             utterance.rate = speechRate;
