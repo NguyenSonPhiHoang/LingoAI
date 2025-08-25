@@ -18,6 +18,7 @@ import {
   Database,
   BookImage,
   Library,
+  HelpCircle,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,8 +51,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  activeView: View | "storybook" | "library";
-  setActiveView: (view: View | "storybook" | "library") => void;
+  activeView: View | "storybook" | "library" | 'guide';
+  setActiveView: (view: View | "storybook" | "library" | 'guide') => void;
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
@@ -78,7 +79,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
 
 
-  const handleViewChange = (view: View) => {
+  const handleViewChange = (view: View | 'guide') => {
     setActiveView(view);
     setOpenMobile(false);
   };
@@ -130,11 +131,27 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-             {/* Management links moved to header dropdown */}
+             <SidebarMenu>
+                 <SidebarMenuItem>
+                    <Link href="/guide" passHref>
+                        <SidebarMenuButton
+                            onClick={() => handleViewChange('guide')}
+                            isActive={activeView === 'guide'}
+                            tooltip="User Guide"
+                            asChild
+                        >
+                            <p>
+                                <HelpCircle />
+                                <span>User Guide</span>
+                            </p>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+             </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <DashboardHeader activeView={activeView as View} setActiveView={setActiveView as (view: View) => void} />
+        <DashboardHeader activeView={activeView as View | 'guide'} setActiveView={setActiveView as (view: View | 'guide') => void} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
           {children}
         </main>

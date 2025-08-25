@@ -9,14 +9,14 @@ import DashboardLayout from "@/components/lingo/dashboard-layout";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import type { View } from "@/app/page";
 
-export default function LibraryLayout({
+export default function GuideLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeView, setActiveView] = React.useState<View | 'storybook' | 'library' | 'guide'>('library');
+  const [activeView, setActiveView] = React.useState<View | 'storybook' | 'library' | 'guide'>('guide');
   const [words, setWords] = React.useState<CombinedVocabulary[]>([]);
 
   React.useEffect(() => {
@@ -28,12 +28,12 @@ export default function LibraryLayout({
   }, [user, authLoading, router]);
 
   const handleSetActiveView = (view: View | 'storybook' | 'library' | 'guide') => {
-      if (view === 'library') {
-          router.push('/library');
+      if (view === 'guide') {
+          router.push('/guide');
       } else if (view === 'storybook') {
           router.push('/storybook');
-      } else if (view === 'guide') {
-          router.push('/guide');
+      } else if (view === 'library') {
+          router.push('/library');
       }
       else {
           router.push('/');

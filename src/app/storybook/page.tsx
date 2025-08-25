@@ -69,6 +69,7 @@ const StorybookLibraryPage: FC = () => {
             setActiveView={(view) => {
                  if (view === 'storybook') router.push('/storybook');
                  else if (view === 'library') router.push('/library');
+                 else if (view === 'guide') router.push('/guide');
                  else router.push('/');
             }}
             setWords={() => {}}

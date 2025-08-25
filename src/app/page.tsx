@@ -48,7 +48,7 @@ export type View =
   
 
 export type ViewState = {
-  view: View | "storybook" | "library";
+  view: View | "storybook" | "library" | "guide";
   lesson?: Lesson;
   recommendedLevel?: UserLevel;
   reviewTest?: GenerateReviewTestOutput;
@@ -111,11 +111,13 @@ const Home: FC = () => {
 
   const favoriteWords = words.filter((word) => word.favorite);
   
-  const setActiveView = (view: View | "storybook" | "library") => {
+  const setActiveView = (view: View | "storybook" | "library" | "guide") => {
       if (view === 'storybook') {
           router.push('/storybook');
       } else if (view === 'library') {
           router.push('/library');
+      } else if (view === 'guide') {
+          router.push('/guide');
       }
       setActiveViewState({ view });
   }

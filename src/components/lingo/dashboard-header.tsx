@@ -19,11 +19,11 @@ import { useRouter } from "next/navigation";
 
 
 interface DashboardHeaderProps {
-  activeView: View;
-  setActiveView: (view: View) => void;
+  activeView: View | 'guide';
+  setActiveView: (view: View | 'guide') => void;
 }
 
-const viewTitles: Record<View, string> = {
+const viewTitles: Record<View | 'guide', string> = {
   overview: "Overview",
   levels: "All Levels",
   "ai-suggester": "AI Suggester",
@@ -39,6 +39,7 @@ const viewTitles: Record<View, string> = {
   "placement-test": "Placement Test",
   "review-test": "Review Test",
   "library": "My Library",
+  "guide": "User Guide"
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({ activeView, setActiveView }) => {
