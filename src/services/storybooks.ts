@@ -26,28 +26,60 @@ export interface Storybook extends GenerateStorybookOutput {
   format: 'bilingual' | 'interspersed';
 }
 
-export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
-  const q = query(
-    storybooksCollection,
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
-  const snapshot = await getDocs(q);
+// export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
+//   const q = query(
+//     storybooksCollection,
+//     where("userId", "==", userId),
+//     orderBy("createdAt", "desc")
+//   );
+//   const snapshot = await getDocs(q);
   
-  return snapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      userId: data.userId || '',
-      level: data.level || 'beginner',
-      format: data.format || 'bilingual',
-      title: data.title || 'Untitled Story',
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
-      keyVocabulary: [], 
-      storyContent: '', 
-    } as Storybook;
-  });
+//   return snapshot.docs.map((doc) => {
+//     const data = doc.data();
+//     return {
+//       id: doc.id,
+//       userId: data.userId || '',
+//       level: data.level || 'beginner',
+//       format: data.format || 'bilingual',
+//       title: data.title || 'Untitled Story',
+//       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
+//       keyVocabulary: data.keyVocabulary || [],
+//       storyContent: data.storyContent || '',
+//     } as Storybook;
+//   });
+// };
+
+export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
+  try {
+    const q = query(
+      storybooksCollection,
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+
+    console.log("Docs fetched:", snapshot.docs.length);
+    snapshot.docs.forEach(d => console.log(d.id, d.data()));
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId || '',
+        level: data.level || 'beginner',
+        format: data.format || 'bilingual',
+        title: data.title || 'Untitled Story',
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
+        keyVocabulary: data.keyVocabulary || [],
+        storyContent: data.storyContent || '',
+      } as Storybook;
+    });
+  } catch (error) {
+    console.error("Error fetching storybooks:", error);
+    throw new Error("Could not fetch your storybooks");
+  }
 };
+
 
 export const getStorybook = async (id: string): Promise<Storybook | null> => {
     const docRef = doc(db, "storybooks", id);

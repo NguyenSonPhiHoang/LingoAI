@@ -107,33 +107,28 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
         if (audioRef.current) audioRef.current.pause();
         window.speechSynthesis.cancel();
         
-        // Priority 1: Check for saved audio URL on the word object
+        // Priority 1: If we have a high-quality audio URL, use it immediately.
         if (word.audioUrl) {
              playAudioUrl(audioKey, word.audioUrl);
              return;
         }
+        
+        // Priority 2: If no URL, use Browser TTS for instant feedback.
+        playWithBrowserTTS(audioKey, word.term);
 
-        setIsLoadingAudio(prev => ({ ...prev, [audioKey]: true }));
+        // Priority 3: In the background, start generating the high-quality AI audio.
+        // Don't show a loading spinner for this background task.
         try {
-            // Priority 2: Generate with AI
             const result = await generateAudio({ text: word.term });
             if (result.audioUrl) {
                 const newAudioUrl = result.audioUrl;
-                playAudioUrl(audioKey, newAudioUrl);
                 
-                // Save the new URL to the database and update local state
+                // Save the new URL to the database and update local state for next time.
                 await updateWord(word.id, { audioUrl: newAudioUrl });
                 setWords(prev => prev.map(w => w.id === word.id ? { ...w, audioUrl: newAudioUrl } : w));
-            } else {
-                 // Priority 3: Fallback to browser TTS
-                 playWithBrowserTTS(audioKey, word.term);
             }
-
         } catch (error: any) {
-             // Also fallback if the flow itself throws an unexpected error
-             playWithBrowserTTS(audioKey, word.term);
-        } finally {
-             setIsLoadingAudio(prev => ({ ...prev, [audioKey]: false }));
+             console.warn(`Failed to generate background audio for "${word.term}":`, error);
         }
     }, [setWords, speechRate]);
     
