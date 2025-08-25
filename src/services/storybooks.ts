@@ -35,8 +35,9 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
     const data = doc.data();
-    // Manually construct the object to ensure correct structure
-    // Only return a snippet of storyContent for the list view
+    // Safely handle storyContent to prevent errors on undefined.
+    const storySnippet = (typeof data.storyContent === 'string') ? data.storyContent.substring(0, 150) : '';
+
     return {
       id: doc.id,
       userId: data.userId,
@@ -44,7 +45,7 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
       format: data.format,
       title: data.title,
       keyVocabulary: [], // Don't load full vocabulary on list page
-      storyContent: data.storyContent.substring(0, 150), // Return a snippet for preview
+      storyContent: storySnippet, // Use the safe snippet
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
     } as Storybook;
   });
