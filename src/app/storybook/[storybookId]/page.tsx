@@ -71,7 +71,7 @@ const StorybookDetailPage: FC = () => {
         return new Map(vocabulary.map(v => [v.term.toLowerCase(), v]));
     }, [vocabulary]);
 
-    const handleAddWord = async (vocabItem: { word: string, definition: string, partOfSpeech: string, pronunciation: string }) => {
+    const handleAddWord = async (vocabItem: { word: string; definition: string; partOfSpeech: string; pronunciation: string; vietnameseWord: string; }) => {
         if (!user) return;
         setIsSavingWord(prev => ({...prev, [vocabItem.word]: true}));
         
@@ -150,6 +150,23 @@ const StorybookDetailPage: FC = () => {
             }
         }
     };
+    
+    const highlightKeywords = (text: string, keywords: { word: string, vietnameseWord: string }[], language: 'en' | 'vi') => {
+        if (!text || !keywords || keywords.length === 0) return text;
+    
+        const keywordMap = new Map(keywords.map(kw => 
+            language === 'en' 
+                ? [kw.word.toLowerCase(), kw.word] 
+                : [kw.vietnameseWord.toLowerCase(), kw.vietnameseWord]
+        ));
+    
+        const regex = new RegExp(`\\b(${Array.from(keywordMap.keys()).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+        
+        return text.replace(regex, (match) => {
+            const originalCaseWord = keywordMap.get(match.toLowerCase());
+            return `<strong>${originalCaseWord || match}</strong>`;
+        });
+    };
 
     if (isLoading) {
         return (
@@ -188,6 +205,10 @@ const StorybookDetailPage: FC = () => {
     
     const englishAudioKey = `${storybook.id}-englishContent`;
     const vietnameseAudioKey = `${storybook.id}-vietnameseContent`;
+
+    const highlightedEnglishStory = storybook.format === 'bilingual' ? highlightKeywords(storybook.englishStory || '', storybook.keyVocabulary, 'en') : storybook.englishStory || '';
+    const highlightedVietnameseStory = storybook.format === 'bilingual' ? highlightKeywords(storybook.vietnameseStory || '', storybook.keyVocabulary, 'vi') : storybook.vietnameseStory || '';
+
 
     return (
         <div className="space-y-6">
@@ -249,7 +270,7 @@ const StorybookDetailPage: FC = () => {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-7 w-7 flex-shrink-0"
-                                                    onClick={() => playbackHook.playTermAudio(v)}
+                                                    onClick={() => playbackHook.playTermAudio(v as any)}
                                                     disabled={isAudioLoading}
                                                 >
                                                     {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}
@@ -301,7 +322,7 @@ const StorybookDetailPage: FC = () => {
                                     </Button>
                                 </div>
                                 <article className="prose dark:prose-invert max-w-none">
-                                    <InteractiveText text={storybook.englishStory || ''} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={englishAudioKey}/>
+                                    <InteractiveText text={highlightedEnglishStory} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={englishAudioKey}/>
                                 </article>
                             </div>
                              <div className="border-t md:border-l md:border-t-0 md:pl-8 pt-4 md:pt-0">
@@ -313,9 +334,7 @@ const StorybookDetailPage: FC = () => {
                                     </Button>
                                 </div>
                                 <article className="prose dark:prose-invert max-w-none">
-                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {storybook.vietnameseStory || ''}
-                                     </ReactMarkdown>
+                                     <InteractiveText text={highlightedVietnameseStory} vocabulary={[]} playbackHook={playbackHook} activePlaybackKey={vietnameseAudioKey} />
                                 </article>
                             </div>
                         </div>

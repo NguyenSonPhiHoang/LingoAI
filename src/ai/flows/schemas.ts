@@ -404,10 +404,11 @@ export const GenerateStorybookInputSchema = z.object({
 export type GenerateStorybookInput = z.infer<typeof GenerateStorybookInputSchema>;
 
 const StorybookVocabularySchema = z.object({
-    word: z.string(),
-    definition: z.string(),
-    partOfSpeech: z.string(),
-    pronunciation: z.string(),
+    word: z.string().describe("The English vocabulary word."),
+    definition: z.string().describe("The English definition."),
+    partOfSpeech: z.string().describe("The part of speech."),
+    pronunciation: z.string().describe("The IPA pronunciation."),
+    vietnameseWord: z.string().describe("The Vietnamese translation of the word."),
 });
 
 export const GenerateStorybookOutputSchema = z.object({

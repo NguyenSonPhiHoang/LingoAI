@@ -45,7 +45,7 @@ You must format the story according to the specified format: "{{format}}".
 
 The output must contain:
 1.  A short, catchy title for the story in English.
-2.  A list of 5-10 key vocabulary words from the story. For each word, provide its simple English definition, part of speech, and IPA pronunciation.
+2.  A list of 5-10 key vocabulary words from the story. For each word, provide: its simple English definition, its part of speech, its IPA pronunciation, and its direct Vietnamese translation in the 'vietnameseWord' field.
 3.  The story content, formatted as requested in the correct fields.
 
 Generate the storybook now.

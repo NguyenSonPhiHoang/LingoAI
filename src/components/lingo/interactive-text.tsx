@@ -34,7 +34,7 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
     }, [vocabulary]);
 
     const parts = useMemo(() => {
-        const finalParts: React.ReactNode[] = [];
+        const finalParts: (string | React.ReactNode)[] = [];
         if (!text) return finalParts;
         
         let remainingText = text;
@@ -42,61 +42,24 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
         // Apply highlighting first if active for this component
         if (highlightedRange && currentActiveKey === activePlaybackKey) {
             const { start, end } = highlightedRange;
-            const before = text.substring(0, start);
-            const highlighted = text.substring(start, end);
-            const after = text.substring(end);
-            remainingText = before + '|||HIGHLIGHTED|||' + after;
-        }
-
-        // Create a regex to find all vocabulary terms.
-        const vocabTerms = Array.from(vocabMap.keys());
-        if (vocabTerms.length === 0 && !remainingText.includes('|||HIGHLIGHTED|||')) {
-            return [text]; // No vocab and no highlight, just return the text
-        }
-        
-        const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        const combinedRegex = new RegExp(`(\\b(?:${escapedTerms.join('|')})\\b|\\|\\|\\|HIGHLIGHTED\\|\\|\\|)`);
-        
-        const textParts = remainingText.split(combinedRegex).filter(Boolean); // Filter out empty strings
-        
-        textParts.forEach((part, index) => {
-            const lowerPart = part.toLowerCase();
-            if (lowerPart === '|||highlighted|||') {
-                 const { start, end } = highlightedRange!;
+            if (start < end) { // Ensure range is valid
+                 const before = text.substring(0, start);
+                 const highlighted = text.substring(start, end);
+                 const after = text.substring(end);
+                 
+                 finalParts.push(<span key="before" dangerouslySetInnerHTML={{ __html: before }} />);
                  finalParts.push(
-                    <span key={`highlight-${index}`} className="bg-yellow-200 dark:bg-yellow-700/70 rounded-sm">
-                        {text.substring(start, end)}
-                    </span>
+                    <span key="highlight" className="bg-yellow-200 dark:bg-yellow-700/70 rounded-sm" dangerouslySetInnerHTML={{ __html: highlighted }} />
                  );
-            } else if (vocabMap.has(lowerPart)) {
-                const vocabWord = vocabMap.get(lowerPart)!;
-                const audioKey = vocabWord.userVocabularyId || vocabWord.id;
-                const isAudioLoading = isLoadingAudio[audioKey];
-                finalParts.push(
-                    <TooltipProvider key={`${activePlaybackKey}-vocab-${index}`}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="bg-primary/10 text-primary font-semibold rounded-sm px-1 py-0.5 cursor-pointer">
-                                    {part}
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                                <div className="flex items-center gap-2">
-                                    <div className="font-bold font-sans text-lg">{vocabWord.pronunciation}</div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => playTermAudio(vocabWord)} disabled={isAudioLoading}>
-                                        {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                );
-            } else {
-                finalParts.push(part);
+                 finalParts.push(<span key="after" dangerouslySetInnerHTML={{ __html: after }} />);
+                 return finalParts;
             }
-        });
-
+        }
+        
+        // If no highlighting, just render the text which might contain <strong> tags
+        finalParts.push(<span key="full-text" dangerouslySetInnerHTML={{ __html: text }} />);
         return finalParts;
+
 
     }, [text, vocabMap, playTermAudio, isLoadingAudio, activePlaybackKey, highlightedRange, currentActiveKey]);
 
