@@ -1,64 +1,65 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- User Management ---
+    // --- User Profile Rules ---
+    // A user can create their own profile upon signup.
+    // A user can read, update their own profile.
+    // Admins can read any profile.
     match /users/{userId} {
-      // Allow users to read their own user document.
-      // Allow admins to read any user document.
-      allow read: if request.auth.uid == userId 
-                  || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-
-      // Allow users to create their own user document upon signup.
+      allow read, update: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       allow create: if request.auth.uid == userId;
-
-      // Allow users to update their own profile information.
-      // Allow admins to update any user's role or status.
-      allow update: if request.auth.uid == userId 
-                    || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // --- User-Owned Data Collections ---
-    // This rule applies to all collections where documents contain a `userId` field
-    // identifying the owner. This includes lessons, storybooks, library documents, etc.
-    function isOwner(collectionName) {
-      return collectionName in [
-        'lessons', 'storybooks', 'library', 'library_content', 
-        'userVocabulary', 'testResults', 'user_activity'
-      ];
+    // --- Personal Data Rules ---
+    // The following collections contain user-specific data.
+    // The rule is simple: a user can do anything (read, write) to a document
+    // if their UID matches the 'userId' field in that document.
+    // This works for get, list, create, update, delete as long as client queries filter by userId.
+
+    match /lessons/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    match /{collection}/{docId} 
-      where isOwner(collection) {
-        // A user can read or write a document if their UID matches the `userId` in the document.
-        // This single rule covers:
-        // - get: Reading a single document.
-        // - list: Querying for a list of documents (requires `where('userId', '==', auth.uid)` in the client code).
-        // - create, update, delete: All write operations.
-        allow read, write: if request.auth.uid == resource.data.userId;
+    match /storybooks/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
     }
 
-    // --- Shared/Global Data Collections ---
+    match /library/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
 
-    // Words collection can be read by any authenticated user.
-    // Only admins can modify the global word list.
-    match /words/{wordId} {
+    match /library_content/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    match /userVocabulary/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+    
+    match /testResults/{docId} {
+       allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    match /user_activity/{docId} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+    }
+
+    // --- Global Data Rules ---
+    // These collections contain public or semi-public data.
+
+    // All authenticated users can read global words. Only admins can create/update them.
+    match /words/{docId} {
       allow read: if request.auth != null;
       allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Learning resources can be read by any authenticated user.
-    // Only admins can add or delete them. Users can rate them.
-    match /learningResources/{resourceId} {
-        allow read: if request.auth != null;
-
-        // Allow update only for rating, or if user is an admin.
-        allow update: if request.auth != null && ('ratings' in request.resource.data)
-                      || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-        
-        // Only admins can create or delete.
-        allow create, delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // All authenticated users can read learning resources. Only admins can write.
+    match /learningResources/{docId} {
+       allow read: if request.auth != null;
+       allow create, delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+       // Allow any authenticated user to update (for rating)
+       allow update: if request.auth != null;
     }
   }
 }
