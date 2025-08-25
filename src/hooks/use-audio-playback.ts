@@ -233,5 +233,5 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
 
-    return { audioRef, isLoadingAudio, playAudio, playTermAudio, playSentenceAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
+    return { audioRef, isLoadingAudio, playAudio, playWithBrowserTTS, playTermAudio, playSentenceAudio, playGlobalWordAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };
