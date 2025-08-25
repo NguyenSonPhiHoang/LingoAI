@@ -307,7 +307,7 @@ const GenerateStorybookPage: FC = () => {
 
                                 <article className="prose dark:prose-invert max-w-none">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {generatedStory.storyContent}
+                                        {generatedStory.englishStory || generatedStory.interspersedStory || ''}
                                     </ReactMarkdown>
                                 </article>
                             </div>
