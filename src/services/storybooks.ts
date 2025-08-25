@@ -35,9 +35,15 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
     const data = doc.data();
+    // Manually construct the object to ensure correct structure
     return {
       id: doc.id,
-      ...data,
+      userId: data.userId,
+      level: data.level,
+      format: data.format,
+      title: data.title,
+      keyVocabulary: data.keyVocabulary || [],
+      storyContent: data.storyContent,
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
     } as Storybook;
   });
