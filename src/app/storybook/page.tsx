@@ -174,8 +174,7 @@ const StorybookLibraryPage: FC = () => {
     )
 }
 
-
-const StorybookPage: FC = () => {
+const StorybookLayout: FC = () => {
     const router = useRouter();
 
     return (
@@ -194,5 +193,4 @@ const StorybookPage: FC = () => {
     );
 }
 
-export default StorybookPage;
-
+export default StorybookLayout;
