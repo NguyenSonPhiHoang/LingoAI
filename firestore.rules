@@ -1,63 +1,79 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read their own user doc, but anyone can create one (signup).
-    // Admins can read/write any user doc.
+    // Helper function to check for admin role
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Global Data
+    match /words/{wordId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /learningResources/{resourceId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // User Data
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth.uid == userId;
       allow update: if request.auth.uid == userId;
-      // Admin override for status changes etc.
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // No delete for users to prevent accidental deletion
     }
 
-    // Lessons are private to the user who created them.
-    match /lessons/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
+    // Generic rule for user-owned content
+    function isOwner() {
+      return request.auth.uid == resource.data.userId;
+    }
+    
+    function isCreatingOwner() {
+       return request.auth.uid == request.resource.data.userId;
     }
 
-    // Storybooks are private to the user who created them.
-    match /storybooks/{docId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Library documents are private to the user.
-    match /library/{docId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Library content (notes) are private to the user.
-    match /library_content/{docId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Words are public to read, but only admins can write.
-    match /words/{docId} {
-        allow read: if request.auth != null;
-        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    // User-specific vocabulary entries are private.
     match /userVocabulary/{docId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
     }
 
-    // Learning resources are public to read, but only admins can write.
-    match /learningResources/{docId} {
-        allow read: if request.auth != null;
-        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    match /lessons/{docId} {
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
+    }
+    
+    match /storybooks/{docId} {
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
+    }
+    
+    match /library/{docId} {
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
     }
 
-    // Test results are private to the user.
+    match /library_content/{docId} {
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
+    }
+    
     match /testResults/{docId} {
-         allow read, write: if request.auth.uid == resource.data.userId;
+      allow create: if isCreatingOwner();
+      allow read, update, delete: if isOwner();
     }
 
-    // User activity logs are private to the user.
     match /user_activity/{docId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
+       // Activity can only be created or updated, not read directly or deleted by user
+      allow create: if isCreatingOwner();
+      allow update: if isOwner();
+      // Deny read/delete for users to simplify rules, data is read via aggregated queries if needed
+      allow read, delete: if false;
     }
   }
 }
