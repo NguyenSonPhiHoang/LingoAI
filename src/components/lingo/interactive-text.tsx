@@ -36,20 +36,39 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
     const parts = useMemo(() => {
         const finalParts: React.ReactNode[] = [];
         if (!text) return finalParts;
+        
+        let remainingText = text;
+
+        // Apply highlighting first if active for this component
+        if (highlightedRange && currentActiveKey === activePlaybackKey) {
+            const { start, end } = highlightedRange;
+            const before = text.substring(0, start);
+            const highlighted = text.substring(start, end);
+            const after = text.substring(end);
+            remainingText = before + '|||HIGHLIGHTED|||' + after;
+        }
 
         // Create a regex to find all vocabulary terms.
         const vocabTerms = Array.from(vocabMap.keys());
-        if (vocabTerms.length === 0) {
-            return [text]; // No vocab, just return the text
+        if (vocabTerms.length === 0 && !remainingText.includes('|||HIGHLIGHTED|||')) {
+            return [text]; // No vocab and no highlight, just return the text
         }
-        const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        const combinedRegex = new RegExp(`(\\b(?:${escapedTerms.join('|')})\\b)`, 'gi');
         
-        const textParts = text.split(combinedRegex);
+        const escapedTerms = vocabTerms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const combinedRegex = new RegExp(`(\\b(?:${escapedTerms.join('|')})\\b|\\|\\|\\|HIGHLIGHTED\\|\\|\\|)`);
+        
+        const textParts = remainingText.split(combinedRegex).filter(Boolean); // Filter out empty strings
         
         textParts.forEach((part, index) => {
             const lowerPart = part.toLowerCase();
-            if (vocabMap.has(lowerPart)) {
+            if (lowerPart === '|||highlighted|||') {
+                 const { start, end } = highlightedRange!;
+                 finalParts.push(
+                    <span key={`highlight-${index}`} className="bg-yellow-200 dark:bg-yellow-700/70 rounded-sm">
+                        {text.substring(start, end)}
+                    </span>
+                 );
+            } else if (vocabMap.has(lowerPart)) {
                 const vocabWord = vocabMap.get(lowerPart)!;
                 const audioKey = vocabWord.userVocabularyId || vocabWord.id;
                 const isAudioLoading = isLoadingAudio[audioKey];
@@ -79,7 +98,7 @@ const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary
 
         return finalParts;
 
-    }, [text, vocabMap, playTermAudio, isLoadingAudio, activePlaybackKey]);
+    }, [text, vocabMap, playTermAudio, isLoadingAudio, activePlaybackKey, highlightedRange, currentActiveKey]);
 
     return <>{parts}</>;
 });
