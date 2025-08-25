@@ -19,6 +19,7 @@ import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { Skeleton } from '@/components/ui/skeleton';
 import InteractiveText from '@/components/lingo/interactive-text';
 import { getVocabulary, addWordToVocabulary, type CombinedVocabulary } from '@/services/vocabulary';
+import { generateWordDetails } from '@/ai/flows/generate-word-details';
 import type { VocabularyEntry } from '@/ai/flows/schemas';
 import { cn } from '@/lib/utils';
 
@@ -72,24 +73,34 @@ const StorybookDetailPage: FC = () => {
     const handleAddWord = async (vocabItem: { word: string, definition: string, partOfSpeech: string, pronunciation: string }) => {
         if (!user) return;
         setIsSavingWord(prev => ({...prev, [vocabItem.word]: true}));
+        
         try {
-            // We need to create a full VocabularyEntry object.
-            // Some fields will be blank and can be filled in later by the user or another AI call.
+            // 1. Get full details from AI
+            const details = await generateWordDetails({ term: vocabItem.word });
+
+            // 2. Construct the full vocabulary entry
             const newWordData: VocabularyEntry = {
                 term: vocabItem.word,
-                definition: vocabItem.definition,
-                partOfSpeech: vocabItem.partOfSpeech,
-                pronunciation: vocabItem.pronunciation,
-                vietnameseDefinition: '...', // Placeholder
-                sentence: '...', // Placeholder
-                vietnameseSentence: '...', // Placeholder
+                pronunciation: details.pronunciation || vocabItem.pronunciation,
+                partOfSpeech: details.partOfSpeech || vocabItem.partOfSpeech,
+                definition: details.definition || vocabItem.definition,
+                vietnameseDefinition: details.vietnameseDefinition,
+                sentence: details.sentence,
+                vietnameseSentence: details.vietnameseSentence,
+                synonyms: details.synonyms || [],
+                antonyms: details.antonyms || [],
+                irregularForms: details.irregularForms,
             };
 
+            // 3. Save to database
             const savedWord = await addWordToVocabulary(user.uid, newWordData);
-            setVocabulary(prev => [...prev, savedWord]); // Optimistically update the list
+            
+            // 4. Update local state
+            setVocabulary(prev => [...prev, savedWord]);
+            
             toast({
                 title: 'Word Added!',
-                description: `"${vocabItem.word}" has been saved to your vocabulary.`,
+                description: `"${vocabItem.word}" has been saved to your vocabulary with full details.`,
             });
         } catch (error) {
             console.error("Failed to add word:", error);
