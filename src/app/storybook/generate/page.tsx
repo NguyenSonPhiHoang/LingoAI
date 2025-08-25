@@ -85,16 +85,12 @@ const GenerateStorybookPage: FC = () => {
         setIsLoading(true);
         setGeneratedStory(null);
         try {
-            const baseInput = {
-                level: values.level,
-                format: values.format,
-            };
-
             let finalInput: GenerateStorybookInput;
 
             if (values.generationType === 'topic') {
                 finalInput = {
-                    ...baseInput,
+                    level: values.level,
+                    format: values.format,
                     topic: values.topic,
                 };
             } else {
@@ -102,13 +98,15 @@ const GenerateStorybookPage: FC = () => {
                     .filter(w => values.vocabulary?.includes(w.id))
                     .map(w => ({ term: w.term, definition: w.definition }));
                 finalInput = {
-                    ...baseInput,
+                    level: values.level,
+                    format: values.format,
                     vocabulary: selectedVocab,
                 };
             }
-
+            
             const result = await generateStorybook(finalInput);
-            setGeneratedStory(result);
+            // Ensure the result is a plain JS object before setting state
+            setGeneratedStory(JSON.parse(JSON.stringify(result)));
         } catch (error) {
             console.error("Failed to generate story:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not generate the story. Please try again.' });

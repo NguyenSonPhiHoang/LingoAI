@@ -64,8 +64,11 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
 }
 
 export const addStorybook = async (userId: string, storyData: GenerateStorybookOutput, level: UserLevel, format: 'bilingual' | 'interspersed'): Promise<Storybook> => {
+    // Ensure data is a plain JavaScript object before sending to Firestore
+    const plainStoryData = JSON.parse(JSON.stringify(storyData));
+
     const payload = {
-        ...storyData,
+        ...plainStoryData,
         userId,
         level,
         format,
