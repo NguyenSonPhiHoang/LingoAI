@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { getVocabulary, type CombinedVocabulary } from '@/services/vocabulary';
-import { generateStorybook } from '@/ai/flows/generate-storybook-flow';
+import { generateStorybook, type GenerateStorybookInput } from '@/ai/flows/generate-storybook-flow';
 import { addStorybook } from '@/services/storybooks';
 import { StorybookFormatSchema, UserLevelSchema, type GenerateStorybookOutput } from '@/ai/flows/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -85,17 +85,29 @@ const GenerateStorybookPage: FC = () => {
         setIsLoading(true);
         setGeneratedStory(null);
         try {
-            const input = {
+            const baseInput = {
                 level: values.level,
                 format: values.format,
-                topic: values.generationType === 'topic' ? values.topic : undefined,
-                vocabulary: values.generationType === 'vocabulary' 
-                    ? favoriteWords
-                        .filter(w => values.vocabulary?.includes(w.id))
-                        .map(w => ({ term: w.term, definition: w.definition }))
-                    : undefined,
             };
-            const result = await generateStorybook(input);
+
+            let finalInput: GenerateStorybookInput;
+
+            if (values.generationType === 'topic') {
+                finalInput = {
+                    ...baseInput,
+                    topic: values.topic,
+                };
+            } else {
+                const selectedVocab = favoriteWords
+                    .filter(w => values.vocabulary?.includes(w.id))
+                    .map(w => ({ term: w.term, definition: w.definition }));
+                finalInput = {
+                    ...baseInput,
+                    vocabulary: selectedVocab,
+                };
+            }
+
+            const result = await generateStorybook(finalInput);
             setGeneratedStory(result);
         } catch (error) {
             console.error("Failed to generate story:", error);
