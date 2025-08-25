@@ -26,8 +26,6 @@ import { getLessons } from "@/services/lessons";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
-import StorybookPage from "./storybook/page";
-import LibraryPage from "./library/page";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
 
 
