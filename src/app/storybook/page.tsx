@@ -13,8 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { getStorybooks, deleteStorybook, type Storybook } from '@/services/storybooks';
-import DashboardLayout from '@/components/lingo/dashboard-layout';
-import type { CombinedVocabulary } from '@/services/vocabulary';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -174,23 +172,4 @@ const StorybookLibraryPage: FC = () => {
     )
 }
 
-const StorybookLayout: FC = () => {
-    const router = useRouter();
-
-    return (
-        <DashboardLayout
-            activeView="storybook"
-            setActiveView={(view) => {
-                 if (view === 'storybook') router.push('/storybook');
-                 else if (view === 'library') router.push('/library');
-                 else if (view === 'guide') router.push('/guide');
-                 else router.push('/');
-            }}
-            setWords={() => {}}
-        >
-            <StorybookLibraryPage />
-        </DashboardLayout>
-    );
-}
-
-export default StorybookLayout;
+export default StorybookLibraryPage;
