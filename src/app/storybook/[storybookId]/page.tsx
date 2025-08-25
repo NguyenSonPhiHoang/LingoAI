@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo, type FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle, CheckCircle, ChevronsUpDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -22,6 +22,7 @@ import { getVocabulary, addWordToVocabulary, type CombinedVocabulary } from '@/s
 import { generateWordDetails } from '@/ai/flows/generate-word-details';
 import type { VocabularyEntry } from '@/ai/flows/schemas';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 
 const StorybookDetailPage: FC = () => {
@@ -272,6 +273,30 @@ const StorybookDetailPage: FC = () => {
                             {storybook.storyContent}
                          </ReactMarkdown>
                     </article>
+                     {storybook.format === 'interspersed' && storybook.fullEnglishStory && (
+                        <Collapsible>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="outline" className="w-full">
+                                    <ChevronsUpDown className="mr-2" />
+                                    Show Full English Version
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <Card className="mt-4">
+                                     <CardHeader>
+                                        <CardTitle>Full English Version</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <article className="prose dark:prose-invert max-w-none">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {storybook.fullEnglishStory}
+                                            </ReactMarkdown>
+                                        </article>
+                                    </CardContent>
+                                </Card>
+                            </CollapsibleContent>
+                        </Collapsible>
+                    )}
                 </CardContent>
              </Card>
         </div>

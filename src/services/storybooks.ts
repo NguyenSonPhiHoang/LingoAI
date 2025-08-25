@@ -27,6 +27,7 @@ export interface Storybook extends GenerateStorybookOutput {
   format: StorybookFormat;
   titleAudioUrl?: string;
   contentAudioUrl?: string;
+  fullEnglishStory?: string;
 }
 
 export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'storyContent' | 'keyVocabulary'>[]> => {
@@ -75,6 +76,7 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
         titleAudioUrl: data.titleAudioUrl,
         contentAudioUrl: data.contentAudioUrl,
+        fullEnglishStory: data.fullEnglishStory,
     } as Storybook;
 }
 

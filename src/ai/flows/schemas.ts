@@ -414,6 +414,7 @@ export const GenerateStorybookOutputSchema = z.object({
     title: z.string(),
     keyVocabulary: z.array(StorybookVocabularySchema),
     storyContent: z.string(),
+    fullEnglishStory: z.string().optional().describe("The full English version of the story, only used for 'interspersed' format."),
 });
 export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSchema>;
 
