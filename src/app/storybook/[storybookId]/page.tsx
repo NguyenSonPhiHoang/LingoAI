@@ -151,15 +151,23 @@ const StorybookDetailPage: FC = () => {
         }
     };
     
-    const highlightKeywords = (text: string, keywords: { word: string, vietnameseWord: string }[], language: 'en' | 'vi') => {
+    const highlightKeywords = (text: string, keywords: { word: string, vietnameseWord?: string }[], language: 'en' | 'vi') => {
         if (!text || !keywords || keywords.length === 0) return text;
     
-        const keywordMap = new Map(keywords.map(kw => 
-            language === 'en' 
-                ? [kw.word.toLowerCase(), kw.word] 
-                : [kw.vietnameseWord.toLowerCase(), kw.vietnameseWord]
-        ));
+        const keywordMap = new Map(
+            keywords.map(kw => {
+                if (language === 'en' && kw.word) {
+                    return [kw.word.toLowerCase(), kw.word];
+                }
+                if (language === 'vi' && kw.vietnameseWord) {
+                    return [kw.vietnameseWord.toLowerCase(), kw.vietnameseWord];
+                }
+                return null;
+            }).filter(Boolean) as [string, string][]
+        );
     
+        if (keywordMap.size === 0) return text;
+
         const regex = new RegExp(`\\b(${Array.from(keywordMap.keys()).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
         
         return text.replace(regex, (match) => {
