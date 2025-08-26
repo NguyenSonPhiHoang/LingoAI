@@ -68,7 +68,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                         <DropdownMenuContent>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                     </DropdownMenuItem>
                                 </AlertDialogTrigger>
@@ -259,7 +259,7 @@ const StorybookLibraryPage: FC = () => {
                                                         <DropdownMenuSeparator />
                                                          <AlertDialog>
                                                             <AlertDialogTrigger asChild>
-                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                                 </DropdownMenuItem>
                                                             </AlertDialogTrigger>
@@ -299,6 +299,7 @@ const StorybookLibraryPage: FC = () => {
 }
 
 export default StorybookLibraryPage;
+
 
 
 

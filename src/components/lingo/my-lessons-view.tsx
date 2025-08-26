@@ -199,7 +199,7 @@ const LessonGrid: FC<{
                                 <DropdownMenuSeparator />
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                                         </DropdownMenuItem>
                                     </AlertDialogTrigger>
@@ -541,9 +541,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
                                             <DropdownMenuItem onClick={() => handleStartLesson(lesson)}>
@@ -553,7 +551,7 @@ const MyLessonsView: FC<MyLessonsViewProps> = ({ lessons, setLessons, setActiveV
                                             <DropdownMenuSeparator />
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                     </DropdownMenuItem>
                                                 </AlertDialogTrigger>
