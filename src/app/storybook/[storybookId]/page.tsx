@@ -24,6 +24,7 @@ import type { VocabularyEntry } from '@/ai/flows/schemas';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { useSettings } from '@/context/settings-context';
 
 
 const statusOptions: { value: StorybookStatus; label: string; icon: React.ElementType }[] = [
@@ -43,7 +44,8 @@ const StorybookDetailPage: FC = () => {
     const [vocabulary, setVocabulary] = useState<CombinedVocabulary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingWord, setIsSavingWord] = useState<Record<string, boolean>>({});
-    const playbackHook = useAudioPlayback({ setWords: setVocabulary });
+    const { speechRate } = useSettings();
+    const playbackHook = useAudioPlayback({ setWords: setVocabulary, speechRate });
 
     useEffect(() => {
         if (!user || !storybookId) return;
@@ -74,7 +76,7 @@ const StorybookDetailPage: FC = () => {
 
     }, [user, storybookId, toast, router]);
     
-    const userVocabularySet = useMemo(() => {
+    const userVocabularyMap = useMemo(() => {
         return new Map(vocabulary.map(v => [v.term.toLowerCase(), v]));
     }, [vocabulary]);
 
@@ -230,9 +232,6 @@ const StorybookDetailPage: FC = () => {
     }
     
     const titleAudioKey = `${storybook.id}-title`;
-    const storyContentToPlay = storybook.format === 'bilingual' 
-        ? storybook.englishStory 
-        : storybook.interspersedStory;
     
     const englishAudioKey = `${storybook.id}-englishContent`;
     const vietnameseAudioKey = `${storybook.id}-vietnameseContent`;
@@ -284,8 +283,8 @@ const StorybookDetailPage: FC = () => {
                                 {playbackHook.isLoadingAudio[titleAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <BookHeart className="mr-2" />}
                                 Listen to Title
                             </Button>
-                             {storybook.format === 'interspersed' && storyContentToPlay && (
-                                 <Button variant="outline" onClick={() => playAndCacheStoryAudio('englishContent', storyContentToPlay)} disabled={playbackHook.isLoadingAudio[englishAudioKey]}>
+                             {storybook.format === 'interspersed' && storybook.interspersedStory && (
+                                 <Button variant="outline" onClick={() => playAndCacheStoryAudio('englishContent', storybook.interspersedStory)} disabled={playbackHook.isLoadingAudio[englishAudioKey]}>
                                     {playbackHook.isLoadingAudio[englishAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="mr-2" />}
                                     Read Aloud
                                 </Button>
@@ -301,12 +300,12 @@ const StorybookDetailPage: FC = () => {
                         <CardContent>
                              <ul className="space-y-4 text-sm columns-1 md:columns-2">
                                 {storybook.keyVocabulary.map((v, i) => {
-                                     const vocabAudioKey = `vocab-${i}-${storybook.id}`;
+                                     const vocabAudioKey = `vocab-${v.word}-${i}`;
                                      const definitionTranslationKey = `def-trans-${i}-${storybook.id}`;
                                      const isAudioLoading = playbackHook.isLoadingAudio[vocabAudioKey];
                                      const isTranslating = playbackHook.isTranslating[definitionTranslationKey];
                                      const isSaving = isSavingWord[v.word];
-                                     const existingWord = userVocabularySet.get(v.word.toLowerCase());
+                                     const existingWord = userVocabularyMap.get(v.word.toLowerCase());
                                      const hasAudio = !!existingWord?.audioUrl;
 
                                     return (
@@ -323,7 +322,13 @@ const StorybookDetailPage: FC = () => {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-7 w-7 flex-shrink-0"
-                                                    onClick={() => playbackHook.playTermAudio(v as any)}
+                                                    onClick={() => {
+                                                        if (existingWord) {
+                                                            playbackHook.playTermAudio(existingWord);
+                                                        } else if (user) {
+                                                            playbackHook.playAndSaveUnsavedWord(v, user.uid, vocabAudioKey);
+                                                        }
+                                                    }}
                                                     disabled={isAudioLoading}
                                                 >
                                                     {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}

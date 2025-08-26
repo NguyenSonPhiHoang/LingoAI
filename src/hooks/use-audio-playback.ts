@@ -5,7 +5,8 @@ import { useState, useRef, useCallback, type Dispatch, type SetStateAction } fro
 import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { translateText } from "@/ai/flows/translate-text-flow";
-import { updateWord, updateUserVocabulary, type Word, type CombinedVocabulary } from "@/services/vocabulary";
+import { updateWord, updateUserVocabulary, type Word, type CombinedVocabulary, addWordToVocabulary } from "@/services/vocabulary";
+import type { VocabularyEntry } from "@/ai/flows/schemas";
 
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 
@@ -55,7 +56,11 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
             
             const utterance = new SpeechSynthesisUtterance(plainText);
             // If Vietnamese characters are present, use Vietnamese voice. Otherwise, default to English.
-            utterance.lang = isVietnamese(plainText) ? 'vi-VN' : 'en-US';
+            if (isVietnamese(plainText)) {
+                utterance.lang = 'vi-VN';
+            } else {
+                utterance.lang = 'en-US';
+            }
             utterance.rate = (speechRate && isFinite(speechRate)) ? speechRate : 1.0;
             
             utterance.onstart = () => {
@@ -153,6 +158,62 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
         }
     }, [setWords, speechRate]);
 
+    const playAndSaveUnsavedWord = async (
+        wordData: { word: string; definition: string; partOfSpeech: string; pronunciation: string; vietnameseWord: string; },
+        userId: string,
+        audioKey: string,
+    ) => {
+         if (audioRef.current) audioRef.current.pause();
+         window.speechSynthesis.cancel();
+
+         setIsLoadingAudio(prev => ({ ...prev, [audioKey]: true }));
+         try {
+            // First, try to generate AI audio
+            const audioResult = await generateAudio({ text: wordData.word });
+            
+            if (audioResult.audioUrl) {
+                // If successful, create the full vocab entry and save it
+                const newWordPayload: VocabularyEntry = {
+                    term: wordData.word,
+                    pronunciation: wordData.pronunciation,
+                    partOfSpeech: wordData.partOfSpeech,
+                    definition: wordData.definition,
+                    vietnameseDefinition: wordData.vietnameseWord, // Using the direct translation
+                    sentence: `Example for ${wordData.word}.`, // Placeholder sentence
+                    vietnameseSentence: `Ví dụ cho ${wordData.word}.`, // Placeholder sentence
+                };
+
+                const savedWord = await addWordToVocabulary(userId, newWordPayload);
+                // Update the newly created word with the audio URL
+                await updateWord(savedWord.id, { audioUrl: audioResult.audioUrl });
+
+                // Play the new audio
+                playAudioUrl(audioKey, audioResult.audioUrl);
+                
+                // Add the fully formed word to the local state to update the UI
+                setWords(prev => [...prev, { ...savedWord, audioUrl: audioResult.audioUrl }]);
+                
+                toast({
+                    title: "Word Added & Audio Played",
+                    description: `"${wordData.word}" has been saved to your vocabulary.`,
+                });
+
+            } else {
+                 // If AI audio fails, fallback to browser TTS
+                 playWithBrowserTTS(audioKey, wordData.word);
+            }
+
+         } catch (error) {
+            console.error("Error playing and saving word:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not process audio or save word.' });
+            // Fallback to browser TTS on any error
+            playWithBrowserTTS(audioKey, wordData.word);
+         } finally {
+            setIsLoadingAudio(prev => ({ ...prev, [audioKey]: false }));
+         }
+    };
+
+
     // Specific function for example sentences with database caching logic.
     const playSentenceAudio = useCallback(async (word: CombinedVocabulary) => {
         const audioKey = `${word.userVocabularyId}-sentence`;
@@ -231,5 +292,5 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
     };
 
 
-    return { audioRef, isLoadingAudio, playAudio, playWithBrowserTTS, playTermAudio, playSentenceAudio, playGlobalWordAudio, generateAndCacheAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
+    return { audioRef, isLoadingAudio, playAudio, playWithBrowserTTS, playTermAudio, playAndSaveUnsavedWord, playSentenceAudio, playGlobalWordAudio, generateAndCacheAudio, highlightedRange, activePlaybackKey, translations, isTranslating, toggleTranslation };
 };
