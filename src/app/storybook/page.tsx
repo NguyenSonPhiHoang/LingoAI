@@ -53,7 +53,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
 
     return (
          <Card className="flex flex-col hover:shadow-lg transition-shadow">
-            <CardHeader className={cn("relative pb-3", formatClass)}>
+            <CardHeader className={cn("relative p-3", formatClass)}>
                  <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
                         <Badge variant="outline" className="capitalize bg-background/50">{story.level}</Badge>
@@ -87,7 +87,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                     </DropdownMenu>
                  </div>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col pt-4">
+            <CardContent className="flex-grow flex flex-col p-3">
                  <div className="flex items-start gap-2 mb-2">
                      <TooltipProvider>
                         <Tooltip>
@@ -110,7 +110,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                     </p>
                 </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="p-3">
                  <Button className="w-full" variant="outline" onClick={() => router.push(`/storybook/${story.id}`)}>
                     Read Story
                 </Button>
@@ -299,5 +299,6 @@ const StorybookLibraryPage: FC = () => {
 }
 
 export default StorybookLibraryPage;
+
 
 
