@@ -10,11 +10,8 @@ import { updateWord, updateUserVocabulary, type Word, type CombinedVocabulary } 
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 
 const VIETNAMESE_CHAR_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-const ENGLISH_CHAR_REGEX = /[a-z]/i;
 
 const isVietnamese = (text: string) => VIETNAMESE_CHAR_REGEX.test(text);
-const isEnglish = (text: string) => ENGLISH_CHAR_REGEX.test(text);
-const isBilingual = (text: string) => isVietnamese(text) && isEnglish(text);
 
 
 // --- Audio Playback Helper ---
@@ -46,17 +43,12 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
         // Strip HTML tags for accurate playback and highlighting indices
         const plainText = text.replace(/<[^>]+>/g, '');
 
-        if (isBilingual(plainText)) {
-            // Don't attempt to play bilingual text with browser TTS, as it will sound incorrect.
-            // Let the AI handle it. Fallback will happen in playAudio.
-            return;
-        }
-
         if ('speechSynthesis' in window) {
             // Cancel any previous speech
             window.speechSynthesis.cancel();
             
             const utterance = new SpeechSynthesisUtterance(plainText);
+            // If Vietnamese characters are present, use Vietnamese voice. Otherwise, default to English.
             utterance.lang = isVietnamese(plainText) ? 'vi-VN' : 'en-US';
             utterance.rate = (speechRate && isFinite(speechRate)) ? speechRate : 1.0;
             
