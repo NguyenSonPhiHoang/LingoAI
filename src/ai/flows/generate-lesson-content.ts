@@ -29,7 +29,13 @@ User Level: "{{level}}"
 ---
 **You must generate three distinct sections:**
 
-1.  **Vocabulary Suggestions**: Provide a list of 5-7 essential vocabulary words or phrases highly relevant to the lesson topic. For each item, provide a simple English definition.
+1.  **Vocabulary Suggestions**: Provide a list of 5-7 essential vocabulary words or phrases highly relevant to the lesson topic. For each item, provide:
+    - The English word or phrase.
+    - Its part of speech (e.g., Noun, Verb, Adjective).
+    - Its International Phonetic Alphabet (IPA) pronunciation.
+    - A simple, clear English definition.
+    - A simple, clear Vietnamese definition.
+
 2.  **Key Points**: Identify and list 3-5 key phrases or concepts that are central to understanding the lesson topic.
 3.  **Passage/Dialogue**:
     *   If 'Reading' or 'Writing', generate a short reading passage (a few paragraphs) about the topic.

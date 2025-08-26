@@ -340,10 +340,15 @@ export const GenerateLessonContentInputSchema = z.object({
 });
 export type GenerateLessonContentInput = z.infer<typeof GenerateLessonContentInputSchema>;
 
-const VocabularySuggestionSchema = z.object({
+const LessonVocabularySuggestionSchema = z.object({
     word: z.string().describe("The vocabulary word or phrase."),
+    partOfSpeech: z.string().describe("The part of speech (e.g., Noun, Verb, Adjective)."),
+    pronunciation: z.string().describe("The International Phonetic Alphabet (IPA) pronunciation."),
     definition: z.string().describe("A simple English definition."),
+    vietnameseDefinition: z.string().describe("A simple Vietnamese definition."),
 });
+export type LessonVocabularySuggestion = z.infer<typeof LessonVocabularySuggestionSchema>;
+
 
 const PassageSchema = z.object({
     title: z.string().describe("A title for the passage or dialogue."),
@@ -351,7 +356,7 @@ const PassageSchema = z.object({
 });
 
 export const GenerateLessonContentOutputSchema = z.object({
-    vocabularySuggestions: z.array(VocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
+    vocabularySuggestions: z.array(LessonVocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
     keyPoints: z.array(z.string()).describe("A list of 3-5 key phrases or concepts central to the topic."),
     passage: PassageSchema.describe("A reading passage or dialogue."),
 });

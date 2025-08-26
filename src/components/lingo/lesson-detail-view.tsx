@@ -57,7 +57,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Skeleton } from "../ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { updateLessonContent, updateLesson } from "@/services/lessons";
-import { updateUserVocabulary, updateWord, type CombinedVocabulary } from "@/services/vocabulary";
+import { updateUserVocabulary, updateWord, addWordToVocabulary as addWordToVocabularyService, type CombinedVocabulary } from "@/services/vocabulary";
 import { generateReadingExercise } from "@/ai/flows/generate-reading-exercise-flow";
 import { generateWritingExercise } from "@/ai/flows/generate-writing-exercise-flow";
 import { generateListeningExercise } from "@/ai/flows/generate-listening-exercise-flow";
@@ -67,12 +67,15 @@ import { generateLessonContent } from "@/ai/flows/generate-lesson-content";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { generateFeedbackForIncorrectAnswer } from "@/ai/flows/generate-feedback-flow";
 import { generateWritingFeedback } from "@/ai/flows/generate-writing-feedback-flow";
+import { generateWordDetails } from '@/ai/flows/generate-word-details';
 import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
   type GenerateListeningExerciseOutput,
   type GenerateSpeakingExerciseOutput,
   type GenerateWritingFeedbackOutput,
+  type LessonVocabularySuggestion,
+  type VocabularyEntry,
 } from "@/ai/flows/schemas";
 import { useAuth } from "@/context/auth-context";
 import { Label } from "../ui/label";
@@ -114,12 +117,14 @@ const statusOptions: { value: LessonStatus; label: string; icon: React.ElementTy
 
 const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBack, setWords, onLessonUpdate }) => {
   const [currentLesson, setCurrentLesson] = useState<Lesson>(lesson);
+  const { user } = useAuth();
   
   // State for temporary, unsaved content and exercises
   const [tempContent, setTempContent] = useState<LessonContent[] | null>(lesson.content || []);
   const [tempExercises, setTempExercises] = useState<Lesson['exercises'] | null>(lesson.exercises || {});
 
   const [isLoading, setIsLoading] = useState<Skill | 'content' | 'saving' | null>(null);
+  const [isSavingWord, setIsSavingWord] = useState<Record<string, boolean>>({});
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
   const { speechRate } = useSettings();
@@ -137,6 +142,10 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
     const exercisesChanged = !isEqual(tempExercises, currentLesson.exercises);
     return contentChanged || exercisesChanged;
   }, [tempContent, tempExercises, currentLesson]);
+  
+  const userVocabularyMap = useMemo(() => {
+    return new Map(vocabulary.map(v => [v.term.toLowerCase(), v]));
+  }, [vocabulary]);
 
   const displayedContent = tempContent ?? [];
   const displayedExercises = tempExercises ?? {};
@@ -157,6 +166,40 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         toast({ variant: 'destructive', title: 'Error', description: 'Could not update lesson status.' });
     }
   };
+  
+  const handleAddWord = async (vocabItem: LessonVocabularySuggestion) => {
+    if (!user) return;
+    setIsSavingWord(prev => ({...prev, [vocabItem.word]: true}));
+    
+    try {
+        const details = await generateWordDetails({ term: vocabItem.word });
+        
+        const newWordData: VocabularyEntry = {
+            term: vocabItem.word,
+            pronunciation: details.pronunciation || vocabItem.pronunciation,
+            partOfSpeech: details.partOfSpeech || vocabItem.partOfSpeech,
+            definition: details.definition || vocabItem.definition,
+            vietnameseDefinition: details.vietnameseDefinition || vocabItem.vietnameseDefinition,
+            sentence: details.sentence,
+            vietnameseSentence: details.vietnameseSentence,
+        };
+        
+        const savedWord = await addWordToVocabularyService(user.uid, newWordData);
+        setWords(prev => [...prev, savedWord]);
+        
+        toast({
+            title: 'Word Added!',
+            description: `"${vocabItem.word}" has been saved to your vocabulary.`,
+        });
+
+    } catch (error) {
+        console.error("Failed to add word from lesson:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the word.' });
+    } finally {
+        setIsSavingWord(prev => ({...prev, [vocabItem.word]: false}));
+    }
+  };
+
 
   const handleGenerateContent = async () => {
     setIsLoading('content');
@@ -273,13 +316,46 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
           switch (item.type) {
             case 'vocabulary':
               return (
-                <ul className="space-y-2 text-sm list-disc pl-5">
-                  {(data as { word: string; definition: string }[]).map((v, index) => (
-                    <li key={index}>
-                      <strong>{v.word}:</strong> <InteractiveText text={v.definition} vocabulary={vocabulary} playbackHook={playbackHook} activePlaybackKey={null} />
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-3">
+                  {(data as LessonVocabularySuggestion[]).map((v, index) => {
+                    const vocabAudioKey = `vocab-${v.word}-${index}`;
+                    const existingWord = userVocabularyMap.get(v.word.toLowerCase());
+                    const isSaving = isSavingWord[v.word];
+
+                    return (
+                        <Card key={index} className="bg-muted/50 p-4">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold">{v.word}</p>
+                                        <Badge variant="outline">{v.partOfSpeech}</Badge>
+                                    </div>
+                                    <p className="text-sm font-sans text-muted-foreground">{v.pronunciation}</p>
+                                </div>
+                                <div className="flex items-center flex-shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => playbackHook.playAudio(vocabAudioKey, v.word)} disabled={playbackHook.isLoadingAudio[vocabAudioKey]}>
+                                        {playbackHook.isLoadingAudio[vocabAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      onClick={() => handleAddWord(v)}
+                                      disabled={isSaving || !!existingWord}
+                                    >
+                                      {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : (existingWord ? <CheckCircle className="h-4 w-4 text-green-500" /> : <PlusCircle className="h-4 w-4" />)}
+                                      <span className="sr-only">Add word</span>
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="text-sm mt-2">
+                                <p><strong>EN:</strong> {v.definition}</p>
+                                <p className="text-blue-600"><strong>VI:</strong> {v.vietnameseDefinition}</p>
+                            </div>
+                        </Card>
+                    )
+                  })}
+                </div>
               );
             case 'keyPoints':
               return (
@@ -337,7 +413,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
         console.error("Failed to parse content item:", item.value, e);
         return null;
     }
-  }, [playbackHook, vocabulary]);
+  }, [playbackHook, vocabulary, userVocabularyMap, isSavingWord, handleAddWord]);
 
   const renderPracticeZone = () => {
     const practiceType = lesson.skill.toLowerCase();
