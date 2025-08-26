@@ -40,6 +40,12 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
     };
 
     const playWithBrowserTTS = (key: string, text: string) => {
+        // Add a guard clause to prevent crashes if text is undefined.
+        if (typeof text !== 'string') {
+            console.warn(`playWithBrowserTTS called with invalid text for key: ${key}`);
+            return;
+        }
+
         // Strip HTML tags for accurate playback and highlighting indices
         const plainText = text.replace(/<[^>]+>/g, '');
 
@@ -155,7 +161,7 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
         window.speechSynthesis.cancel();
 
         if (word.sentenceAudioUrl) {
-            playAudioUrl(audioKey, word.sentenceAudioUrl);
+            playAudioUrl(audioKey, word.sentence);
             return;
         }
 
