@@ -77,27 +77,26 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                         </AlertDialog>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <CardTitle className="pr-8 text-base font-semibold">{story.title}</CardTitle>
-                 <div className="flex items-center gap-2 !mt-1">
-                    <Badge variant="outline" className="capitalize text-xs">{story.level}</Badge>
-                    <Badge variant="secondary" className="capitalize text-xs">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col justify-end pt-2">
-                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                 <CardTitle className="pr-8 text-base font-semibold flex items-center gap-2">
                      <TooltipProvider>
                         <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1.5">
-                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
-                                    <span>{statusLabel}</span>
-                                </div>
+                            <TooltipTrigger>
+                                <StatusIcon className={cn("h-5 w-5 flex-shrink-0", statusClassName)} />
                             </TooltipTrigger>
                             <TooltipContent>
                                <p>Status: {statusLabel}</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
+                    <span className="flex-1">{story.title}</span>
+                </CardTitle>
+                 <div className="flex items-center gap-2 !mt-1 ml-7">
+                    <Badge variant="outline" className="capitalize text-xs">{story.level}</Badge>
+                    <Badge variant="secondary" className="capitalize text-xs">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
+                </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col justify-end pt-2">
+                 <div className="flex justify-end items-center text-xs text-muted-foreground mt-2">
                     <p>
                         {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
                     </p>
