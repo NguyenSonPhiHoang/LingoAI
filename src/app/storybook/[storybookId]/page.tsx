@@ -301,8 +301,10 @@ const StorybookDetailPage: FC = () => {
                              <ul className="space-y-4 text-sm columns-1 md:columns-2">
                                 {storybook.keyVocabulary.map((v, i) => {
                                      const vocabAudioKey = `vocab-${v.word}-${i}`;
+                                     const definitionAudioKey = `def-${v.word}-${i}`;
                                      const definitionTranslationKey = `def-trans-${i}-${storybook.id}`;
-                                     const isAudioLoading = playbackHook.isLoadingAudio[vocabAudioKey];
+                                     const isVocabAudioLoading = playbackHook.isLoadingAudio[vocabAudioKey];
+                                     const isDefinitionAudioLoading = playbackHook.isLoadingAudio[definitionAudioKey];
                                      const isTranslating = playbackHook.isTranslating[definitionTranslationKey];
                                      const isSaving = isSavingWord[v.word];
                                      const existingWord = userVocabularyMap.get(v.word.toLowerCase());
@@ -329,12 +331,23 @@ const StorybookDetailPage: FC = () => {
                                                             playbackHook.playAndSaveUnsavedWord(v, user.uid, vocabAudioKey);
                                                         }
                                                     }}
-                                                    disabled={isAudioLoading}
+                                                    disabled={isVocabAudioLoading}
                                                 >
-                                                    {isAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}
+                                                    {isVocabAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className={cn("h-4 w-4", hasAudio && 'text-primary')} />}
                                                 </Button>
                                             </div>
-                                            <p>{v.definition}</p>
+                                             <div className="flex items-start gap-2">
+                                                <p className="flex-1">{v.definition}</p>
+                                                 <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-7 w-7 flex-shrink-0"
+                                                    onClick={() => playbackHook.playAudio(definitionAudioKey, v.definition)}
+                                                    disabled={isDefinitionAudioLoading}
+                                                >
+                                                    {isDefinitionAudioLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                                </Button>
+                                             </div>
                                             {playbackHook.translations[definitionTranslationKey] && (
                                                 <div className="text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-200">
                                                     <strong>Dịch:</strong> {playbackHook.translations[definitionTranslationKey]}
@@ -437,3 +450,5 @@ const StorybookDetailPage: FC = () => {
 }
 
 export default StorybookDetailPage;
+
+    
