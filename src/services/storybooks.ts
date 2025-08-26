@@ -19,18 +19,21 @@ import type { GenerateStorybookOutput, UserLevel, StorybookFormat } from "@/ai/f
 
 const storybooksCollection = collection(db, "storybooks");
 
+export type StorybookStatus = 'not-started' | 'in-progress' | 'completed';
+
 export interface Storybook extends GenerateStorybookOutput {
   id: string;
   userId: string;
   createdAt: any;
   level: UserLevel;
   format: StorybookFormat;
+  status: StorybookStatus;
   titleAudioUrl?: string;
   englishContentAudioUrl?: string;
   vietnameseContentAudioUrl?: string;
 }
 
-export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'keyVocabulary' | 'englishStory' | 'vietnameseStory' | 'interspersedStory' | 'fullEnglishStory'>[]> => {
+export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   const q = query(
     storybooksCollection,
     where("userId", "==", userId),
@@ -46,8 +49,10 @@ export const getStorybooks = async (userId: string): Promise<Omit<Storybook, 'ke
       level: data.level || 'beginner',
       format: data.format || 'bilingual',
       title: data.title || 'Untitled Story',
+      status: data.status || 'not-started',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(0),
-    } as Omit<Storybook, 'keyVocabulary' | 'englishStory' | 'vietnameseStory' | 'interspersedStory' | 'fullEnglishStory'>;
+      // Intentionally omitting heavy fields for list view
+    } as Storybook;
   });
 };
 
@@ -70,6 +75,7 @@ export const getStorybook = async (id: string): Promise<Storybook | null> => {
         userId: data.userId || '',
         level: data.level || 'beginner',
         format: data.format || 'bilingual',
+        status: data.status || 'not-started',
         title: data.title || 'Untitled Story',
         keyVocabulary: data.keyVocabulary || [],
         englishStory: data.englishStory,
@@ -91,6 +97,7 @@ export const addStorybook = async (userId: string, storyData: GenerateStorybookO
         userId,
         level,
         format,
+        status: 'not-started' as StorybookStatus,
         createdAt: Timestamp.now(),
     };
     const docRef = await addDoc(storybooksCollection, payload);
@@ -101,7 +108,7 @@ export const addStorybook = async (userId: string, storyData: GenerateStorybookO
     };
 };
 
-export const updateStorybook = async (id: string, updates: Partial<Pick<Storybook, 'titleAudioUrl' | 'englishContentAudioUrl' | 'vietnameseContentAudioUrl'>>) => {
+export const updateStorybook = async (id: string, updates: Partial<Pick<Storybook, 'titleAudioUrl' | 'englishContentAudioUrl' | 'vietnameseContentAudioUrl' | 'status'>>) => {
     const docRef = doc(db, "storybooks", id);
     const storybook = await getDoc(docRef);
     if (storybook.exists() && storybook.data().userId !== auth.currentUser?.uid) {

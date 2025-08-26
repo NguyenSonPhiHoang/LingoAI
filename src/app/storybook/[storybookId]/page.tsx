@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo, type FC } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle, CheckCircle, ChevronsUpDown } from 'lucide-react';
+import { Loader2, ArrowLeft, BookHeart, Volume2, Languages, PlusCircle, CheckCircle, ChevronsUpDown, CircleDashed, Circle, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { getStorybook, updateStorybook, type Storybook } from '@/services/storybooks';
+import { getStorybook, updateStorybook, type Storybook, type StorybookStatus } from '@/services/storybooks';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
 import { Skeleton } from '@/components/ui/skeleton';
 import InteractiveText from '@/components/lingo/interactive-text';
@@ -23,7 +23,14 @@ import { generateWordDetails } from '@/ai/flows/generate-word-details';
 import type { VocabularyEntry } from '@/ai/flows/schemas';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
+
+const statusOptions: { value: StorybookStatus; label: string; icon: React.ElementType }[] = [
+    { value: 'not-started', label: 'Not Started', icon: Circle },
+    { value: 'in-progress', label: 'In Progress', icon: CircleDashed },
+    { value: 'completed', label: 'Completed', icon: CheckCircle },
+];
 
 const StorybookDetailPage: FC = () => {
     const { user } = useAuth();
@@ -150,6 +157,22 @@ const StorybookDetailPage: FC = () => {
             }
         }
     };
+
+    const handleStatusChange = async (newStatus: StorybookStatus) => {
+        if (!storybook || storybook.status === newStatus) return;
+        
+        const previousStatus = storybook.status;
+        const updatedStorybook = { ...storybook, status: newStatus };
+        setStorybook(updatedStorybook); // Optimistic update
+
+        try {
+            await updateStorybook(storybook.id, { status: newStatus });
+            toast({ title: "Status Updated" });
+        } catch (error) {
+            setStorybook(prev => prev ? { ...prev, status: previousStatus } : null); // Revert on failure
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update storybook status.' });
+        }
+    };
     
     const highlightKeywords = (text: string, keywords: { word: string, vietnameseWord?: string }[], language: 'en' | 'vi') => {
         if (!text || !keywords || keywords.length === 0) return text;
@@ -217,6 +240,8 @@ const StorybookDetailPage: FC = () => {
     const highlightedEnglishStory = storybook.format === 'bilingual' ? highlightKeywords(storybook.englishStory || '', storybook.keyVocabulary, 'en') : storybook.englishStory || '';
     const highlightedVietnameseStory = storybook.format === 'bilingual' ? highlightKeywords(storybook.vietnameseStory || '', storybook.keyVocabulary, 'vi') : storybook.vietnameseStory || '';
 
+    const currentStatusInfo = statusOptions.find(s => s.value === storybook.status) || statusOptions[0];
+
 
     return (
         <div className="space-y-6">
@@ -235,6 +260,26 @@ const StorybookDetailPage: FC = () => {
                             <CardTitle className="text-4xl font-bold">{storybook.title}</CardTitle>
                         </div>
                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <currentStatusInfo.icon className="mr-2 h-4 w-4" />
+                                        {currentStatusInfo.label}
+                                        <ChevronDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {statusOptions.map(option => (
+                                        <DropdownMenuItem key={option.value} onClick={() => handleStatusChange(option.value)} disabled={storybook.status === option.value}>
+                                            <option.icon className="mr-2 h-4 w-4" />
+                                            {option.label}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
                             <Button variant="outline" onClick={() => playAndCacheStoryAudio('title', storybook.title)} disabled={playbackHook.isLoadingAudio[titleAudioKey]}>
                                 {playbackHook.isLoadingAudio[titleAudioKey] ? <Loader2 className="animate-spin h-4 w-4" /> : <BookHeart className="mr-2" />}
                                 Listen to Title

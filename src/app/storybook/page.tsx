@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useState, useEffect, type FC } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, BookImage, PlusCircle, Trash2, MoreVertical, Search } from 'lucide-react';
+import { Loader2, BookImage, PlusCircle, Trash2, MoreVertical, Search, CircleDashed, Circle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -12,15 +12,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { getStorybooks, deleteStorybook, type Storybook } from '@/services/storybooks';
+import { getStorybooks, deleteStorybook, type Storybook, type StorybookStatus } from '@/services/storybooks';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
+const getStatusInfo = (status: StorybookStatus) => {
+    switch (status) {
+        case 'completed':
+            return { icon: CheckCircle, className: 'text-green-500', label: 'Completed' };
+        case 'in-progress':
+            return { icon: CircleDashed, className: 'text-yellow-500', label: 'In Progress' };
+        case 'not-started':
+        default:
+            return { icon: Circle, className: 'text-muted-foreground/60', label: 'Not Started' };
+    }
+};
+
 
 const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void; }> = ({ story, onStoryDeleted }) => {
     const { toast } = useToast();
     const router = useRouter();
+    const {icon: StatusIcon, className: statusClassName, label: statusLabel} = getStatusInfo(story.status);
 
     const handleDelete = async () => {
         try {
@@ -34,7 +50,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
 
     return (
         <Card className="flex flex-col hover:shadow-lg transition-shadow">
-            <CardHeader className="relative">
+            <CardHeader className="relative pb-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
@@ -61,16 +77,31 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                         </AlertDialog>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <CardTitle className="pt-2 pr-8">{story.title}</CardTitle>
-                <div className="flex items-center gap-2 !mt-2">
-                    <Badge variant="outline" className="capitalize">{story.level}</Badge>
-                    <Badge variant="secondary" className="capitalize">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
+                <CardTitle className="pr-8 text-base font-semibold">{story.title}</CardTitle>
+                 <div className="flex items-center gap-2 !mt-1">
+                    <Badge variant="outline" className="capitalize text-xs">{story.level}</Badge>
+                    <Badge variant="secondary" className="capitalize text-xs">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow">
-                 <p className="text-xs text-muted-foreground mt-4">
-                    Created {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
-                </p>
+            <CardContent className="flex-grow flex flex-col justify-end pt-2">
+                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                     <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5">
+                                    <StatusIcon className={cn("h-4 w-4", statusClassName)} />
+                                    <span>{statusLabel}</span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                               <p>Status: {statusLabel}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <p>
+                        {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
+                    </p>
+                </div>
             </CardContent>
             <CardFooter>
                  <Button className="w-full" variant="outline" onClick={() => router.push(`/storybook/${story.id}`)}>
@@ -150,7 +181,7 @@ const StorybookLibraryPage: FC = () => {
             </Card>
 
             {filteredStorybooks.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {filteredStorybooks.map(story => (
                         <StorybookCard key={story.id} story={story} onStoryDeleted={handleStoryDeleted} />
                     ))}
