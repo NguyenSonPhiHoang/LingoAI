@@ -18,7 +18,7 @@ const isBilingual = (text: string) => isVietnamese(text) && isEnglish(text);
 
 
 // --- Audio Playback Helper ---
-export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsAction, speechRate: number }) => {
+export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsAction, speechRate?: number }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isLoadingAudio, setIsLoadingAudio] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
@@ -55,7 +55,7 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
             
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = isVietnamese(text) ? 'vi-VN' : 'en-US';
-            utterance.rate = speechRate;
+            utterance.rate = (speechRate && isFinite(speechRate)) ? speechRate : 1.0;
             
             utterance.onstart = () => {
                  setActivePlaybackKey(key);
