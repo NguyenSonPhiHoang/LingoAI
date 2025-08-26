@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAudioPlayback } from '@/hooks/use-audio-playback';
+import { useSettings } from '@/context/settings-context';
 
 const editWordSchema = z.object({
   term: z.string().min(1, "Term cannot be empty."),
@@ -136,7 +137,8 @@ const WordManagement: FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const { audioRef, isLoadingAudio, playGlobalWordAudio } = useAudioPlayback({ setWords: () => {} });
+    const { speechRate } = useSettings();
+    const { audioRef, isLoadingAudio, playGlobalWordAudio } = useAudioPlayback({ setWords: () => {}, speechRate });
 
 
     useEffect(() => {

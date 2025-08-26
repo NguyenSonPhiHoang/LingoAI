@@ -29,6 +29,7 @@ import type {
 } from "@/ai/flows/schemas";
 import { useToast } from "@/hooks/use-toast";
 import InteractiveText from "./interactive-text";
+import { useSettings } from "@/context/settings-context";
 
 interface ReviewViewProps {
   words: CombinedVocabulary[];
@@ -128,7 +129,8 @@ const FillInBlankGame: FC<{
   const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
   
   const { toast } = useToast();
-  const playbackHook = useAudioPlayback({ setWords: () => {} });
+  const { speechRate } = useSettings();
+  const playbackHook = useAudioPlayback({ setWords: () => {}, speechRate });
 
 
   const currentQuestion = questions[currentQuestionIndex];

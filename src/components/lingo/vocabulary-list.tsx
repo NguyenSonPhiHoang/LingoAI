@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import InteractiveText from "./interactive-text";
+import { useSettings } from "@/context/settings-context";
 
 
 interface VocabularyListProps {
@@ -418,7 +419,8 @@ const VocabularyListInternal: FC<{
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }> = ({ words, allWords, setWords }) => {
   const [accordionValue, setAccordionValue] = useState<string | undefined>(undefined);
-  const playbackHook = useAudioPlayback({ setWords });
+  const { speechRate } = useSettings();
+  const playbackHook = useAudioPlayback({ setWords, speechRate });
   const { toast } = useToast();
 
   const allWordsMap = useMemo(() => {

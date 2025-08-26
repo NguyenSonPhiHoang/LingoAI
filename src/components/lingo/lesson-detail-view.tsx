@@ -84,6 +84,7 @@ import InteractiveText from "./interactive-text";
 import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
 import { useAudioRecorder } from "@/hooks/use-audio-recorder";
+import { useSettings } from '@/context/settings-context';
 
 
 interface LessonDetailViewProps {
@@ -121,7 +122,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({ lesson, vocabulary, onBac
   const [isLoading, setIsLoading] = useState<Skill | 'content' | 'saving' | null>(null);
   const [focusPoints, setFocusPoints] = useState("");
   const { toast } = useToast();
-  const playbackHook = useAudioPlayback({ setWords });
+  const { speechRate } = useSettings();
+  const playbackHook = useAudioPlayback({ setWords, speechRate });
   
   useEffect(() => {
     setCurrentLesson(lesson);

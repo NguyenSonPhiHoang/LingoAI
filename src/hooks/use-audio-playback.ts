@@ -6,7 +6,6 @@ import { useToast } from "./use-toast";
 import { generateAudio } from "@/ai/flows/generate-audio";
 import { translateText } from "@/ai/flows/translate-text-flow";
 import { updateWord, updateUserVocabulary, type Word, type CombinedVocabulary } from "@/services/vocabulary";
-import { useSettings } from "@/context/settings-context";
 
 type SetWordsAction = Dispatch<SetStateAction<any[]>>;
 
@@ -15,10 +14,11 @@ const ENGLISH_CHAR_REGEX = /[a-z]/i;
 
 const isVietnamese = (text: string) => VIETNAMESE_CHAR_REGEX.test(text);
 const isEnglish = (text: string) => ENGLISH_CHAR_REGEX.test(text);
+const isBilingual = (text: string) => isVietnamese(text) && isEnglish(text);
 
 
 // --- Audio Playback Helper ---
-export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => {
+export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsAction, speechRate: number }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isLoadingAudio, setIsLoadingAudio] = useState<Record<string, boolean>>({});
     const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
@@ -29,7 +29,6 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     const [isTranslating, setIsTranslating] = useState<Record<string, boolean>>({});
 
     const { toast } = useToast();
-    const { speechRate } = useSettings();
     
     const playAudioUrl = (key: string, url: string) => {
         if (audioRef.current) {
@@ -44,6 +43,12 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
     };
 
     const playWithBrowserTTS = (key: string, text: string) => {
+        if (isBilingual(text)) {
+            // Don't attempt to play bilingual text with browser TTS, as it will sound incorrect.
+            // Let the AI handle it.
+            return;
+        }
+
         if ('speechSynthesis' in window) {
             // Cancel any previous speech
             window.speechSynthesis.cancel();
@@ -96,7 +101,7 @@ export const useAudioPlayback = ({ setWords }: { setWords: SetWordsAction }) => 
             return audioUrls[key];
         }
 
-        playWithBrowserTTS(key, text); // Play immediately with browser TTS
+        playWithBrowserTTS(key, text); // Play immediately with browser TTS if applicable
         return generateAndCacheAudio(key, text);
     };
 
