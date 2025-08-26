@@ -23,45 +23,33 @@ interface InteractiveTextProps {
 const InteractiveText: FC<InteractiveTextProps> = React.memo(({ text, vocabulary, playbackHook, activePlaybackKey }) => {
     const { playTermAudio, isLoadingAudio, highlightedRange, activePlaybackKey: currentActiveKey } = playbackHook;
 
-    const vocabMap = useMemo(() => {
-        const map = new Map<string, CombinedVocabulary>();
-        // Sort by length descending to match longer phrases first
-        const sortedVocab = [...vocabulary].sort((a, b) => b.term.length - a.term.length);
-        sortedVocab.forEach(word => {
-            map.set(word.term.toLowerCase(), word);
-        });
-        return map;
-    }, [vocabulary]);
-
     const parts = useMemo(() => {
-        const finalParts: (string | React.ReactNode)[] = [];
-        if (!text) return finalParts;
+        if (!text) return [];
         
-        let remainingText = text;
-
-        // Apply highlighting first if active for this component
+        // This is the raw text without any HTML tags, used for highlighting calculation
+        const plainText = text.replace(/<[^>]+>/g, '');
+        
+        // Apply highlighting only if it's for this specific component instance
         if (highlightedRange && currentActiveKey === activePlaybackKey) {
             const { start, end } = highlightedRange;
-            if (start < end) { // Ensure range is valid
-                 const before = text.substring(0, start);
-                 const highlighted = text.substring(start, end);
-                 const after = text.substring(end);
+            if (start < end && end <= plainText.length) {
+                 const before = plainText.substring(0, start);
+                 const highlighted = plainText.substring(start, end);
+                 const after = plainText.substring(end);
                  
-                 finalParts.push(<span key="before" dangerouslySetInnerHTML={{ __html: before }} />);
-                 finalParts.push(
-                    <span key="highlight" className="bg-yellow-200 dark:bg-yellow-700/70 rounded-sm" dangerouslySetInnerHTML={{ __html: highlighted }} />
-                 );
-                 finalParts.push(<span key="after" dangerouslySetInnerHTML={{ __html: after }} />);
-                 return finalParts;
+                 // Since we stripped tags, we just render the plain text with a highlight
+                 return [
+                    <span key="before">{before}</span>,
+                    <span key="highlight" className="bg-yellow-200 dark:bg-yellow-700/70 rounded-sm">{highlighted}</span>,
+                    <span key="after">{after}</span>,
+                 ];
             }
         }
         
-        // If no highlighting, just render the text which might contain <strong> tags
-        finalParts.push(<span key="full-text" dangerouslySetInnerHTML={{ __html: text }} />);
-        return finalParts;
+        // If no active highlighting, render the original text, interpreting HTML tags
+        return [<span key="full-text" dangerouslySetInnerHTML={{ __html: text }} />];
 
-
-    }, [text, vocabMap, playTermAudio, isLoadingAudio, activePlaybackKey, highlightedRange, currentActiveKey]);
+    }, [text, activePlaybackKey, highlightedRange, currentActiveKey]);
 
     return <>{parts}</>;
 });

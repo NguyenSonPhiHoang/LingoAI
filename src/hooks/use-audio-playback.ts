@@ -43,9 +43,12 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
     };
 
     const playWithBrowserTTS = (key: string, text: string) => {
-        if (isBilingual(text)) {
+        // Strip HTML tags for accurate playback and highlighting indices
+        const plainText = text.replace(/<[^>]+>/g, '');
+
+        if (isBilingual(plainText)) {
             // Don't attempt to play bilingual text with browser TTS, as it will sound incorrect.
-            // Let the AI handle it.
+            // Let the AI handle it. Fallback will happen in playAudio.
             return;
         }
 
@@ -53,8 +56,8 @@ export const useAudioPlayback = ({ setWords, speechRate }: { setWords: SetWordsA
             // Cancel any previous speech
             window.speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = isVietnamese(text) ? 'vi-VN' : 'en-US';
+            const utterance = new SpeechSynthesisUtterance(plainText);
+            utterance.lang = isVietnamese(plainText) ? 'vi-VN' : 'en-US';
             utterance.rate = (speechRate && isFinite(speechRate)) ? speechRate : 1.0;
             
             utterance.onstart = () => {
