@@ -48,40 +48,50 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
             toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the story.' });
         }
     };
+    
+    const formatClass = story.format === 'bilingual' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-purple-50 dark:bg-purple-900/30';
 
     return (
-        <Card className="flex flex-col hover:shadow-lg transition-shadow">
-            <CardHeader className="relative pb-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>This will permanently delete "{story.title}".</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                 <CardTitle className="pr-8 text-base font-semibold flex items-center gap-2">
+         <Card className="flex flex-col hover:shadow-lg transition-shadow">
+            <CardHeader className={cn("relative pb-3", formatClass)}>
+                 <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="capitalize bg-background/50">{story.level}</Badge>
+                        <Badge variant="secondary" className="capitalize bg-background/50">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
+                    </div>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This will permanently delete "{story.title}".</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                 </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col pt-4">
+                 <div className="flex items-start gap-2 mb-2">
                      <TooltipProvider>
                         <Tooltip>
-                            <TooltipTrigger>
+                            <TooltipTrigger className="mt-1">
                                 <StatusIcon className={cn("h-5 w-5 flex-shrink-0", statusClassName)} />
                             </TooltipTrigger>
                             <TooltipContent>
@@ -89,14 +99,11 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
-                    <span className="flex-1">{story.title}</span>
-                </CardTitle>
-                 <div className="flex items-center gap-2 !mt-1 ml-7">
-                    <Badge variant="outline" className="capitalize text-xs">{story.level}</Badge>
-                    <Badge variant="secondary" className="capitalize text-xs">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col justify-end pt-2">
+                    <CardTitle className="text-base font-semibold line-clamp-2">
+                       {story.title}
+                    </CardTitle>
+                 </div>
+                  <div className="flex-grow" />
                  <div className="flex justify-end items-center text-xs text-muted-foreground mt-2">
                     <p>
                         {formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}
@@ -292,4 +299,5 @@ const StorybookLibraryPage: FC = () => {
 }
 
 export default StorybookLibraryPage;
+
 
