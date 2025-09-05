@@ -146,8 +146,14 @@ const SettingsView: FC = () => {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><KeyRound/> Your Gemini API Key</CardTitle>
                     <CardDescription>
-                        Provide your own Gemini API key to use for all AI generation. If left blank, the system's default key will be used.
-                        You can get your key from Google AI Studio.
+                        <span>
+                            Provide your own Gemini API key to use for all AI generation. If left blank, the system's default key will be used.
+                            You can get your key from{' '}
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                                Google AI Studio
+                            </a>
+                            . Simply click "Create API key in new project" and copy the key here.
+                        </span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
