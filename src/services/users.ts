@@ -33,6 +33,7 @@ export const getAllUsers = async (): Promise<User[]> => {
       email: data.email,
       role: data.role,
       status: data.status,
+      geminiApiKey: data.geminiApiKey,
       createdAt,
     } as User
   });

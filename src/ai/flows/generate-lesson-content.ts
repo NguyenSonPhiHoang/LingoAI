@@ -60,7 +60,7 @@ const generateLessonContentFlow = ai.defineFlow(
     inputSchema: GenerateLessonContentInputSchema,
     outputSchema: GenerateLessonContentOutputSchema,
   },
-  async input => {
+  async (input, streamingCallback) => {
     const apiKey = getApiKey();
     try {
         // Attempt with the primary, more powerful model first.
