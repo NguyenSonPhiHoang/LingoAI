@@ -15,7 +15,7 @@ import {
 } from './schemas';
 import { getAuth } from 'firebase-admin/auth';
 import { auth } from '@/lib/firebase';
-import { User, useAuth } from '@/context/auth-context';
+import type { User } from '@/context/auth-context';
 
 
 const getApiKey = () => {
@@ -65,7 +65,7 @@ const generateLessonContentFlow = ai.defineFlow(
     try {
         // Attempt with the primary, more powerful model first.
         const { output } = await ai.generate({
-            model: 'googleai/gemini-2.0-flash',
+            model: 'googleai/gemini-1.5-flash-latest',
             prompt: {
                 text: lessonPrompt,
                 input: input
