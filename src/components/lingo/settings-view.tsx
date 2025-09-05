@@ -7,9 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Volume2, Check } from 'lucide-react';
+import { Volume2, Check, KeyRound, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
+import { updateUserProfile } from '@/services/users';
+import { Input } from '../ui/input';
 
 const themes = [
     { name: 'default', color: 'hsl(49, 100%, 50%)' },
@@ -20,22 +23,46 @@ const themes = [
 ];
 
 const SettingsView: FC = () => {
+    const { user } = useAuth();
     const { speechRate, setSpeechRate, theme, setTheme } = useSettings();
     const [localRate, setLocalRate] = useState(speechRate);
     const [localTheme, setLocalTheme] = useState(theme);
+    const [localApiKey, setLocalApiKey] = useState(user?.geminiApiKey || '');
+    const [isSaving, setIsSaving] = useState(false);
     const { toast } = useToast();
 
     const handleRateChange = (value: number[]) => {
         setLocalRate(value[0]);
     };
 
-    const handleSave = () => {
+    const handleSaveSettings = () => {
         setSpeechRate(localRate);
         setTheme(localTheme);
         toast({
             title: "Settings Saved",
             description: "Your new settings have been applied.",
         });
+    };
+
+    const handleSaveApiKey = async () => {
+        if (!user) return;
+        setIsSaving(true);
+        try {
+            await updateUserProfile(user.uid, { geminiApiKey: localApiKey });
+            toast({
+                title: "API Key Saved",
+                description: "Your Gemini API Key has been updated successfully.",
+            });
+        } catch (error) {
+            console.error("Error saving API key:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not save your API key.'
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleTestAudio = () => {
@@ -53,8 +80,8 @@ const SettingsView: FC = () => {
         }
     };
     
-    const isDirty = speechRate !== localRate || theme !== localTheme;
-
+    const isSettingsDirty = speechRate !== localRate || theme !== localTheme;
+    const isApiKeyDirty = localApiKey !== (user?.geminiApiKey || '');
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
@@ -109,8 +136,35 @@ const SettingsView: FC = () => {
                             ))}
                         </div>
                     </div>
-                     <Button onClick={handleSave} disabled={!isDirty}>
-                        Save Settings
+                     <Button onClick={handleSaveSettings} disabled={!isSettingsDirty}>
+                        Save Display Settings
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><KeyRound/> Your Gemini API Key</CardTitle>
+                    <CardDescription>
+                        Provide your own Gemini API key to use for all AI generation. If left blank, the system's default key will be used.
+                        You can get your key from Google AI Studio.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div>
+                        <Label htmlFor="api-key" className="text-base font-medium">Gemini API Key</Label>
+                        <Input
+                            id="api-key"
+                            type="password"
+                            value={localApiKey}
+                            onChange={(e) => setLocalApiKey(e.target.value)}
+                            placeholder="Enter your Gemini API key"
+                            className="mt-2"
+                        />
+                    </div>
+                     <Button onClick={handleSaveApiKey} disabled={!isApiKeyDirty || isSaving}>
+                        {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                        Save API Key
                     </Button>
                 </CardContent>
             </Card>

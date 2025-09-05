@@ -13,6 +13,15 @@ import {
   type GenerateLessonContentInput,
   type GenerateLessonContentOutput,
 } from './schemas';
+import { getAuth } from 'firebase-admin/auth';
+import { auth } from '@/lib/firebase';
+import { User, useAuth } from '@/context/auth-context';
+
+
+const getApiKey = () => {
+    const user = auth.currentUser as User | null;
+    return user?.geminiApiKey || process.env.GEMINI_API_KEY;
+}
 
 export async function generateLessonContent(
   input: GenerateLessonContentInput
@@ -52,6 +61,7 @@ const generateLessonContentFlow = ai.defineFlow(
     outputSchema: GenerateLessonContentOutputSchema,
   },
   async input => {
+    const apiKey = getApiKey();
     try {
         // Attempt with the primary, more powerful model first.
         const { output } = await ai.generate({
@@ -64,6 +74,9 @@ const generateLessonContentFlow = ai.defineFlow(
                 format: 'json',
                 schema: GenerateLessonContentOutputSchema
             },
+            config: {
+                apiKey,
+            }
         });
         if (!output) throw new Error("Primary model returned no output.");
         return output;
@@ -81,6 +94,9 @@ const generateLessonContentFlow = ai.defineFlow(
                 format: 'json',
                 schema: GenerateLessonContentOutputSchema
             },
+             config: {
+                apiKey,
+            }
         });
         if (!fallbackOutput) throw new Error("Fallback model also returned no output.");
         return fallbackOutput;

@@ -50,12 +50,13 @@ export const updateUserStatus = async (uid: string, status: 'approved' | 'reject
   await updateDoc(userDoc, { status });
 };
 
-export const updateUserProfile = async (uid: string, updates: { displayName?: string, photoURL?: string }) => {
+export const updateUserProfile = async (uid: string, updates: { displayName?: string, photoURL?: string, geminiApiKey?: string }) => {
     const { currentUser } = auth;
     if (!currentUser || currentUser.uid !== uid) {
         throw new Error("Not authorized to perform this action.");
     }
-
+    
+    // Updates for Firebase Auth profile (only displayName and photoURL)
     const authUpdates: { displayName?: string, photoURL?: string } = {};
     if (updates.displayName) {
         authUpdates.displayName = updates.displayName;
@@ -63,16 +64,11 @@ export const updateUserProfile = async (uid: string, updates: { displayName?: st
     if (updates.photoURL) {
         authUpdates.photoURL = updates.photoURL;
     }
-    
-    // Update Firebase Auth profile
     if (Object.keys(authUpdates).length > 0) {
         await updateProfile(currentUser, authUpdates);
     }
     
-    // Update Firestore user document
+    // Update Firestore user document (all provided fields)
     const userDocRef = doc(db, "users", uid);
     await updateDoc(userDocRef, updates);
-
-    // Note: The AuthContext's onSnapshot listener will automatically update the UI
-    // with the new information from Firestore.
 };

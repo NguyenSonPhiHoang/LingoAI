@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 export interface User extends FirebaseUser {
   role?: 'admin' | 'user';
   status?: 'pending' | 'approved' | 'rejected';
+  geminiApiKey?: string;
 }
 
 interface AuthContextType {
@@ -38,7 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser({
               ...firebaseUser,
               role: userData.role,
-              status: userData.status
+              status: userData.status,
+              geminiApiKey: userData.geminiApiKey,
             });
           } else {
             setDoc(doc(db, "users", firebaseUser.uid), {
