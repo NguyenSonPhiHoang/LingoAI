@@ -61,7 +61,15 @@ const generateLessonContentFlow = ai.defineFlow(
     outputSchema: GenerateLessonContentOutputSchema,
   },
   async (input, streamingCallback) => {
-    const apiKey = getApiKey();
+    const user = auth.currentUser as User | null;
+    const apiKey = user?.geminiApiKey;
+
+    if (apiKey) {
+        console.log("[LingoAI] Using User's Gemini API Key.");
+    } else {
+        console.log("[LingoAI] User API key not found. Falling back to system default.");
+    }
+
     try {
         // Attempt with the primary, more powerful model first.
         const { output } = await ai.generate({
@@ -75,7 +83,7 @@ const generateLessonContentFlow = ai.defineFlow(
                 schema: GenerateLessonContentOutputSchema
             },
             config: {
-                apiKey,
+                apiKey: apiKey || process.env.GEMINI_API_KEY,
             }
         });
         if (!output) throw new Error("Primary model returned no output.");
@@ -95,7 +103,7 @@ const generateLessonContentFlow = ai.defineFlow(
                 schema: GenerateLessonContentOutputSchema
             },
              config: {
-                apiKey,
+                apiKey: apiKey || process.env.GEMINI_API_KEY,
             }
         });
         if (!fallbackOutput) throw new Error("Fallback model also returned no output.");
