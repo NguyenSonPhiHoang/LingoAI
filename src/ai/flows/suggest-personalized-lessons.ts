@@ -1,5 +1,4 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for suggesting personalized English lessons based on user level and goals.
@@ -9,13 +8,13 @@
  * - SuggestPersonalizedLessonsOutput - The return type for the suggestPersonalizedLessons function.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   SuggestPersonalizedLessonsInputSchema,
   SuggestPersonalizedLessonsOutputSchema,
   type SuggestPersonalizedLessonsInput,
   type SuggestPersonalizedLessonsOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function suggestPersonalizedLessons(
   input: SuggestPersonalizedLessonsInput
@@ -24,10 +23,10 @@ export async function suggestPersonalizedLessons(
 }
 
 const prompt = ai.definePrompt({
-  name: 'suggestPersonalizedLessonsPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: SuggestPersonalizedLessonsInputSchema},
-  output: {schema: SuggestPersonalizedLessonsOutputSchema},
+  name: "suggestPersonalizedLessonsPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: SuggestPersonalizedLessonsInputSchema },
+  output: { schema: SuggestPersonalizedLessonsOutputSchema },
   prompt: `You are an AI-powered English language learning assistant. Based on the user's current level, learning goals, and interests, suggest a list of personalized lesson topics.
 
 For each topic, you must categorize it into one of five skills: "Listening", "Speaking", "Reading", "Writing", or "Pronunciation".
@@ -43,12 +42,12 @@ Suggest a list of lesson topics that will help the user achieve their goals. If 
 
 const suggestPersonalizedLessonsFlow = ai.defineFlow(
   {
-    name: 'suggestPersonalizedLessonsFlow',
+    name: "suggestPersonalizedLessonsFlow",
     inputSchema: SuggestPersonalizedLessonsInputSchema,
     outputSchema: SuggestPersonalizedLessonsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );

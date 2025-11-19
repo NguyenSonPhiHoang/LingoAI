@@ -1,13 +1,12 @@
-
-'use server';
+"use server";
 /**
  * @fileOverview A flow for extracting text content from an image.
  *
  * - extractTextFromFile - A function that handles text extraction.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from "@/ai/genkit";
+import { z } from "genkit";
 
 const ExtractTextInputSchema = z.object({
   imageDataUri: z
@@ -19,19 +18,21 @@ const ExtractTextInputSchema = z.object({
 export type ExtractTextInput = z.infer<typeof ExtractTextInputSchema>;
 
 const ExtractTextOutputSchema = z.object({
-  text: z.string().describe('The extracted text content from the image.'),
+  text: z.string().describe("The extracted text content from the image."),
 });
 export type ExtractTextOutput = z.infer<typeof ExtractTextOutputSchema>;
 
-export async function extractTextFromFile(input: ExtractTextInput): Promise<ExtractTextOutput> {
+export async function extractTextFromFile(
+  input: ExtractTextInput
+): Promise<ExtractTextOutput> {
   return extractTextFromFileFlow(input);
 }
 
 const prompt = ai.definePrompt({
-  name: 'extractTextFromFilePrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
-  input: {schema: ExtractTextInputSchema},
-  output: {schema: ExtractTextOutputSchema},
+  name: "extractTextFromFilePrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: ExtractTextInputSchema },
+  output: { schema: ExtractTextOutputSchema },
   prompt: `You are an OCR (Optical Character Recognition) expert. Your task is to extract all text from the provided image accurately. Preserve the original formatting, including paragraphs and line breaks, as much as possible.
 
 Image Content:
@@ -40,12 +41,12 @@ Image Content:
 
 const extractTextFromFileFlow = ai.defineFlow(
   {
-    name: 'extractTextFromFileFlow',
+    name: "extractTextFromFileFlow",
     inputSchema: ExtractTextInputSchema,
     outputSchema: ExtractTextOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );

@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating pronunciation exercises.
  * - generatePronunciationExercise - A function that creates pronunciation drills.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GeneratePronunciationExerciseInputSchema,
   GeneratePronunciationExerciseOutputSchema,
   type GeneratePronunciationExerciseInput,
   type GeneratePronunciationExerciseOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generatePronunciationExercise(
   input: GeneratePronunciationExerciseInput
@@ -40,27 +39,39 @@ Student Level: {{{userLevel}}}
 
 const generatePronunciationExerciseFlow = ai.defineFlow(
   {
-    name: 'generatePronunciationExerciseFlow',
+    name: "generatePronunciationExerciseFlow",
     inputSchema: GeneratePronunciationExerciseInputSchema,
     outputSchema: GeneratePronunciationExerciseOutputSchema,
   },
   async (input) => {
     try {
       const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GeneratePronunciationExerciseOutputSchema, format: 'json' },
+        output: {
+          schema: GeneratePronunciationExerciseOutputSchema,
+          format: "json",
+        },
       });
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
-      console.warn("Primary model failed for pronunciation exercise. Retrying with fallback model.", error);
+      console.warn(
+        "Primary model failed for pronunciation exercise. Retrying with fallback model.",
+        error
+      );
       const { output: fallbackOutput } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GeneratePronunciationExerciseOutputSchema, format: 'json' },
+        output: {
+          schema: GeneratePronunciationExerciseOutputSchema,
+          format: "json",
+        },
       });
-      if (!fallbackOutput) throw new Error("Fallback model also returned no output for pronunciation exercise.");
+      if (!fallbackOutput)
+        throw new Error(
+          "Fallback model also returned no output for pronunciation exercise."
+        );
       return fallbackOutput;
     }
   }

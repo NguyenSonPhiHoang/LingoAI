@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating a storybook for learning English.
  * - generateStorybook - Creates a story based on a topic or vocabulary list.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateStorybookInputSchema,
   GenerateStorybookOutputSchema,
   type GenerateStorybookInput,
   type GenerateStorybookOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateStorybook(
   input: GenerateStorybookInput
@@ -21,10 +20,10 @@ export async function generateStorybook(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateStorybookPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateStorybookInputSchema},
-  output: {schema: GenerateStorybookOutputSchema},
+  name: "generateStorybookPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GenerateStorybookInputSchema },
+  output: { schema: GenerateStorybookOutputSchema },
   prompt: `You are an expert English language teacher and a creative storyteller. Your task is to generate a short story for an English learner at the "{{level}}" level. The story should be engaging and educational.
 
 The story must be generated based on one of the following inputs:
@@ -54,12 +53,12 @@ Generate the storybook now.
 
 const generateStorybookFlow = ai.defineFlow(
   {
-    name: 'generateStorybookFlow',
+    name: "generateStorybookFlow",
     inputSchema: GenerateStorybookInputSchema,
     outputSchema: GenerateStorybookOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );

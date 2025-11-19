@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating writing exercises.
  * - generateWritingExercise - A function that creates writing prompts.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateWritingExerciseInputSchema,
   GenerateWritingExerciseOutputSchema,
   type GenerateWritingExerciseInput,
   type GenerateWritingExerciseOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateWritingExercise(
   input: GenerateWritingExerciseInput
@@ -39,27 +38,33 @@ Student Level: {{{userLevel}}}
 
 const generateWritingExerciseFlow = ai.defineFlow(
   {
-    name: 'generateWritingExerciseFlow',
+    name: "generateWritingExerciseFlow",
     inputSchema: GenerateWritingExerciseInputSchema,
     outputSchema: GenerateWritingExerciseOutputSchema,
   },
   async (input) => {
-     try {
+    try {
       const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GenerateWritingExerciseOutputSchema, format: 'json' },
+        output: { schema: GenerateWritingExerciseOutputSchema, format: "json" },
       });
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
-      console.warn("Primary model failed for writing exercise. Retrying with fallback model.", error);
+      console.warn(
+        "Primary model failed for writing exercise. Retrying with fallback model.",
+        error
+      );
       const { output: fallbackOutput } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GenerateWritingExerciseOutputSchema, format: 'json' },
+        output: { schema: GenerateWritingExerciseOutputSchema, format: "json" },
       });
-      if (!fallbackOutput) throw new Error("Fallback model also returned no output for writing exercise.");
+      if (!fallbackOutput)
+        throw new Error(
+          "Fallback model also returned no output for writing exercise."
+        );
       return fallbackOutput;
     }
   }

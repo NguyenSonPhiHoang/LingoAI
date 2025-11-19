@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating feedback on a user's written text.
  * - generateWritingFeedback - A function that provides corrections and suggestions.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateWritingFeedbackInputSchema,
   GenerateWritingFeedbackOutputSchema,
   type GenerateWritingFeedbackInput,
   type GenerateWritingFeedbackOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateWritingFeedback(
   input: GenerateWritingFeedbackInput
@@ -21,10 +20,10 @@ export async function generateWritingFeedback(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateWritingFeedbackPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateWritingFeedbackInputSchema},
-  output: {schema: GenerateWritingFeedbackOutputSchema},
+  name: "generateWritingFeedbackPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GenerateWritingFeedbackInputSchema },
+  output: { schema: GenerateWritingFeedbackOutputSchema },
   prompt: `You are an English teacher providing feedback on a writing exercise. The user was given a Vietnamese prompt, an English hint, and they have written an English sentence.
 
 Your task is to:
@@ -42,12 +41,12 @@ Generate the feedback.
 
 const generateWritingFeedbackFlow = ai.defineFlow(
   {
-    name: 'generateWritingFeedbackFlow',
+    name: "generateWritingFeedbackFlow",
     inputSchema: GenerateWritingFeedbackInputSchema,
     outputSchema: GenerateWritingFeedbackOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );

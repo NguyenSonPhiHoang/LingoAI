@@ -1,27 +1,28 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating a comprehensive set of learning content for a lesson.
  * - generateLessonContent - Creates vocabulary, grammar, and a passage/dialogue.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
+import { genkit } from "genkit";
+import { googleAI } from "@genkit-ai/googleai";
+import { vertexAI } from "@genkit-ai/vertexai";
 import {
   GenerateLessonContentInputSchema,
   GenerateLessonContentOutputSchema,
   type GenerateLessonContentInput,
   type GenerateLessonContentOutput,
-} from './schemas';
-import { getAuth } from 'firebase-admin/auth';
-import { auth } from '@/lib/firebase';
-import type { User } from '@/context/auth-context';
-
+} from "./schemas";
+import { getAuth } from "firebase-admin/auth";
+import { auth } from "@/lib/firebase";
+import type { User } from "@/context/auth-context";
 
 const getApiKey = () => {
-    const user = auth.currentUser as User | null;
-    return user?.geminiApiKey || process.env.GEMINI_API_KEY;
-}
+  const user = auth.currentUser as User | null;
+  return user?.geminiApiKey || process.env.GEMINI_API_KEY;
+};
 
 export async function generateLessonContent(
   input: GenerateLessonContentInput
@@ -56,7 +57,7 @@ Generate the complete learning materials now.
 
 const generateLessonContentFlow = ai.defineFlow(
   {
-    name: 'generateLessonContentFlow',
+    name: "generateLessonContentFlow",
     inputSchema: GenerateLessonContentInputSchema,
     outputSchema: GenerateLessonContentOutputSchema,
   },
@@ -65,49 +66,90 @@ const generateLessonContentFlow = ai.defineFlow(
     const apiKey = user?.geminiApiKey;
 
     if (apiKey) {
-        console.log("[LingoAI] Using User's Gemini API Key.");
+      console.log("[LingoAI] Using User's Gemini API Key.");
     } else {
-        console.log("[LingoAI] User API key not found. Falling back to system default.");
+      console.log(
+        "[LingoAI] User API key not found. Falling back to system default."
+      );
     }
 
+    // Create a per-request AI instance. Use user's Google API key when provided; otherwise use Vertex AI.
+    const useGoogle = Boolean(apiKey || process.env.GEMINI_API_KEY);
+    const runtimeAi = genkit({
+      plugins: [
+        useGoogle
+          ? googleAI({ apiKey: (apiKey || process.env.GEMINI_API_KEY)! })
+          : vertexAI({
+              projectId:
+                process.env.VERTEXAI_PROJECT ||
+                process.env.GOOGLE_CLOUD_PROJECT,
+              location: process.env.VERTEXAI_LOCATION || "us-central1",
+            }),
+      ],
+    });
+    const textModel = useGoogle
+      ? "googleai/gemini-1.5-flash"
+      : "vertexai/gemini-1.5-flash";
+
+    // Simple exponential backoff with jitter for 429s and transient errors.
+    const withRetry = async <T>(
+      fn: () => Promise<T>,
+      retries = 3,
+      baseMs = 800
+    ): Promise<T> => {
+      let attempt = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        try {
+          return await fn();
+        } catch (e: any) {
+          const msg = String(e?.message || e);
+          const is429 =
+            msg.includes("429") || /Too\s*Many\s*Requests/i.test(msg);
+          const isRetriable =
+            is429 || /ECONNRESET|ETIMEDOUT|ENETUNREACH|EAI_AGAIN/i.test(msg);
+          if (attempt >= retries || !isRetriable) throw e;
+          const delay =
+            Math.min(8000, baseMs * Math.pow(2, attempt)) +
+            Math.floor(Math.random() * 200);
+          await new Promise((res) => setTimeout(res, delay));
+          attempt++;
+        }
+      }
+    };
+
     try {
-        // Attempt with the primary, more powerful model first.
-        const { output } = await ai.generate({
-            model: 'googleai/gemini-1.5-flash-latest',
-            prompt: {
-                text: lessonPrompt,
-                input: input
-            },
-            output: {
-                format: 'json',
-                schema: GenerateLessonContentOutputSchema
-            },
-            config: {
-                apiKey: apiKey || process.env.GEMINI_API_KEY,
-            }
-        });
-        if (!output) throw new Error("Primary model returned no output.");
-        return output;
+      // Prefer a lighter model to reduce rate limit pressure.
+      const primary = await withRetry(() =>
+        runtimeAi.generate({
+          model: textModel,
+          prompt: { text: lessonPrompt, input },
+          output: { format: "json", schema: GenerateLessonContentOutputSchema },
+        })
+      );
+      if (!primary.output) throw new Error("Primary model returned no output.");
+      return primary.output;
     } catch (error) {
-        console.warn("Primary model failed. Retrying with fallback model.", error);
-        
-        // If the primary model fails, try the fallback model.
-        const { output: fallbackOutput } = await ai.generate({
-            model: 'googleai/gemini-1.5-flash-latest', // Fallback model
-            prompt: {
-                text: lessonPrompt,
-                input: input
-            },
+      console.warn(
+        "Primary model failed. Retrying with fallback model.",
+        error
+      );
+      const fallback = await withRetry(
+        () =>
+          runtimeAi.generate({
+            model: textModel,
+            prompt: { text: lessonPrompt, input },
             output: {
-                format: 'json',
-                schema: GenerateLessonContentOutputSchema
+              format: "json",
+              schema: GenerateLessonContentOutputSchema,
             },
-             config: {
-                apiKey: apiKey || process.env.GEMINI_API_KEY,
-            }
-        });
-        if (!fallbackOutput) throw new Error("Fallback model also returned no output.");
-        return fallbackOutput;
+          }),
+        2,
+        1200
+      );
+      if (!fallback.output)
+        throw new Error("Fallback model also returned no output.");
+      return fallback.output;
     }
   }
 );

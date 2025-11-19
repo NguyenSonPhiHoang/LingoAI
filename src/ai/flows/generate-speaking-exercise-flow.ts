@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating speaking exercises.
  * - generateSpeakingExercise - A function that creates a role-play scenario.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateSpeakingExerciseInputSchema,
   GenerateSpeakingExerciseOutputSchema,
   type GenerateSpeakingExerciseInput,
   type GenerateSpeakingExerciseOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateSpeakingExercise(
   input: GenerateSpeakingExerciseInput
@@ -35,27 +34,39 @@ Topic: {{{topic}}}
 
 const generateSpeakingExerciseFlow = ai.defineFlow(
   {
-    name: 'generateSpeakingExerciseFlow',
+    name: "generateSpeakingExerciseFlow",
     inputSchema: GenerateSpeakingExerciseInputSchema,
     outputSchema: GenerateSpeakingExerciseOutputSchema,
   },
   async (input) => {
-     try {
+    try {
       const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GenerateSpeakingExerciseOutputSchema, format: 'json' },
+        output: {
+          schema: GenerateSpeakingExerciseOutputSchema,
+          format: "json",
+        },
       });
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
-      console.warn("Primary model failed for speaking exercise. Retrying with fallback model.", error);
+      console.warn(
+        "Primary model failed for speaking exercise. Retrying with fallback model.",
+        error
+      );
       const { output: fallbackOutput } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
+        model: "vertexai/gemini-1.5-flash",
         prompt: { text: promptText, input },
-        output: { schema: GenerateSpeakingExerciseOutputSchema, format: 'json' },
+        output: {
+          schema: GenerateSpeakingExerciseOutputSchema,
+          format: "json",
+        },
       });
-      if (!fallbackOutput) throw new Error("Fallback model also returned no output for speaking exercise.");
+      if (!fallbackOutput)
+        throw new Error(
+          "Fallback model also returned no output for speaking exercise."
+        );
       return fallbackOutput;
     }
   }

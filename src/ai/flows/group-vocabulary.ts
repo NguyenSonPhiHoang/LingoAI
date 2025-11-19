@@ -1,5 +1,4 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for grouping vocabulary words by topic.
@@ -9,13 +8,13 @@
  * - GroupVocabularyOutput - The return type for the function.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GroupVocabularyInputSchema,
   GroupVocabularyOutputSchema,
   type GroupVocabularyInput,
   type GroupVocabularyOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function groupVocabularyByTopic(
   input: GroupVocabularyInput
@@ -24,10 +23,10 @@ export async function groupVocabularyByTopic(
 }
 
 const prompt = ai.definePrompt({
-  name: 'groupVocabularyPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GroupVocabularyInputSchema},
-  output: {schema: GroupVocabularyOutputSchema},
+  name: "groupVocabularyPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GroupVocabularyInputSchema },
+  output: { schema: GroupVocabularyOutputSchema },
   prompt: `You are an expert lexicographer and linguist. Your task is to group the following list of vocabulary words, phrases, and sentences into relevant topics.
 
 Create logical topic names based on the context of the words provided. For words that do not fit into a clear category, group them under a topic named "Miscellaneous".
@@ -46,17 +45,17 @@ Analyze the list and return the words grouped by the topics you have identified.
 
 const groupVocabularyByTopicFlow = ai.defineFlow(
   {
-    name: 'groupVocabularyByTopicFlow',
+    name: "groupVocabularyByTopicFlow",
     inputSchema: GroupVocabularyInputSchema,
     outputSchema: GroupVocabularyOutputSchema,
   },
-  async input => {
+  async (input) => {
     if (input.vocabulary.length === 0) {
       return {
         topics: [],
       };
     }
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

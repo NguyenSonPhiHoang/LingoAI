@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating a review test based on completed lessons.
  * - generateReviewTest - A function that creates a set of questions.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateReviewTestInputSchema,
   GenerateReviewTestOutputSchema,
   type GenerateReviewTestInput,
   type GenerateReviewTestOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateReviewTest(
   input: GenerateReviewTestInput
@@ -21,10 +20,10 @@ export async function generateReviewTest(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateReviewTestPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateReviewTestInputSchema},
-  output: {schema: GenerateReviewTestOutputSchema},
+  name: "generateReviewTestPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GenerateReviewTestInputSchema },
+  output: { schema: GenerateReviewTestOutputSchema },
   prompt: `You are an expert English assessment creator. Your task is to create a review test based on the content of previously completed lessons.
 
 The test should consist of two sections:
@@ -50,15 +49,17 @@ Generate the complete review test now.
 
 const generateReviewTestFlow = ai.defineFlow(
   {
-    name: 'generateReviewTestFlow',
+    name: "generateReviewTestFlow",
     inputSchema: GenerateReviewTestInputSchema,
     outputSchema: GenerateReviewTestOutputSchema,
   },
-  async input => {
+  async (input) => {
     if (input.vocabulary.length === 0 && input.passages.length === 0) {
-        throw new Error('Cannot generate a review test without vocabulary or passages from completed lessons.');
+      throw new Error(
+        "Cannot generate a review test without vocabulary or passages from completed lessons."
+      );
     }
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

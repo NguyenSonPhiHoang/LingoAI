@@ -82,3 +82,5 @@ Lưu trữ và sắp xếp các tài liệu học tập của riêng bạn.
     - **Ghi chú từ hình ảnh/văn bản:** Dán một hình ảnh hoặc đoạn văn bản, AI sẽ giúp bạn trích xuất nội dung và lưu lại.
 
 Chúc bạn có những giờ học hiệu quả và thú vị cùng LingoAI!
+admin@lingoAi.com
+pass: admin@123

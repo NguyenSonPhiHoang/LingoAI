@@ -1,18 +1,17 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating a placement test to assess English level.
  * - generatePlacementTest - A function that creates a set of questions.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GeneratePlacementTestInputSchema,
   GeneratePlacementTestOutputSchema,
   type GeneratePlacementTestInput,
   type GeneratePlacementTestOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generatePlacementTest(
   input: GeneratePlacementTestInput
@@ -21,10 +20,10 @@ export async function generatePlacementTest(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generatePlacementTestPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GeneratePlacementTestInputSchema},
-  output: {schema: GeneratePlacementTestOutputSchema},
+  name: "generatePlacementTestPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GeneratePlacementTestInputSchema },
+  output: { schema: GeneratePlacementTestOutputSchema },
   prompt: `You are an expert English language assessment creator. Your task is to create a comprehensive placement test to determine a user's English proficiency level (Beginner, Intermediate, Advanced).
 
 You must generate exactly {{numberOfQuestions}} multiple-choice questions in total.
@@ -43,12 +42,12 @@ Ensure the questions cover a wide range of topics and grammatical structures app
 
 const generatePlacementTestFlow = ai.defineFlow(
   {
-    name: 'generatePlacementTestFlow',
+    name: "generatePlacementTestFlow",
     inputSchema: GeneratePlacementTestInputSchema,
     outputSchema: GeneratePlacementTestOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );

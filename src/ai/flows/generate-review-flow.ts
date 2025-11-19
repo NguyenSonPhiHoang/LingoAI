@@ -1,5 +1,4 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating review exercises based on a list of vocabulary words.
@@ -9,13 +8,13 @@
  * - GenerateReviewOutput - The return type for the generateReviewExercises function.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateReviewInputSchema,
   GenerateReviewOutputSchema,
   type GenerateReviewInput,
   type GenerateReviewOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateReviewExercises(
   input: GenerateReviewInput
@@ -24,10 +23,10 @@ export async function generateReviewExercises(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateReviewPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateReviewInputSchema},
-  output: {schema: GenerateReviewOutputSchema},
+  name: "generateReviewPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GenerateReviewInputSchema },
+  output: { schema: GenerateReviewOutputSchema },
   prompt: `You are an AI English learning assistant. Your task is to generate review exercises based on a provided list of vocabulary words.
 
 Generate exactly 10 matching questions and 10 fill-in-the-blank questions.
@@ -48,18 +47,18 @@ Generate the exercises based on these words.
 
 const generateReviewFlow = ai.defineFlow(
   {
-    name: 'generateReviewFlow',
+    name: "generateReviewFlow",
     inputSchema: GenerateReviewInputSchema,
     outputSchema: GenerateReviewOutputSchema,
   },
-  async input => {
+  async (input) => {
     if (input.words.length === 0) {
       return {
         matchingQuestions: [],
         fillInTheBlankQuestions: [],
       };
     }
-    const {output} = await prompt(input);
+    const { output } = await prompt(input);
     return output!;
   }
 );

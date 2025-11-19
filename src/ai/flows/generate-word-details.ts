@@ -1,5 +1,4 @@
-
-'use server';
+"use server";
 
 /**
  * @fileOverview A flow for generating details for a single vocabulary word, phrase, or sentence.
@@ -9,13 +8,13 @@
  * - GenerateWordDetailsOutput - The return type for the function.
  */
 
-import {ai} from '@/ai/genkit';
+import { ai } from "@/ai/genkit";
 import {
   GenerateWordDetailsInputSchema,
   GenerateWordDetailsOutputSchema,
   type GenerateWordDetailsInput,
   type GenerateWordDetailsOutput,
-} from './schemas';
+} from "./schemas";
 
 export async function generateWordDetails(
   input: GenerateWordDetailsInput
@@ -24,10 +23,10 @@ export async function generateWordDetails(
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateWordDetailsPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: {schema: GenerateWordDetailsInputSchema},
-  output: {schema: GenerateWordDetailsOutputSchema},
+  name: "generateWordDetailsPrompt",
+  model: "vertexai/gemini-1.5-flash",
+  input: { schema: GenerateWordDetailsInputSchema },
+  output: { schema: GenerateWordDetailsOutputSchema },
   prompt: `You are an English language expert. Your task is to provide details for the given vocabulary word, phrase, or sentence.
 
 For the term "{{term}}", provide:
@@ -45,12 +44,12 @@ For the term "{{term}}", provide:
 
 const generateWordDetailsFlow = ai.defineFlow(
   {
-    name: 'generateWordDetailsFlow',
+    name: "generateWordDetailsFlow",
     inputSchema: GenerateWordDetailsInputSchema,
     outputSchema: GenerateWordDetailsOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
+  async (input) => {
+    const { output } = await prompt(input);
     return output!;
   }
 );
