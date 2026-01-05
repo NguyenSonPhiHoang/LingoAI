@@ -1,7 +1,6 @@
-
 "use client";
 
-import { db, auth } from "@/lib/firebase";
+import { db, auth, firebaseEnabled } from "@/lib/firebase";
 import {
   collection,
   getDocs,
@@ -17,17 +16,19 @@ import {
 } from "firebase/firestore";
 import type { LessonSuggestion, UserLevel } from "@/ai/flows/schemas";
 
-const lessonsCollection = collection(db, "lessons");
+const lessonsCollection = firebaseEnabled
+  ? collection(db, "lessons")
+  : (null as any);
 
 // Can be extended with more specific exercise types
 export type Exercise = any;
 
-export type LessonStatus = 'not-started' | 'in-progress' | 'completed';
+export type LessonStatus = "not-started" | "in-progress" | "completed";
 
 export interface LessonContent {
-    id: string;
-    type: 'vocabulary' | 'keyPoints' | 'passage';
-    value: string;
+  id: string;
+  type: "vocabulary" | "keyPoints" | "passage";
+  value: string;
 }
 
 export interface Lesson extends LessonSuggestion {
@@ -40,33 +41,35 @@ export interface Lesson extends LessonSuggestion {
   topicGroup: string; // The user-defined goal for grouping
   content?: LessonContent[];
   exercises?: {
-      reading?: Exercise;
-      writing?: Exercise;
-      listening?: Exercise;
-      speaking?: Exercise;
-      pronunciation?: Exercise;
+    reading?: Exercise;
+    writing?: Exercise;
+    listening?: Exercise;
+    speaking?: Exercise;
+    pronunciation?: Exercise;
   };
 }
 
 // Helper function to recursively remove undefined properties from an object
 const deepClean = (obj: any): any => {
-    if (obj === null || obj === undefined) {
-        return undefined;
-    }
-    if (Array.isArray(obj)) {
-        return obj.map(v => deepClean(v)).filter(v => v !== undefined);
-    }
-    if (typeof obj === 'object' && obj.constructor === Object) {
-        return Object.fromEntries(
-            Object.entries(obj)
-                .map(([k, v]) => [k, deepClean(v)])
-                .filter(([_, v]) => v !== undefined)
-        );
-    }
-    return obj;
+  if (obj === null || obj === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((v) => deepClean(v)).filter((v) => v !== undefined);
+  }
+  if (typeof obj === "object" && obj.constructor === Object) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .map(([k, v]) => [k, deepClean(v)])
+        .filter(([_, v]) => v !== undefined)
+    );
+  }
+  return obj;
 };
 
 export const getLessons = async (userId: string): Promise<Lesson[]> => {
+  if (!firebaseEnabled) return [];
+
   const q = query(
     lessonsCollection,
     where("userId", "==", userId),
@@ -82,53 +85,84 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
       skill: data.skill,
       userId: data.userId,
       level: data.level,
-      status: data.status || 'not-started',
-      topicGroup: data.topicGroup || 'General',
-      createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt,
+      status: data.status || "not-started",
+      topicGroup: data.topicGroup || "General",
+      createdAt:
+        data.createdAt instanceof Timestamp
+          ? data.createdAt.toDate()
+          : data.createdAt,
       content: data.content || [],
       exercises: data.exercises || {},
-    } as Lesson
-  })
+    } as Lesson;
+  });
 };
 
-export const addLesson = async (userId: string, lessonSuggestion: LessonSuggestion, topicGroup: string): Promise<Lesson> => {
-    const lessonData = {
-        ...lessonSuggestion,
-        userId,
-        topicGroup,
-        createdAt: Timestamp.now(),
-        status: 'not-started' as LessonStatus,
-        content: [],
-        exercises: {},
-    };
-    const docRef = await addDoc(lessonsCollection, lessonData);
-    
+export const addLesson = async (
+  userId: string,
+  lessonSuggestion: LessonSuggestion,
+  topicGroup: string
+): Promise<Lesson> => {
+  if (!firebaseEnabled) {
     return {
-        ...lessonData,
-        id: docRef.id,
-        docId: docRef.id,
-        createdAt: new Date(), // Convert for immediate client use
-    };
+      ...lessonSuggestion,
+      userId,
+      topicGroup,
+      createdAt: new Date(),
+      status: "not-started" as LessonStatus,
+      content: [],
+      exercises: {},
+      id: `lesson_${Date.now()}`,
+      docId: `lesson_${Date.now()}`,
+    } as Lesson;
+  }
+
+  const lessonData = {
+    ...lessonSuggestion,
+    userId,
+    topicGroup,
+    createdAt: Timestamp.now(),
+    status: "not-started" as LessonStatus,
+    content: [],
+    exercises: {},
+  };
+  const docRef = await addDoc(lessonsCollection, lessonData);
+
+  return {
+    ...lessonData,
+    id: docRef.id,
+    docId: docRef.id,
+    createdAt: new Date(), // Convert for immediate client use
+  };
 };
 
-export const updateLessonContent = async (docId: string, content: LessonContent[], exercises?: Lesson['exercises']) => {
-    if (!auth.currentUser) return;
-    const lessonDoc = doc(db, "lessons", docId);
-    const updates: Partial<Lesson> = { content };
-    if (exercises) {
-        updates.exercises = deepClean(exercises);
-    }
-    await updateDoc(lessonDoc, updates);
-}
+export const updateLessonContent = async (
+  docId: string,
+  content: LessonContent[],
+  exercises?: Lesson["exercises"]
+) => {
+  if (!firebaseEnabled) return;
+  if (!auth.currentUser) return;
+  const lessonDoc = doc(db, "lessons", docId);
+  const updates: Partial<Lesson> = { content };
+  if (exercises) {
+    updates.exercises = deepClean(exercises);
+  }
+  await updateDoc(lessonDoc, updates);
+};
 
-export const updateLesson = async (docId: string, updates: Partial<Pick<Lesson, 'topic' | 'level' | 'status'>>) => {
-    if (!auth.currentUser) return;
-    const lessonDoc = doc(db, "lessons", docId);
-    await updateDoc(lessonDoc, updates);
+export const updateLesson = async (
+  docId: string,
+  updates: Partial<Pick<Lesson, "topic" | "level" | "status">>
+) => {
+  if (!firebaseEnabled) return;
+  if (!auth.currentUser) return;
+  const lessonDoc = doc(db, "lessons", docId);
+  await updateDoc(lessonDoc, updates);
 };
 
 export const deleteLesson = async (docId: string) => {
-    if (!auth.currentUser) return;
-    const lessonDoc = doc(db, "lessons", docId);
-    await deleteDoc(lessonDoc);
+  if (!firebaseEnabled) return;
+  if (!auth.currentUser) return;
+  const lessonDoc = doc(db, "lessons", docId);
+  await deleteDoc(lessonDoc);
 };

@@ -1,8 +1,8 @@
-
 "use client";
 
 import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BookCopy,
   GraduationCap,
@@ -47,12 +47,17 @@ import DashboardHeader from "./dashboard-header";
 import { useAuth } from "@/context/auth-context";
 import AddWordDialog from "./add-word-dialog";
 import type { CombinedVocabulary } from "@/services/vocabulary";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  activeView: View | "storybook" | "library" | 'guide';
-  setActiveView: (view: View | "storybook" | "library" | 'guide') => void;
+  activeView: View | "storybook" | "library" | "guide";
+  setActiveView: (view: View | "storybook" | "library" | "guide") => void;
   setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
@@ -63,104 +68,197 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   setWords,
 }) => {
   const { setOpenMobile } = useSidebar();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+  const router = useRouter();
+
+  const roleIdRaw = (user?.roleId || user?.roleName || "")
+    .toString()
+    .toLowerCase();
+  const roleIdNormalized = roleIdRaw.startsWith("role_")
+    ? roleIdRaw
+    : roleIdRaw
+    ? `role_${roleIdRaw}`
+    : "role_student";
+  const isAdminRole = roleIdNormalized === "role_admin";
 
   const menuItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard, role: ['user', 'admin'], href: "/" },
-    { id: "levels", label: "All Levels", icon: GraduationCap, role: ['user', 'admin'], href: "/" },
-    { id: "ai-suggester", label: "AI Suggester", icon: Sparkles, role: ['user', 'admin'], href: "/" },
-    { id: "my-lessons", label: "My Lessons", icon: BookMarked, role: ['user', 'admin'], href: "/" },
-    { id: "storybook", label: "AI Storybook", icon: BookImage, role: ['user', 'admin'], href: "/storybook" },
-    { id: "library", label: "My Library", icon: Library, role: ['user', 'admin'], href: "/library" },
-    { id: "vocabulary", label: "My Vocabulary", icon: BookCopy, role: ['user', 'admin'], href: "/" },
-    { id: "review", label: "Review", icon: ClipboardCheck, role: ['user', 'admin'], href: "/" },
+    {
+      id: "overview",
+      label: "Overview",
+      icon: LayoutDashboard,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "levels",
+      label: "All Levels",
+      icon: GraduationCap,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "ai-suggester",
+      label: "AI Suggester",
+      icon: Sparkles,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "my-lessons",
+      label: "My Lessons",
+      icon: BookMarked,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "storybook",
+      label: "AI Storybook",
+      icon: BookImage,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/storybook",
+    },
+    {
+      id: "library",
+      label: "My Library",
+      icon: Library,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/library",
+    },
+    {
+      id: "vocabulary",
+      label: "My Vocabulary",
+      icon: BookCopy,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "review",
+      label: "Review",
+      icon: ClipboardCheck,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
+      id: "user-management",
+      label: "User Management",
+      icon: Users,
+      role: ["role_admin"],
+      href: "/",
+    },
+    {
+      id: "word-management",
+      label: "Word Management",
+      icon: Database,
+      role: ["role_admin"],
+      href: "/",
+    },
   ];
-  
-  const availableMenuItems = menuItems.filter(item => user && user.role && item.role.includes(user.role));
 
+  const availableMenuItems = menuItems.filter((item) => {
+    if (!user) return false;
+    if (isAdminRole) return true;
+    return item.role.includes(roleIdNormalized);
+  });
 
-  const handleViewChange = (view: View | 'guide') => {
+  const handleViewChange = (view: View | "guide") => {
     setActiveView(view);
     setOpenMobile(false);
+  };
+
+  const handleMenuClick = (
+    itemId: View | "storybook" | "library" | "guide",
+    href: string
+  ) => {
+    if (href && href !== "/") {
+      router.push(href);
+    } else {
+      handleViewChange(itemId as View);
+    }
   };
 
   return (
     <>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <Link href="/" className="block" onClick={() => handleViewChange('overview')}>
-             <h1 className="text-2xl font-bold text-primary">
-                <span className="group-data-[collapsible=icon]:hidden">Lingo</span>
-                <span>AI</span>
+          <Link
+            href="/"
+            className="block"
+            onClick={() => handleViewChange("overview")}
+          >
+            <h1 className="text-2xl font-bold text-primary">
+              <span className="group-data-[collapsible=icon]:hidden">
+                Lingo
+              </span>
+              <span>AI</span>
             </h1>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {user?.status === 'approved' && availableMenuItems.map((item) => (
-              <SidebarMenuItem key={item.id}>
-                <Link href={item.href} passHref>
-                    <SidebarMenuButton
-                    // @ts-ignore
-                    onClick={() => item.href === "/" && handleViewChange(item.id as View)}
-                    isActive={activeView === item.id || (activeView === 'lesson-detail' && item.id === 'my-lessons')}
+            {user?.status === "approved" &&
+              availableMenuItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton
+                    onClick={() => handleMenuClick(item.id as View, item.href)}
+                    isActive={
+                      activeView === item.id ||
+                      (activeView === "lesson-detail" &&
+                        item.id === "my-lessons")
+                    }
                     tooltip={item.label}
-                    asChild
-                    >
-                     <p>
-                        <item.icon />
-                        <span>{item.label}</span>
-                     </p>
-                    </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-             {user?.status === 'approved' && (
-                <SidebarMenuItem>
-                    <AddWordDialog
-                        setWords={setWords}
-                        trigger={
-                            <SidebarMenuButton tooltip="Add New Word">
-                                <Plus />
-                                <span>Add New Word</span>
-                            </SidebarMenuButton>
-                        }
-                    />
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
+              ))}
+            {user?.status === "approved" && (
+              <SidebarMenuItem>
+                <AddWordDialog
+                  setWords={setWords}
+                  trigger={
+                    <SidebarMenuButton tooltip="Add New Word">
+                      <Plus />
+                      <span>Add New Word</span>
+                    </SidebarMenuButton>
+                  }
+                />
+              </SidebarMenuItem>
             )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-             <SidebarMenu>
-                 <SidebarMenuItem>
-                    <Link href="/guide" passHref>
-                        <SidebarMenuButton
-                            onClick={() => handleViewChange('guide')}
-                            isActive={activeView === 'guide'}
-                            tooltip="User Guide"
-                            asChild
-                        >
-                            <p>
-                                <HelpCircle />
-                                <span>User Guide</span>
-                            </p>
-                        </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
-             </SidebarMenu>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <Link href="/guide" passHref>
+                <SidebarMenuButton
+                  onClick={() => handleViewChange("guide")}
+                  isActive={activeView === "guide"}
+                  tooltip="User Guide"
+                  asChild
+                >
+                  <p>
+                    <HelpCircle />
+                    <span>User Guide</span>
+                  </p>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <DashboardHeader activeView={activeView as View | 'guide'} setActiveView={setActiveView as (view: View | 'guide') => void} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
-          {children}
-        </main>
+        <DashboardHeader
+          activeView={activeView as View | "guide"}
+          setActiveView={setActiveView as (view: View | "guide") => void}
+        />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
     </>
   );
 };
 
-const DashboardLayout: FC<Omit<DashboardLayoutProps, 'user'>> = (props) => {
+const DashboardLayout: FC<Omit<DashboardLayoutProps, "user">> = (props) => {
   return (
     <SidebarProvider>
       <DashboardLayoutContent {...props} />

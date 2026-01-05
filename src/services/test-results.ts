@@ -1,7 +1,6 @@
-
 "use client";
 
-import { db } from "@/lib/firebase";
+import { db, firebaseEnabled } from "@/lib/firebase";
 import type { UserLevel } from "@/ai/flows/schemas";
 import {
   collection,
@@ -13,7 +12,9 @@ import {
   Timestamp,
 } from "firebase/firestore";
 
-const testResultsCollection = collection(db, "testResults");
+const testResultsCollection = firebaseEnabled
+  ? collection(db, "testResults")
+  : (null as any);
 
 export interface TestResult {
   id: string;
@@ -23,7 +24,7 @@ export interface TestResult {
   totalQuestions: number;
   percentage: number;
   recommendedLevel?: UserLevel;
-  testType: 'Placement Test' | 'Review Test';
+  testType: "Placement Test" | "Review Test";
   durationSeconds?: number;
 }
 
@@ -32,7 +33,7 @@ export interface NewTestResultPayload {
   totalQuestions: number;
   percentage: number;
   recommendedLevel?: UserLevel;
-  testType: 'Placement Test' | 'Review Test';
+  testType: "Placement Test" | "Review Test";
   durationSeconds?: number;
 }
 
@@ -40,6 +41,7 @@ export const addTestResult = async (
   userId: string,
   result: NewTestResultPayload
 ) => {
+  if (!firebaseEnabled) return;
   const payload = {
     ...result,
     userId,
@@ -49,6 +51,7 @@ export const addTestResult = async (
 };
 
 export const getTestResults = async (userId: string): Promise<TestResult[]> => {
+  if (!firebaseEnabled) return [];
   const q = query(
     testResultsCollection,
     where("userId", "==", userId),

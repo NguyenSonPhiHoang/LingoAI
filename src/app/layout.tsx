@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -8,8 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
 import { SettingsProvider, useSettings } from "@/context/settings-context";
 import { ActivityTracker } from "@/context/activity-tracker";
-import { cn } from '@/lib/utils';
-
+import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -23,21 +22,24 @@ export const metadata: Metadata = {
 };
 */
 
-
 const AppBody = ({ children }: { children: React.ReactNode }) => {
   const { theme } = useSettings();
 
   useEffect(() => {
     const body = document.body;
-    body.classList.remove('theme-orange', 'theme-blue', 'theme-green', 'theme-rose');
-    if (theme !== 'default') {
+    body.classList.remove(
+      "theme-orange",
+      "theme-blue",
+      "theme-green",
+      "theme-rose"
+    );
+    if (theme !== "default") {
       body.classList.add(`theme-${theme}`);
     }
   }, [theme]);
 
   return <>{children}</>;
-}
-
+};
 
 export default function RootLayout({
   children,
@@ -47,10 +49,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-         <title>LingoAI</title>
-         <meta name="description" content="Your personalized AI-powered English learning companion." />
+        <title>LingoAI</title>
+        <meta
+          name="description"
+          content="Your personalized AI-powered English learning companion."
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin=""
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
@@ -61,8 +70,8 @@ export default function RootLayout({
           <ActivityTracker>
             <SettingsProvider>
               <AppBody>
-                  {children}
-                  <Toaster />
+                {children}
+                <Toaster />
               </AppBody>
             </SettingsProvider>
           </ActivityTracker>

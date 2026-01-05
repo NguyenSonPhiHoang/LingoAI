@@ -1,395 +1,479 @@
-
 "use client";
 
-import * as React from 'react';
-import { useState, useEffect, useMemo, type FC } from 'react';
-import { Loader2, CheckCircle, XCircle, Clock, Timer, ChevronDown, ChevronRight, BarChart3, KeyRound } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
-import { getAllUsers, updateUserStatus } from '@/services/users';
-import { getAllUsersTotalActivity, getUserActivityForMonth, type DailyActivity } from '@/services/activity';
-import type { User } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
+import React, { useEffect, useState } from "react";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+  adminListUsers,
+  adminCreateUser,
+  adminUpdateUser,
+  adminDeleteUser,
+} from "@/services/admin-users";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from "@/components/ui/table";
-import { Badge } from '@/components/ui/badge';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from '../ui/button';
-import { format } from 'date-fns';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useToast } from "@/hooks/use-toast";
+import { Pencil, Trash2 } from "lucide-react";
 
-const formatTotalDuration = (totalSeconds: number): string => {
-    if (isNaN(totalSeconds) || totalSeconds < 0) return '0h 0m';
-    
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
+const roles = [
+  { id: "role_admin", name: "Admin" },
+  { id: "role_teacher", name: "Teacher" },
+  { id: "role_student", name: "Student" },
+];
 
-    return `${hours}h ${minutes}m`;
-};
+export default function UserManagement() {
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const { toast } = useToast();
 
+  const fetch = async () => {
+    try {
+      const res = await adminListUsers({
+        q,
+        roleId: role,
+        status,
+        page,
+        pageSize,
+      });
+      const normalized = (res.items || []).map((it: any) => ({
+        Id: it.Id || it.id,
+        Email: it.Email || it.email,
+        DisplayName: it.DisplayName || it.displayName,
+        RoleId: it.RoleId || it.roleId,
+        Status: it.Status || it.status,
+        CreatedAt: it.CreatedAt || it.createdAt,
+      }));
+      setItems(normalized);
+      setTotal(res.total || 0);
+    } catch (err: any) {
+      console.error("Failed to fetch users", err);
+      toast({ variant: "destructive", title: "Failed to load users" });
+    }
+  };
 
-const UserActivityDetails: FC<{ userId: string }> = ({ userId }) => {
-    const [activityData, setActivityData] = useState<DailyActivity[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState({
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-    });
-    const { toast } = useToast();
+  useEffect(() => {
+    fetch();
+  }, [q, role, status, page, pageSize]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newId, setNewId] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRoleId, setNewRoleId] = useState("role_student");
+  const [isCreating, setIsCreating] = useState(false);
 
-    useEffect(() => {
-        const fetchActivity = async () => {
-            setIsLoading(true);
-            try {
-                const data = await getUserActivityForMonth(userId, selectedDate.year, selectedDate.month);
-                setActivityData(data);
-            } catch (error) {
-                 console.error("Error fetching monthly activity:", error);
-                 toast({ variant: "destructive", title: "Error", description: "Could not fetch user activity." });
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        fetchActivity();
-    }, [userId, selectedDate, toast]);
-    
-    const chartData = useMemo(() => {
-        const daysInMonth = new Date(selectedDate.year, selectedDate.month, 0).getDate();
-        const data = Array.from({ length: daysInMonth }, (_, i) => ({
-            day: (i + 1).toString(),
-            duration: 0,
-        }));
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editRoleId, setEditRoleId] = useState("role_student");
+  const [editStatus, setEditStatus] = useState("pending");
+  const [isUpdating, setIsUpdating] = useState(false);
 
-        activityData.forEach(activity => {
-            const dayOfMonth = new Date(activity.date).getDate();
-            data[dayOfMonth - 1].duration = Math.round(activity.durationSeconds / 60); // in minutes
-        });
-        
-        return data;
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!newId || !newEmail || !newPassword) {
+      toast({ variant: "destructive", title: "Please fill required fields" });
+      return;
+    }
+    setIsCreating(true);
+    try {
+      await adminCreateUser({
+        id: newId,
+        email: newEmail,
+        displayName: newDisplayName,
+        password: newPassword,
+        roleId: newRoleId,
+      });
+      toast({ title: "Created" });
+      setCreateOpen(false);
+      setNewId("");
+      setNewEmail("");
+      setNewDisplayName("");
+      setNewPassword("");
+      setNewRoleId("role_student");
+      fetch();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Create failed" });
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
-    }, [activityData, selectedDate]);
-    
-    const totalMinutes = chartData.reduce((sum, day) => sum + day.duration, 0);
-    const activeDays = chartData.filter(day => day.duration > 0).length;
-    const averageMinutes = activeDays > 0 ? Math.round(totalMinutes / activeDays) : 0;
+  const getNextUserId = (): string => {
+    try {
+      const regex = /^user_(\d+)$/;
+      const nums = items
+        .map((it) => {
+          const id = it.Id || it.id || "";
+          const m = regex.exec(id);
+          return m ? parseInt(m[1], 10) : null;
+        })
+        .filter((n) => n !== null) as number[];
+      const max = nums.length ? Math.max(...nums) : 0;
+      const next = max + 1;
+      return `user_${String(next).padStart(6, "0")}`;
+    } catch (err) {
+      return "user_000001";
+    }
+  };
 
-    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const handleCreateOpenChange = (open: boolean) => {
+    setCreateOpen(open);
+    if (open) {
+      setNewId(getNextUserId());
+    }
+  };
 
+  const openEdit = (item: any) => {
+    setEditTarget(item);
+    setEditEmail(item.Email || "");
+    setEditDisplayName(item.DisplayName || "");
+    setEditRoleId(item.RoleId || "role_student");
+    setEditStatus(item.Status || "pending");
+    setEditOpen(true);
+  };
 
-    return (
-        <div className="p-4 bg-muted/50 space-y-4">
-             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                 <h4 className="font-semibold text-lg">Activity Details</h4>
-                <div className="flex items-center gap-2">
-                    <Select value={selectedDate.month.toString()} onValueChange={(val) => setSelectedDate(p => ({...p, month: parseInt(val)}))}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {months.map(m => <SelectItem key={m} value={m.toString()}>{format(new Date(2000, m - 1), 'MMMM')}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={selectedDate.year.toString()} onValueChange={(val) => setSelectedDate(p => ({...p, year: parseInt(val)}))}>
-                        <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+  const handleEditSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!editTarget) return;
+    setIsUpdating(true);
+    try {
+      await adminUpdateUser(editTarget.Id, {
+        email: editEmail,
+        displayName: editDisplayName,
+        roleId: editRoleId,
+        status: editStatus,
+      });
+      toast({ title: "Updated" });
+      setEditOpen(false);
+      setEditTarget(null);
+      fetch();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Update failed" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Delete user ${item.Email}?`)) return;
+    try {
+      await adminDeleteUser(item.Id);
+      toast({ title: "Deleted" });
+      fetch();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Delete failed" });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Search by email or name"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <Select
+          value={role}
+          onValueChange={(v) => setRole(v === "ALL" ? "" : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All roles</SelectItem>
+            {roles.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={status}
+          onValueChange={(v) => setStatus(v === "ALL" ? "" : v)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All statuses</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={() => {
+            setPage(1);
+            fetch();
+          }}
+        >
+          Search
+        </Button>
+        <div className="ml-auto">
+          <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setCreateOpen(true)}>
+                Tạo người dùng mới
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Tạo người dùng mới</DialogTitle>
+                <DialogDescription>
+                  Thêm tài khoản người dùng mới vào hệ thống.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4 mt-2">
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="text-sm">Id</label>
+                  <Input
+                    value={newId}
+                    onChange={(e) => setNewId(e.target.value)}
+                    placeholder="user_123"
+                  />
                 </div>
-            </div>
-
-            {isLoading ? (
-                <div className="flex justify-center items-center h-48"><Loader2 className="animate-spin" /></div>
-            ) : chartData.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card className="lg:col-span-2">
-                        <CardHeader>
-                            <CardTitle>Daily Activity - {format(new Date(selectedDate.year, selectedDate.month - 1), 'MMMM yyyy')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <ChartContainer config={{ duration: { label: "Minutes", color: "hsl(var(--primary))" } }} className="h-64 w-full">
-                                <BarChart accessibilityLayer data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid vertical={false} />
-                                    <XAxis
-                                        dataKey="day"
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                        label="Day of Month"
-                                    />
-                                    <YAxis tickFormatter={(value) => `${value}m`} />
-                                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                                    <Bar dataKey="duration" fill="hsl(var(--primary))" radius={4} />
-                                </BarChart>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
-                     <Card className="lg:col-span-1">
-                        <CardHeader>
-                            <CardTitle>Monthly Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-4 text-center">
-                            <div className="p-4 bg-background rounded-lg">
-                                <div className="text-3xl font-bold">{formatTotalDuration(totalMinutes * 60)}</div>
-                                <div className="text-sm text-muted-foreground">Total Time</div>
-                            </div>
-                             <div className="p-4 bg-background rounded-lg">
-                                <div className="text-3xl font-bold">{formatTotalDuration(averageMinutes * 60)}</div>
-                                <div className="text-sm text-muted-foreground">Daily Average</div>
-                            </div>
-                            <div className="p-4 bg-background rounded-lg">
-                                <div className="text-3xl font-bold">{activeDays}</div>
-                                <div className="text-sm text-muted-foreground">Active Days</div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="text-sm">Email</label>
+                  <Input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="user@example.com"
+                  />
                 </div>
-            ) : (
-                <div className="text-center py-8 text-muted-foreground">No activity data for this period.</div>
-            )}
-
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="text-sm">Display name</label>
+                  <Input
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="text-sm">Password</label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Password"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <label className="text-sm">Role</label>
+                  <Select
+                    value={newRoleId}
+                    onValueChange={(v) => setNewRoleId(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="role_admin">Admin</SelectItem>
+                      <SelectItem value="role_teacher">Teacher</SelectItem>
+                      <SelectItem value="role_student">Student</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Hủy
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? "Đang tạo..." : "Tạo"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-    )
-}
+      </div>
 
-const UserRow: FC<{
-    u: User;
-    totalActivity: number;
-    isOpen: boolean;
-    onToggle: () => void;
-    onStatusChange: (uid: string, status: 'approved' | 'rejected' | 'pending') => void;
-    onResetPassword: (email: string) => void;
-}> = ({ u, totalActivity, isOpen, onToggle, onStatusChange, onResetPassword }) => {
-    
-    const getStatusBadge = (status: User['status']) => {
-        switch (status) {
-            case 'approved':
-                return <Badge variant="secondary" className="bg-green-100 text-green-800">Approved</Badge>;
-            case 'pending':
-                return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-            case 'rejected':
-                return <Badge variant="destructive">Rejected</Badge>;
-            default:
-                return <Badge variant="outline">Unknown</Badge>;
-        }
-    }
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Email</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((it) => (
+            <TableRow key={it.Id}>
+              <TableCell>{it.Email}</TableCell>
+              <TableCell>{it.DisplayName}</TableCell>
+              <TableCell>{it.RoleId}</TableCell>
+              <TableCell>
+                <Select
+                  value={it.Status || "pending"}
+                  onValueChange={async (val) => {
+                    try {
+                      await adminUpdateUser(it.Id, { status: val });
+                      setItems((prev) =>
+                        prev.map((row) =>
+                          row.Id === it.Id ? { ...row, Status: val } : row
+                        )
+                      );
+                      toast({ title: "Status updated" });
+                    } catch (err: any) {
+                      console.error(err);
+                      toast({ variant: "destructive", title: "Update failed" });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell>
+                {it.CreatedAt ? new Date(it.CreatedAt).toLocaleString() : "-"}
+              </TableCell>
+              <TableCell className="space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEdit(it)}
+                  aria-label="Edit user"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDelete(it)}
+                  aria-label="Delete user"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-    return (
-        <TableRow data-state={isOpen ? 'open' : 'closed'}>
-            <TableCell>
-                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
-                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                 </Button>
-            </TableCell>
-            <TableCell>{u.displayName}</TableCell>
-            <TableCell>{u.email}</TableCell>
-            <TableCell>
-                <div className="flex items-center gap-2">
-                    <Timer className="h-4 w-4 text-muted-foreground" />
-                    {formatTotalDuration(totalActivity || 0)}
-                </div>
-            </TableCell>
-            <TableCell>
-                {u.createdAt ? format(new Date(u.createdAt as any), 'PPpp') : 'N/A'}
-            </TableCell>
-            <TableCell>{getStatusBadge(u.status)}</TableCell>
-            <TableCell className="text-right">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">Change Status</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'approved')} disabled={u.status === 'approved'}>
-                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                            Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'pending')} disabled={u.status === 'pending'}>
-                            <Clock className="mr-2 h-4 w-4 text-yellow-500" />
-                            Set to Pending
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(u.uid, 'rejected')} disabled={u.status === 'rejected'}>
-                             <XCircle className="mr-2 h-4 w-4 text-red-500" />
-                            Reject
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => u.email && onResetPassword(u.email)}>
-                             <KeyRound className="mr-2 h-4 w-4" />
-                            Reset Password
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </TableCell>
-        </TableRow>
-    );
-};
-
-
-const UserManagement: FC = () => {
-    const { user, resetPassword } = useAuth();
-    const [users, setUsers] = useState<User[]>([]);
-    const [activity, setActivity] = useState<Record<string, number>>({});
-    const [isLoading, setIsLoading] = useState(true);
-    const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
-    const { toast } = useToast();
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const [fetchedUsers, fetchedActivity] = await Promise.all([
-                getAllUsers(),
-                getAllUsersTotalActivity()
-            ]);
-            setUsers(fetchedUsers);
-            setActivity(fetchedActivity);
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Could not fetch user data.",
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
-    useEffect(() => {
-        if (user?.role === 'admin') {
-            fetchData();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
-
-    const handleStatusChange = async (uid: string, status: 'approved' | 'rejected' | 'pending') => {
-        try {
-            await updateUserStatus(uid, status);
-            setUsers(users.map(u => u.uid === uid ? { ...u, status } : u));
-            toast({
-                title: "Success",
-                description: `User status updated to ${status}.`
-            });
-        } catch (error) {
-             console.error("Error updating user status:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to update user status.",
-            });
-        }
-    };
-    
-    const handleResetPassword = async (email: string) => {
-        try {
-            await resetPassword(email);
-            toast({
-                title: "Email Sent",
-                description: `A password reset email has been sent to ${email}.`,
-            });
-        } catch (error) {
-            console.error("Error sending reset password email:", error);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to send password reset email.",
-            });
-        }
-    };
-    
-    const handleToggleCollapsible = (uid: string) => {
-        setOpenCollapsibles(prev => ({ ...prev, [uid]: !prev[uid] }));
-    };
-
-    if (user?.role !== 'admin') {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>You do not have permission to view this page.</p>
-                </CardContent>
-            </Card>
-        );
-    }
-    
-    if (isLoading) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-              <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
+            <DialogDescription>Cập nhật thông tin tài khoản.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 mt-2">
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm">Email</label>
+              <Input
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+              />
             </div>
-        );
-    }
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm">Display name</label>
+              <Input
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm">Role</label>
+              <Select
+                value={editRoleId}
+                onValueChange={(v) => setEditRoleId(v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="role_admin">Admin</SelectItem>
+                  <SelectItem value="role_teacher">Teacher</SelectItem>
+                  <SelectItem value="role_student">Student</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm">Status</label>
+              <Select
+                value={editStatus}
+                onValueChange={(v) => setEditStatus(v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Hủy
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? "Đang lưu..." : "Lưu"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Approve registrations and view user activity statistics.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px]"><BarChart3 className="h-5 w-5" /></TableHead>
-                            <TableHead>Display Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Total Usage</TableHead>
-                            <TableHead>Registered</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {users.map((u) => (
-                           <React.Fragment key={u.uid}>
-                             <UserRow 
-                                u={u} 
-                                totalActivity={activity[u.uid] || 0}
-                                onStatusChange={handleStatusChange}
-                                onResetPassword={handleResetPassword}
-                                isOpen={!!openCollapsibles[u.uid]}
-                                onToggle={() => handleToggleCollapsible(u.uid)}
-                             />
-                             {openCollapsibles[u.uid] && (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="p-0">
-                                       <UserActivityDetails userId={u.uid} />
-                                    </TableCell>
-                                </TableRow>
-                             )}
-                           </React.Fragment>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
-};
-
-export default UserManagement;
+      <div className="flex items-center justify-between">
+        <div>
+          Showing {items.length} of {total}
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Prev
+          </Button>
+          <div>Page {page}</div>
+          <Button onClick={() => setPage((p) => p + 1)}>Next</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
