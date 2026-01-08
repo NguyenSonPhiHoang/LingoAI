@@ -30,16 +30,23 @@ export class UserController {
 
       // Filter
       let filtered = all.filter((u: any) => {
+        const email = (u.Email || u.email || "").toLowerCase();
+        const displayName = (
+          u.DisplayName ||
+          u.displayName ||
+          ""
+        ).toLowerCase();
+        const idVal = (u.Id || u.id || "").toLowerCase();
         if (q) {
           const s = q.toLowerCase();
           const match =
-            (u.Email || "").toLowerCase().includes(s) ||
-            (u.DisplayName || "").toLowerCase().includes(s) ||
-            (u.Id || "").toLowerCase().includes(s);
+            email.includes(s) || displayName.includes(s) || idVal.includes(s);
           if (!match) return false;
         }
-        if (roleId && u.RoleId !== roleId) return false;
-        if (status && (u.Status || "") !== status) return false;
+        const roleVal = u.RoleId || u.roleId;
+        const statusVal = u.Status || u.status || "";
+        if (roleId && roleVal !== roleId) return false;
+        if (status && statusVal !== status) return false;
         return true;
       });
 
@@ -77,8 +84,15 @@ export class UserController {
 
   static async adminCreate(req: Request, res: Response) {
     try {
-      const { id, email, displayName, password, roleId, status } =
-        req.body || {};
+      const {
+        id,
+        email,
+        displayName,
+        password,
+        roleId,
+        status,
+        omniChatEnabled,
+      } = req.body || {};
       if (!id || !email || !password)
         return res.status(400).json({ error: "id, email, password required" });
       const existing = await UserRepository.findByEmail(email);
@@ -90,7 +104,8 @@ export class UserController {
         displayName || null,
         password,
         roleId || "role_student",
-        status || "pending"
+        status || "pending",
+        typeof omniChatEnabled === "boolean" ? omniChatEnabled : true
       );
       const created = await UserRepository.findById(id);
       res.status(201).json(created);
@@ -103,7 +118,8 @@ export class UserController {
   static async adminUpdate(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { email, displayName, password, roleId, status } = req.body || {};
+      const { email, displayName, password, roleId, status, omniChatEnabled } =
+        req.body || {};
       const existing = await UserRepository.findById(id);
       if (!existing) return res.status(404).json({ error: "not found" });
       await UserRepository.update(
@@ -112,7 +128,12 @@ export class UserController {
         displayName || existing.DisplayName,
         password || null,
         roleId || existing.RoleId,
-        status || existing.Status || "pending"
+        status || existing.Status || "pending",
+        typeof omniChatEnabled === "boolean"
+          ? omniChatEnabled
+          : existing.OmniChatEnabled === undefined
+          ? true
+          : existing.OmniChatEnabled
       );
       const updated = await UserRepository.findById(id);
       res.json(updated);

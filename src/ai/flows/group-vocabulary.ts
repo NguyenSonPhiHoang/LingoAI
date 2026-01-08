@@ -8,7 +8,7 @@
  * - GroupVocabularyOutput - The return type for the function.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GroupVocabularyInputSchema,
   GroupVocabularyOutputSchema,
@@ -22,9 +22,11 @@ export async function groupVocabularyByTopic(
   return groupVocabularyByTopicFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "groupVocabularyPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GroupVocabularyInputSchema },
   output: { schema: GroupVocabularyOutputSchema },
   prompt: `You are an expert lexicographer and linguist. Your task is to group the following list of vocabulary words, phrases, and sentences into relevant topics.

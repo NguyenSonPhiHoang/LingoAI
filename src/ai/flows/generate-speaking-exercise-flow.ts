@@ -5,7 +5,7 @@
  * - generateSpeakingExercise - A function that creates a role-play scenario.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateSpeakingExerciseInputSchema,
   GenerateSpeakingExerciseOutputSchema,
@@ -39,9 +39,10 @@ const generateSpeakingExerciseFlow = ai.defineFlow(
     outputSchema: GenerateSpeakingExerciseOutputSchema,
   },
   async (input) => {
+    const model = getTextModel();
     try {
       const { output } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: {
           schema: GenerateSpeakingExerciseOutputSchema,
@@ -56,7 +57,7 @@ const generateSpeakingExerciseFlow = ai.defineFlow(
         error
       );
       const { output: fallbackOutput } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: {
           schema: GenerateSpeakingExerciseOutputSchema,

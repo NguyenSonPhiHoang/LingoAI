@@ -9,9 +9,12 @@ import {
   Mic,
   ClipboardCheck,
   Voicemail,
+  Volume2,
 } from "lucide-react";
 import type { View } from "@/app/page";
+import type { CombinedVocabulary } from "@/services/vocabulary";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -21,9 +24,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAudioPlayback } from "@/hooks/use-audio-playback";
+import { useSettings } from "@/context/settings-context";
+import { incrementUserVocabularyLearnCount } from "@/services/vocabulary";
 
 interface DashboardOverviewProps {
-  setActiveView: Dispatch<SetStateAction<View>>;
+  setActiveView: (view: View) => void;
+  favoriteWords: CombinedVocabulary[];
+  setWords: Dispatch<SetStateAction<CombinedVocabulary[]>>;
 }
 
 const skillData = [
@@ -64,9 +73,49 @@ const skillData = [
   },
 ];
 
-const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
+const DashboardOverview: FC<DashboardOverviewProps> = ({
+  setActiveView,
+  favoriteWords,
+  setWords,
+}) => {
+  const { speechRate } = useSettings();
+  const { audioRef, isLoadingAudio, activePlaybackKey, playAudio } =
+    useAudioPlayback({ setWords: setWords as any, speechRate });
+
+  const handlePlayFavoriteWord = async (word: CombinedVocabulary) => {
+    const key = String(word.userVocabularyId || word.id);
+
+    // Clicking the speaker counts as a "learn".
+    if (word.userVocabularyId) {
+      try {
+        const updated = await incrementUserVocabularyLearnCount(
+          word.userVocabularyId
+        );
+        if (updated) {
+          setWords((prev) =>
+            prev.map((w) =>
+              w.userVocabularyId === word.userVocabularyId
+                ? {
+                    ...w,
+                    learnCount: updated.learnCount,
+                    favorite: updated.favorite,
+                  }
+                : w
+            )
+          );
+        }
+      } catch {
+        // ignore learn tracking failures
+      }
+    }
+
+    // Play stored audio URL if present; otherwise browser TTS.
+    await playAudio(key, word.term, word.audioUrl);
+  };
+
   return (
     <div className="space-y-6">
+      <audio ref={audioRef} className="hidden" />
       <div className="space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Welcome Back!</h2>
         <p className="text-muted-foreground">
@@ -132,7 +181,9 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader>
-            <h3 className="text-2xl font-bold tracking-tight">Skill Progress</h3>
+            <h3 className="text-2xl font-bold tracking-tight">
+              Skill Progress
+            </h3>
             <p className="text-muted-foreground">
               Track your improvement in each core skill.
             </p>
@@ -168,12 +219,79 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({ setActiveView }) => {
           <CardHeader>
             <CardTitle>Review Vocabulary</CardTitle>
             <CardDescription>
-              Practice your saved words with interactive exercises.
+              Shows only the words you marked as favorite.
             </CardDescription>
             <div className="flex justify-center pt-4">
-               <ClipboardCheck className="h-16 w-16 text-secondary-foreground/50" />
+              <ClipboardCheck className="h-16 w-16 text-secondary-foreground/50" />
             </div>
           </CardHeader>
+          <CardContent className="pt-0">
+            {favoriteWords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No favorite words yet.
+              </p>
+            ) : (
+              <ScrollArea className="h-56 pr-2" type="always">
+                <div className="space-y-2">
+                  {favoriteWords.map((w) => {
+                    const key = String(w.userVocabularyId || w.id);
+                    const learnCount =
+                      typeof w.learnCount === "number" ? w.learnCount : 0;
+                    const pronunciation =
+                      typeof w.pronunciation === "string"
+                        ? w.pronunciation
+                        : "";
+                    const partOfSpeech =
+                      typeof w.partOfSpeech === "string" ? w.partOfSpeech : "";
+
+                    return (
+                      <div
+                        key={key}
+                        className="grid grid-cols-[1fr_auto] items-start gap-3 rounded-md border bg-background/50 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="font-medium truncate">{w.term}</div>
+                            {partOfSpeech ? (
+                              <Badge variant="secondary" className="shrink-0">
+                                {partOfSpeech}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {pronunciation ? (
+                            <div className="text-xs text-muted-foreground truncate">
+                              /{pronunciation}/
+                            </div>
+                          ) : null}
+                          <div className="text-xs text-muted-foreground">
+                            Learn count: {learnCount}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handlePlayFavoriteWord(w)}
+                            disabled={!!isLoadingAudio[key]}
+                            aria-label="Play word audio"
+                          >
+                            <Volume2
+                              className={
+                                activePlaybackKey === key
+                                  ? "h-4 w-4 text-primary"
+                                  : "h-4 w-4"
+                              }
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
           <CardFooter>
             <Button
               className="w-full"

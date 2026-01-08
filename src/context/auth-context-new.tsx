@@ -30,6 +30,7 @@ export interface User {
   status?: string | null;
   photoUrl?: string | null;
   bio?: string | null;
+  omniChatEnabled?: boolean | null;
 }
 
 interface AuthContextType {
@@ -85,6 +86,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 "approved",
               photoUrl: (userProfile as any).photoUrl || null,
               bio: (userProfile as any).bio || null,
+              omniChatEnabled:
+                typeof (userProfile as any).omniChatEnabled === "boolean"
+                  ? (userProfile as any).omniChatEnabled
+                  : null,
             });
           }
         }
@@ -122,6 +127,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           "approved",
         photoUrl: (userProfile as any).photoUrl || null,
         bio: (userProfile as any).bio || null,
+        omniChatEnabled:
+          typeof (userProfile as any).omniChatEnabled === "boolean"
+            ? (userProfile as any).omniChatEnabled
+            : null,
       });
     }
   };

@@ -5,7 +5,7 @@
  * - generateVocabularyFeedback - A function that explains why a vocabulary choice is wrong.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateVocabularyFeedbackInputSchema,
   GenerateVocabularyFeedbackOutputSchema,
@@ -19,9 +19,11 @@ export async function generateVocabularyFeedback(
   return generateVocabularyFeedbackFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "generateVocabularyFeedbackPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GenerateVocabularyFeedbackInputSchema },
   output: { schema: GenerateVocabularyFeedbackOutputSchema },
   prompt: `You are an English teacher providing feedback on a fill-in-the-blank vocabulary question. The user has selected an incorrect word.

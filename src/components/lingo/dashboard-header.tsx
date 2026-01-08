@@ -64,14 +64,16 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
+    <header className="sticky top-0 z-10 flex h-16 min-w-0 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <SidebarTrigger />
-      <h1 className="text-lg font-semibold md:text-xl flex-1">{getTitle()}</h1>
+      <h1 className="text-lg font-semibold md:text-xl flex-1 min-w-0 truncate">
+        {getTitle()}
+      </h1>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="relative flex items-center gap-2 rounded-full h-10 pr-4 pl-2"
+            className="relative flex min-w-0 items-center gap-2 rounded-full h-10 pr-4 pl-2"
           >
             <Avatar className="h-8 w-8">
               <AvatarImage
@@ -88,7 +90,9 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
                   .toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-sm">{user?.displayName}</span>
+            <span className="font-medium text-sm hidden sm:inline truncate max-w-[10rem]">
+              {user?.displayName}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">

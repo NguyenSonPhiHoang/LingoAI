@@ -12,6 +12,7 @@ BEGIN
     PasswordHash NVARCHAR(200) NULL,
     RoleId NVARCHAR(100) NULL,
     Status NVARCHAR(50) NULL CONSTRAINT DF_Users_Status DEFAULT 'pending',
+    OmniChatEnabled BIT NULL CONSTRAINT DF_Users_OmniChatEnabled DEFAULT 1,
     CreatedAt DATETIMEOFFSET NULL
   );
 END
@@ -27,6 +28,14 @@ BEGIN
   BEGIN
     ALTER TABLE dbo.Users ADD Status NVARCHAR(50) NULL CONSTRAINT DF_Users_Status DEFAULT 'pending';
     UPDATE dbo.Users SET Status = 'pending' WHERE Status IS NULL;
+  END
+
+  IF NOT EXISTS (SELECT *
+  FROM sys.columns
+  WHERE Name = N'OmniChatEnabled' AND Object_ID = Object_ID(N'[dbo].[Users]'))
+  BEGIN
+    ALTER TABLE dbo.Users ADD OmniChatEnabled BIT NULL CONSTRAINT DF_Users_OmniChatEnabled DEFAULT 1;
+    UPDATE dbo.Users SET OmniChatEnabled = 1 WHERE OmniChatEnabled IS NULL;
   END
 END
 
@@ -64,9 +73,178 @@ BEGIN
     Example NVARCHAR(MAX) NULL,
     PartOfSpeech NVARCHAR(100) NULL,
     Pronunciation NVARCHAR(200) NULL,
-    AudioUrl NVARCHAR(2000) NULL,
+    AudioUrl NVARCHAR(MAX) NULL,
     CreatedAt DATETIMEOFFSET NULL
   );
+END
+
+-- Upgrade: allow large audio payloads (data:audio/...;base64,...) in SQL
+IF EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[Vocabulary]') AND type in (N'U'))
+BEGIN
+  IF EXISTS (
+    SELECT 1
+  FROM sys.columns
+  WHERE Object_ID = Object_ID(N'[dbo].[Vocabulary]') AND Name = N'AudioUrl' AND max_length <> -1
+  )
+  BEGIN
+    ALTER TABLE dbo.Vocabulary ALTER COLUMN AudioUrl NVARCHAR(MAX) NULL;
+  END
+END
+
+-- Global Words table (normalized term, shared across users)
+IF NOT EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[Words]') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.Words
+  (
+    Id NVARCHAR(100) PRIMARY KEY,
+    Term NVARCHAR(200) NOT NULL,
+    TermNormalized NVARCHAR(200) NOT NULL,
+    Pronunciation NVARCHAR(200) NULL,
+    AudioUrl NVARCHAR(MAX) NULL,
+    CreatedAt DATETIMEOFFSET NULL
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_Words_TermNormalized' AND object_id = OBJECT_ID('dbo.Words')
+  )
+  BEGIN
+    CREATE UNIQUE INDEX UX_Words_TermNormalized ON dbo.Words(TermNormalized);
+  END
+END
+
+-- Upgrade: allow large audio payloads in Words.AudioUrl
+IF EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[Words]') AND type in (N'U'))
+BEGIN
+  IF EXISTS (
+    SELECT 1
+  FROM sys.columns
+  WHERE Object_ID = Object_ID(N'[dbo].[Words]') AND Name = N'AudioUrl' AND max_length <> -1
+  )
+  BEGIN
+    ALTER TABLE dbo.Words ALTER COLUMN AudioUrl NVARCHAR(MAX) NULL;
+  END
+END
+
+-- Per-user vocabulary details + metadata (joins to Words)
+IF NOT EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[UserVocabulary]') AND type in (N'U'))
+BEGIN
+  CREATE TABLE dbo.UserVocabulary
+  (
+    Id NVARCHAR(100) PRIMARY KEY,
+    UserId NVARCHAR(100) NOT NULL,
+    WordId NVARCHAR(100) NOT NULL,
+
+    PartOfSpeech NVARCHAR(100) NULL,
+    Definition NVARCHAR(MAX) NULL,
+    VietnameseDefinition NVARCHAR(MAX) NULL,
+    Sentence NVARCHAR(MAX) NULL,
+    VietnameseSentence NVARCHAR(MAX) NULL,
+    SentenceAudioUrl NVARCHAR(MAX) NULL,
+    LearnCount INT NOT NULL CONSTRAINT DF_UserVocabulary_LearnCount DEFAULT 0,
+    Synonyms NVARCHAR(MAX) NULL,
+    Antonyms NVARCHAR(MAX) NULL,
+    IrregularForms NVARCHAR(MAX) NULL,
+    WordForms NVARCHAR(MAX) NULL,
+
+    Favorite BIT NULL CONSTRAINT DF_UserVocabulary_Favorite DEFAULT 0,
+    Topic NVARCHAR(200) NULL,
+    CreatedAt DATETIMEOFFSET NULL,
+    UpdatedAt DATETIMEOFFSET NULL
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_UserVocabulary_User_Word' AND object_id = OBJECT_ID('dbo.UserVocabulary')
+  )
+  BEGIN
+    CREATE UNIQUE INDEX UX_UserVocabulary_User_Word ON dbo.UserVocabulary(UserId, WordId);
+  END
+
+  IF EXISTS (SELECT *
+  FROM sys.objects
+  WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))
+  BEGIN
+    IF NOT EXISTS (
+      SELECT *
+    FROM sys.foreign_keys
+    WHERE name = 'FK_UserVocabulary_Users'
+    )
+    BEGIN
+      ALTER TABLE dbo.UserVocabulary ADD CONSTRAINT FK_UserVocabulary_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(Id);
+    END
+  END
+
+  IF EXISTS (SELECT *
+  FROM sys.objects
+  WHERE object_id = OBJECT_ID(N'[dbo].[Words]') AND type in (N'U'))
+  BEGIN
+    IF NOT EXISTS (
+      SELECT *
+    FROM sys.foreign_keys
+    WHERE name = 'FK_UserVocabulary_Words'
+    )
+    BEGIN
+      ALTER TABLE dbo.UserVocabulary ADD CONSTRAINT FK_UserVocabulary_Words FOREIGN KEY (WordId) REFERENCES dbo.Words(Id);
+    END
+  END
+END
+
+-- Upgrade: add WordForms if missing
+IF EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[UserVocabulary]') AND type in (N'U'))
+BEGIN
+  IF NOT EXISTS (
+    SELECT *
+  FROM sys.columns
+  WHERE Name = N'WordForms' AND Object_ID = Object_ID(N'[dbo].[UserVocabulary]')
+  )
+  BEGIN
+    ALTER TABLE dbo.UserVocabulary
+      ADD WordForms NVARCHAR(MAX) NULL;
+  END
+END
+
+-- Upgrade: add LearnCount if missing
+IF EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[UserVocabulary]') AND type in (N'U'))
+BEGIN
+  IF NOT EXISTS (
+    SELECT *
+  FROM sys.columns
+  WHERE Name = N'LearnCount' AND Object_ID = Object_ID(N'[dbo].[UserVocabulary]')
+  )
+  BEGIN
+    ALTER TABLE dbo.UserVocabulary
+      ADD LearnCount INT NOT NULL CONSTRAINT DF_UserVocabulary_LearnCount DEFAULT 0;
+  END
+END
+
+-- Upgrade: allow large audio payloads in UserVocabulary.SentenceAudioUrl
+IF EXISTS (SELECT *
+FROM sys.objects
+WHERE object_id = OBJECT_ID(N'[dbo].[UserVocabulary]') AND type in (N'U'))
+BEGIN
+  IF EXISTS (
+    SELECT 1
+  FROM sys.columns
+  WHERE Object_ID = Object_ID(N'[dbo].[UserVocabulary]') AND Name = N'SentenceAudioUrl' AND max_length <> -1
+  )
+  BEGIN
+    ALTER TABLE dbo.UserVocabulary ALTER COLUMN SentenceAudioUrl NVARCHAR(MAX) NULL;
+  END
 END
 
 -- Junction table: Lesson <-> Vocabulary
@@ -144,6 +322,18 @@ BEGIN
     Description NVARCHAR(MAX) NULL,
     Language NVARCHAR(50) NULL,
     AuthorId NVARCHAR(100) NULL,
+    -- AI storybook fields (used by Next.js storybook feature)
+    Level NVARCHAR(50) NULL,
+    Format NVARCHAR(50) NULL,
+    Status NVARCHAR(50) NULL,
+    KeyVocabulary NVARCHAR(MAX) NULL,
+    EnglishStory NVARCHAR(MAX) NULL,
+    VietnameseStory NVARCHAR(MAX) NULL,
+    InterspersedStory NVARCHAR(MAX) NULL,
+    FullEnglishStory NVARCHAR(MAX) NULL,
+    TitleAudioUrl NVARCHAR(MAX) NULL,
+    EnglishContentAudioUrl NVARCHAR(MAX) NULL,
+    VietnameseContentAudioUrl NVARCHAR(MAX) NULL,
     IsPublished BIT DEFAULT 0,
     CreatedAt DATETIMEOFFSET NULL,
     UpdatedAt DATETIMEOFFSET NULL
@@ -160,7 +350,7 @@ BEGIN
     StorybookId NVARCHAR(100) NOT NULL,
     PageNumber INT NOT NULL,
     Content NVARCHAR(MAX) NULL,
-    AudioUrl NVARCHAR(2000) NULL
+    AudioUrl NVARCHAR(MAX) NULL
   );
 END
 

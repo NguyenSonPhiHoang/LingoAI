@@ -6,7 +6,7 @@
  * - extractVocabularyFromFile - A function that extracts vocabulary.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   ExtractVocabularyInputSchema,
   ExtractVocabularyOutputSchema,
@@ -20,9 +20,11 @@ export async function extractVocabularyFromFile(
   return extractVocabularyFromFileFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "extractVocabularyPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: ExtractVocabularyInputSchema },
   output: { schema: ExtractVocabularyOutputSchema },
   prompt: `You are an English language expert. Your task is to extract a list of vocabulary words, phrases, or sentences from the provided text content or image. For each item, you must provide:

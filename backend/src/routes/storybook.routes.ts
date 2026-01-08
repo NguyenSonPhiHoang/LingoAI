@@ -4,30 +4,24 @@ import { authenticateJWT, authorizeRoles } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// Public: list and get
+// Authenticated: list/get my storybooks
+router.get("/me", authenticateJWT, StorybookController.listMe);
+router.get(
+  "/me/by-lesson/:lessonId",
+  authenticateJWT,
+  StorybookController.listMeByLesson
+);
+router.get("/me/:id", authenticateJWT, StorybookController.getMyById);
+
+// Public: list and get (legacy)
 router.get("/", StorybookController.list);
 router.get("/:id", StorybookController.getById);
 router.get("/:id/pages", StorybookController.getPages);
 
-// Protected: create/update/delete (Teacher or Admin)
-router.post(
-  "/",
-  authenticateJWT,
-  authorizeRoles("role_admin", "role_teacher"),
-  StorybookController.create
-);
-router.put(
-  "/:id",
-  authenticateJWT,
-  authorizeRoles("role_admin", "role_teacher"),
-  StorybookController.update
-);
-router.delete(
-  "/:id",
-  authenticateJWT,
-  authorizeRoles("role_admin", "role_teacher"),
-  StorybookController.delete
-);
+// Protected: create/update/delete (any authenticated user for their own storybooks)
+router.post("/", authenticateJWT, StorybookController.create);
+router.put("/:id", authenticateJWT, StorybookController.update);
+router.delete("/:id", authenticateJWT, StorybookController.delete);
 
 // Pages (Teacher or Admin)
 router.post(

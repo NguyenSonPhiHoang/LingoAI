@@ -10,7 +10,8 @@ export class UserRepository {
     displayName: string | null,
     password?: string | null,
     roleId?: string | null,
-    status?: string | null
+    status?: string | null,
+    omniChatEnabled?: boolean | null
   ): Promise<User> {
     const pool = await getPool();
     const hash = password ? await bcrypt.hash(password, 10) : null;
@@ -22,6 +23,10 @@ export class UserRepository {
       .input("PasswordHash", hash)
       .input("RoleId", roleId || "role_student")
       .input("Status", status || "pending")
+      .input(
+        "OmniChatEnabled",
+        typeof omniChatEnabled === "boolean" ? (omniChatEnabled ? 1 : 0) : null
+      )
       .input("CreatedAt", new Date())
       .execute("sp_Users_Insert");
     return {
@@ -30,6 +35,8 @@ export class UserRepository {
       displayName,
       roleId,
       status: status || "pending",
+      omniChatEnabled:
+        typeof omniChatEnabled === "boolean" ? omniChatEnabled : true,
     } as User;
   }
 
@@ -42,6 +49,14 @@ export class UserRepository {
       .input("Email", user.email || null)
       .input("DisplayName", user.displayName || null)
       .input("Status", user.status || null)
+      .input(
+        "OmniChatEnabled",
+        typeof user.omniChatEnabled === "boolean"
+          ? user.omniChatEnabled
+            ? 1
+            : 0
+          : null
+      )
       .input(
         "CreatedAt",
         user.createdAt ? new Date(user.createdAt) : new Date()
@@ -56,7 +71,8 @@ export class UserRepository {
     displayName: string | null,
     password?: string | null,
     roleId?: string | null,
-    status?: string | null
+    status?: string | null,
+    omniChatEnabled?: boolean | null
   ): Promise<void> {
     const pool = await getPool();
     const hash = password ? await bcrypt.hash(password, 10) : null;
@@ -68,6 +84,10 @@ export class UserRepository {
       .input("PasswordHash", hash)
       .input("RoleId", roleId)
       .input("Status", status || null)
+      .input(
+        "OmniChatEnabled",
+        typeof omniChatEnabled === "boolean" ? (omniChatEnabled ? 1 : 0) : null
+      )
       .execute("sp_Users_Update");
   }
 
@@ -84,7 +104,15 @@ export class UserRepository {
       .request()
       .input("Email", email)
       .execute("sp_Users_GetByEmail");
-    return res.recordset[0] || null;
+    const row = res.recordset[0] || null;
+    if (!row) return null;
+    return {
+      ...row,
+      OmniChatEnabled:
+        typeof row.OmniChatEnabled === "boolean"
+          ? row.OmniChatEnabled
+          : row.OmniChatEnabled === 1,
+    };
   }
 
   // Get user by id via sp_Users_GetById
@@ -94,7 +122,15 @@ export class UserRepository {
       .request()
       .input("Id", id)
       .execute("sp_Users_GetById");
-    return res.recordset[0] || null;
+    const row = res.recordset[0] || null;
+    if (!row) return null;
+    return {
+      ...row,
+      OmniChatEnabled:
+        typeof row.OmniChatEnabled === "boolean"
+          ? row.OmniChatEnabled
+          : row.OmniChatEnabled === 1,
+    };
   }
 
   // Verify password (get hash via sp_Users_VerifyCredentials, then bcrypt compare)
@@ -132,6 +168,10 @@ export class UserRepository {
       displayName: r.DisplayName,
       roleId: r.RoleId,
       status: r.Status,
+      omniChatEnabled:
+        typeof r.OmniChatEnabled === "boolean"
+          ? r.OmniChatEnabled
+          : r.OmniChatEnabled === 1,
       createdAt: r.CreatedAt ? new Date(r.CreatedAt).toISOString() : undefined,
     }));
   }

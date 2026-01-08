@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { updateUserProfile } from "@/services/users";
 import { Input } from "../ui/input";
+import { MessageSquare } from "lucide-react";
 
 const themes = [
   { name: "default", color: "hsl(49, 100%, 50%)" },
@@ -34,6 +35,8 @@ const SettingsView: FC = () => {
   const [localRate, setLocalRate] = useState(speechRate);
   const [localTheme, setLocalTheme] = useState(theme);
   const [localApiKey, setLocalApiKey] = useState(user?.geminiApiKey || "");
+  const [localChatBotId, setLocalChatBotId] = useState("");
+  const [initialChatBotId, setInitialChatBotId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
@@ -42,8 +45,10 @@ const SettingsView: FC = () => {
     const load = async () => {
       try {
         const remote = await getUserSettings();
-        if (remote?.geminiApiKey) {
-          setLocalApiKey(remote.geminiApiKey);
+        if (remote?.geminiApiKey) setLocalApiKey(remote.geminiApiKey);
+        if (remote?.chatBotId) {
+          setLocalChatBotId(remote.chatBotId);
+          setInitialChatBotId(remote.chatBotId);
         }
       } catch (error) {
         console.warn("Could not load user settings", error);
@@ -67,6 +72,7 @@ const SettingsView: FC = () => {
         speechRate: localRate,
         theme: localTheme,
         geminiApiKey: localApiKey,
+        chatBotId: localChatBotId,
       });
       toast({
         title: "Settings Saved",
@@ -93,6 +99,7 @@ const SettingsView: FC = () => {
         geminiApiKey: localApiKey,
         speechRate: localRate,
         theme: localTheme,
+        chatBotId: localChatBotId,
       });
       toast({
         title: "API Key Saved",
@@ -104,6 +111,32 @@ const SettingsView: FC = () => {
         variant: "destructive",
         title: "Error",
         description: "Could not save your API key.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveChatBotId = async () => {
+    setIsSaving(true);
+    try {
+      await saveUserSettings({
+        chatBotId: localChatBotId || null,
+        speechRate: localRate,
+        theme: localTheme,
+        geminiApiKey: localApiKey,
+      });
+      setInitialChatBotId(localChatBotId);
+      toast({
+        title: "Chatbot ID Saved",
+        description: "Your chatbot configuration has been updated.",
+      });
+    } catch (error) {
+      console.error("Error saving chatbot id:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save chatbot ID.",
       });
     } finally {
       setIsSaving(false);
@@ -129,6 +162,7 @@ const SettingsView: FC = () => {
 
   const isSettingsDirty = speechRate !== localRate || theme !== localTheme;
   const isApiKeyDirty = localApiKey !== (user?.geminiApiKey || "");
+  const isChatBotDirty = localChatBotId !== initialChatBotId;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -198,6 +232,41 @@ const SettingsView: FC = () => {
           >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Display Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare /> Chatbot Embed
+          </CardTitle>
+          <CardDescription>
+            Cấu hình Chatbot ID dùng cho widget OmniChat trên trang.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="chatbot-id" className="text-base font-medium">
+              ChatBot ID
+            </Label>
+            <Input
+              id="chatbot-id"
+              value={localChatBotId}
+              onChange={(e) => setLocalChatBotId(e.target.value)}
+              placeholder="VD: user_001"
+              className="mt-2"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Giá trị này sẽ được dùng cho bubble chat trên toàn app.
+            </p>
+          </div>
+          <Button
+            onClick={handleSaveChatBotId}
+            disabled={!isChatBotDirty || isSaving}
+          >
+            {isSaving && <Loader2 className="mr-2 animate-spin" />} Lưu ChatBot
+            ID
           </Button>
         </CardContent>
       </Card>

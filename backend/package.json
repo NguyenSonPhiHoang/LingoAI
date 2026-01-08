@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "migrate": "ts-node src/migrate/firestore-to-sql.ts"
+    "migrate": "ts-node src/migrate/firestore-to-sql.ts",
+    "backfill:pronunciation": "ts-node scripts/backfill-words-pronunciation.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

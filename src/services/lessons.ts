@@ -1,6 +1,7 @@
 "use client";
 
 import { db, auth, firebaseEnabled } from "@/lib/firebase";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/services/api";
 import {
   collection,
   getDocs,
@@ -49,6 +50,98 @@ export interface Lesson extends LessonSuggestion {
   };
 }
 
+export type LessonVocabularyItem = {
+  id: string;
+  term: string;
+  definition: string;
+  pronunciation?: string;
+  partOfSpeech?: string;
+};
+
+type SqlLesson = {
+  id: string;
+  title: string;
+  description?: string | null;
+  content?: string | null;
+  level?: string | null;
+  language?: string | null;
+  authorId?: string | null;
+  isPublished?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type LessonStorybookSeed = {
+  level: UserLevel;
+  vocabulary: Array<{ term: string; definition: string }>;
+};
+
+type SqlUserLessonProgress = {
+  userId: string;
+  lessonId: string;
+  status?: string | null;
+  progress?: number | null;
+  lastSeen?: string;
+  lessonTitle?: string;
+};
+
+type LessonMetaPayload = {
+  topic?: string;
+  skill?: LessonSuggestion["skill"];
+  topicGroup?: string;
+  level?: UserLevel;
+  status?: LessonStatus;
+  content?: LessonContent[];
+  exercises?: Lesson["exercises"];
+};
+
+const safeJsonParse = (raw: string | null | undefined): any => {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const toUserLevel = (raw: any): UserLevel => {
+  if (raw === "beginner" || raw === "intermediate" || raw === "advanced")
+    return raw;
+  return "beginner";
+};
+
+const mapSqlLessonToClient = (
+  sql: SqlLesson,
+  userId: string,
+  progressByLessonId: Record<string, SqlUserLessonProgress>
+): Lesson => {
+  const meta = safeJsonParse(sql.content) as LessonMetaPayload | null;
+  const progress = progressByLessonId[sql.id];
+
+  const skill =
+    (meta?.skill as LessonSuggestion["skill"] | undefined) ||
+    // Back-compat if we ever stored skill in Description
+    (sql.description as LessonSuggestion["skill"]) ||
+    "Reading";
+
+  return {
+    id: sql.id,
+    docId: sql.id,
+    userId,
+    topic: meta?.topic || sql.title,
+    skill,
+    level: toUserLevel(meta?.level ?? sql.level),
+    status:
+      (progress?.status as LessonStatus) ||
+      (meta?.status as LessonStatus) ||
+      "not-started",
+    topicGroup: meta?.topicGroup || "General",
+    createdAt: sql.createdAt ? new Date(sql.createdAt) : new Date(),
+    content: meta?.content || [],
+    exercises: meta?.exercises || {},
+  };
+};
+
 // Helper function to recursively remove undefined properties from an object
 const deepClean = (obj: any): any => {
   if (obj === null || obj === undefined) {
@@ -68,7 +161,22 @@ const deepClean = (obj: any): any => {
 };
 
 export const getLessons = async (userId: string): Promise<Lesson[]> => {
-  if (!firebaseEnabled) return [];
+  if (!firebaseEnabled) {
+    // SQL-backed mode
+    const [lessons, progress] = await Promise.all([
+      apiGet<SqlLesson[]>(`/api/lessons/author/${encodeURIComponent(userId)}`),
+      apiGet<SqlUserLessonProgress[]>("/api/progress/me").catch(() => []),
+    ]);
+
+    const progressByLessonId = (progress || []).reduce((acc, p) => {
+      acc[p.lessonId] = p;
+      return acc;
+    }, {} as Record<string, SqlUserLessonProgress>);
+
+    return (lessons || [])
+      .map((l) => mapSqlLessonToClient(l, userId, progressByLessonId))
+      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  }
 
   const q = query(
     lessonsCollection,
@@ -77,7 +185,7 @@ export const getLessons = async (userId: string): Promise<Lesson[]> => {
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
-    const data = doc.data();
+    const data = doc.data() as any;
     return {
       id: doc.id,
       docId: doc.id,
@@ -103,17 +211,44 @@ export const addLesson = async (
   topicGroup: string
 ): Promise<Lesson> => {
   if (!firebaseEnabled) {
-    return {
-      ...lessonSuggestion,
-      userId,
+    // SQL-backed mode
+    const meta: LessonMetaPayload = {
+      topic: lessonSuggestion.topic,
+      skill: lessonSuggestion.skill,
       topicGroup,
-      createdAt: new Date(),
-      status: "not-started" as LessonStatus,
       content: [],
       exercises: {},
-      id: `lesson_${Date.now()}`,
-      docId: `lesson_${Date.now()}`,
-    } as Lesson;
+    };
+
+    const created = await apiPost<SqlLesson>("/api/lessons", {
+      title: lessonSuggestion.topic,
+      description: lessonSuggestion.skill,
+      content: JSON.stringify(meta),
+      level: lessonSuggestion.level,
+      language: "en",
+      isPublished: false,
+    });
+
+    // Initialize progress/status for this lesson for the current user
+    await apiPost("/api/progress", {
+      lessonId: created.id,
+      status: "not-started",
+      progress: 0,
+    }).catch(() => {
+      // Non-fatal: lesson exists even if progress row fails
+    });
+
+    return {
+      ...lessonSuggestion,
+      id: created.id,
+      docId: created.id,
+      userId,
+      topicGroup,
+      createdAt: created.createdAt ? new Date(created.createdAt) : new Date(),
+      status: "not-started",
+      content: [],
+      exercises: {},
+    };
   }
 
   const lessonData = {
@@ -135,12 +270,93 @@ export const addLesson = async (
   };
 };
 
+export const getLessonVocabulary = async (
+  lessonId: string
+): Promise<LessonVocabularyItem[]> => {
+  if (!lessonId) return [];
+
+  if (!firebaseEnabled) {
+    const rows = await apiGet<any[]>(
+      `/api/lessons/${encodeURIComponent(lessonId)}/vocabulary`
+    );
+
+    return (rows || [])
+      .map((r) => ({
+        id: (r.Id || r.id || "").toString(),
+        term: (r.Word || r.term || "").toString(),
+        definition: (r.Definition || r.definition || "").toString(),
+        pronunciation: r.Pronunciation || r.pronunciation || undefined,
+        partOfSpeech: r.PartOfSpeech || r.partOfSpeech || undefined,
+      }))
+      .filter((v) => !!v.id && !!v.term);
+  }
+
+  // Firebase mode doesn't currently support lesson->vocabulary links.
+  return [];
+};
+
+export const getLessonStorybookSeed = async (
+  lessonId: string
+): Promise<LessonStorybookSeed | null> => {
+  if (!lessonId) return null;
+
+  if (firebaseEnabled) {
+    // Firebase mode doesn't currently support fetching lesson content here.
+    return null;
+  }
+
+  const sql = await apiGet<SqlLesson>(
+    `/api/lessons/${encodeURIComponent(lessonId)}`
+  );
+  if (!sql) return null;
+
+  const meta = safeJsonParse(sql.content) as LessonMetaPayload | null;
+  const level = toUserLevel(meta?.level ?? sql.level);
+
+  const vocabContent = (meta?.content || []).find(
+    (c) => c.type === "vocabulary"
+  )?.value;
+  const suggestions = safeJsonParse(vocabContent) as Array<{
+    word?: string;
+    definition?: string;
+  }> | null;
+
+  const vocabulary = (suggestions || [])
+    .map((s) => ({
+      term: (s.word || "").toString().trim(),
+      definition: (s.definition || "").toString().trim(),
+    }))
+    .filter((v) => !!v.term);
+
+  return { level, vocabulary };
+};
+
 export const updateLessonContent = async (
   docId: string,
   content: LessonContent[],
   exercises?: Lesson["exercises"]
 ) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    // SQL-backed mode: read current lesson first to avoid overwriting fields with null
+    const current = await apiGet<SqlLesson>(
+      `/api/lessons/${encodeURIComponent(docId)}`
+    );
+    const meta =
+      (safeJsonParse(current.content) as LessonMetaPayload | null) || {};
+
+    meta.content = content;
+    if (exercises) meta.exercises = deepClean(exercises);
+
+    await apiPut(`/api/lessons/${encodeURIComponent(docId)}`, {
+      title: current.title,
+      description: current.description,
+      content: JSON.stringify(meta),
+      level: current.level,
+      language: current.language,
+      isPublished: !!current.isPublished,
+    });
+    return;
+  }
   if (!auth.currentUser) return;
   const lessonDoc = doc(db, "lessons", docId);
   const updates: Partial<Lesson> = { content };
@@ -154,14 +370,54 @@ export const updateLesson = async (
   docId: string,
   updates: Partial<Pick<Lesson, "topic" | "level" | "status">>
 ) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    // SQL-backed mode
+    const current = await apiGet<SqlLesson>(
+      `/api/lessons/${encodeURIComponent(docId)}`
+    );
+    const meta =
+      (safeJsonParse(current.content) as LessonMetaPayload | null) || {};
+
+    if (typeof updates.topic === "string") {
+      meta.topic = updates.topic;
+      current.title = updates.topic;
+    }
+    if (typeof updates.status === "string") {
+      // Persist status in UserLessons table
+      await apiPost("/api/progress", {
+        lessonId: docId,
+        status: updates.status,
+      });
+    }
+    if (updates.level) {
+      current.level = updates.level;
+    }
+
+    // Keep lesson row in sync (title/level/content)
+    await apiPut(`/api/lessons/${encodeURIComponent(docId)}`, {
+      title: current.title,
+      description: current.description,
+      content: JSON.stringify(meta),
+      level: current.level,
+      language: current.language,
+      isPublished: !!current.isPublished,
+    });
+    return;
+  }
   if (!auth.currentUser) return;
   const lessonDoc = doc(db, "lessons", docId);
   await updateDoc(lessonDoc, updates);
 };
 
 export const deleteLesson = async (docId: string) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    // SQL-backed mode
+    await apiDelete(`/api/lessons/${encodeURIComponent(docId)}`);
+    await apiDelete(`/api/progress/${encodeURIComponent(docId)}`).catch(() => {
+      // Ignore if progress row doesn't exist
+    });
+    return;
+  }
   if (!auth.currentUser) return;
   const lessonDoc = doc(db, "lessons", docId);
   await deleteDoc(lessonDoc);

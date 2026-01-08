@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import ChatEmbed from "@/components/lingo/ChatEmbed";
+import CopyToVocabularyListener from "@/components/lingo/copy-to-vocabulary-listener";
 import { AuthProvider } from "@/context/auth-context";
 import { SettingsProvider, useSettings } from "@/context/settings-context";
 import { ActivityTracker } from "@/context/activity-tracker";
@@ -50,6 +52,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <title>LingoAI</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta
           name="description"
           content="Your personalized AI-powered English learning companion."
@@ -71,7 +74,9 @@ export default function RootLayout({
             <SettingsProvider>
               <AppBody>
                 {children}
+                <CopyToVocabularyListener />
                 <Toaster />
+                <ChatEmbed />
               </AppBody>
             </SettingsProvider>
           </ActivityTracker>

@@ -6,6 +6,8 @@ import authRoutes from "./routes/auth.routes";
 import roleRoutes from "./routes/role.routes";
 import lessonRoutes from "./routes/lesson.routes";
 import vocabularyRoutes from "./routes/vocabulary.routes";
+import wordRoutes from "./routes/word.routes";
+import userVocabularyRoutes from "./routes/userVocabulary.routes";
 import storybookRoutes from "./routes/storybook.routes";
 import testRoutes from "./routes/test.routes";
 import progressRoutes from "./routes/progress.routes";
@@ -19,7 +21,7 @@ import fs from "fs";
 
 const app = express();
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "15mb" }));
 
 // Ensure uploads folder exists and serve it statically for profile photos
 const uploadsPath = path.join(__dirname, "..", "uploads");
@@ -40,6 +42,10 @@ app.use("/api/lessons", lessonRoutes);
 
 // Vocabulary (public read, protected write)
 app.use("/api/vocabulary", vocabularyRoutes);
+
+// Words (global) and UserVocabulary (per-user)
+app.use("/api/words", wordRoutes);
+app.use("/api/user-vocabulary", userVocabularyRoutes);
 
 // Storybooks (public read, protected write)
 app.use("/api/storybooks", storybookRoutes);
