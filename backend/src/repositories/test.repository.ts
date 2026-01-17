@@ -7,6 +7,17 @@ export interface TestResult {
   data?: string | null; // JSON
   score?: number | null;
   createdAt?: string;
+
+  // Structured fields for personalization
+  contextType?: string | null;
+  contextId?: string | null;
+  skill?: string | null;
+  totalQuestions?: number | null;
+  correctAnswers?: number | null;
+  durationSeconds?: number | null;
+  clientCreatedAt?: string | null;
+  completedAt?: string | null;
+  version?: number | null;
 }
 
 export class TestRepository {
@@ -22,6 +33,21 @@ export class TestRepository {
       .input("Data", test.data || null)
       .input("Score", test.score ?? null)
       .input("CreatedAt", now)
+      .input("ContextType", test.contextType || null)
+      .input("ContextId", test.contextId || null)
+      .input("Skill", test.skill || null)
+      .input("TotalQuestions", test.totalQuestions ?? null)
+      .input("CorrectAnswers", test.correctAnswers ?? null)
+      .input("DurationSeconds", test.durationSeconds ?? null)
+      .input(
+        "ClientCreatedAt",
+        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null
+      )
+      .input(
+        "CompletedAt",
+        test.completedAt ? new Date(test.completedAt) : null
+      )
+      .input("Version", test.version ?? null)
       .execute("sp_Tests_Insert");
     return { ...test, createdAt: now.toISOString() };
   }
@@ -36,12 +62,36 @@ export class TestRepository {
       .input("Id", test.id)
       .input("Data", test.data || null)
       .input("Score", test.score ?? null)
+      .input("ContextType", test.contextType || null)
+      .input("ContextId", test.contextId || null)
+      .input("Skill", test.skill || null)
+      .input("TotalQuestions", test.totalQuestions ?? null)
+      .input("CorrectAnswers", test.correctAnswers ?? null)
+      .input("DurationSeconds", test.durationSeconds ?? null)
+      .input(
+        "ClientCreatedAt",
+        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null
+      )
+      .input(
+        "CompletedAt",
+        test.completedAt ? new Date(test.completedAt) : null
+      )
+      .input("Version", test.version ?? null)
       .execute("sp_Tests_Update");
   }
 
   // Delete via sp_Tests_Delete
   static async delete(id: string): Promise<void> {
     const pool = await getPool();
+    // Best-effort cleanup of item-level rows (works even if FK cascade is not applied yet).
+    try {
+      await pool
+        .request()
+        .input("TestId", id)
+        .execute("sp_TestItems_DeleteByTest");
+    } catch {
+      // ignore
+    }
     await pool.request().input("Id", id).execute("sp_Tests_Delete");
   }
 
@@ -76,5 +126,26 @@ function mapRow(r: any): TestResult {
     data: r.Data,
     score: r.Score,
     createdAt: r.CreatedAt ? new Date(r.CreatedAt).toISOString() : undefined,
+
+    contextType: r.ContextType ?? null,
+    contextId: r.ContextId ?? null,
+    skill: r.Skill ?? null,
+    totalQuestions:
+      typeof r.TotalQuestions === "number"
+        ? r.TotalQuestions
+        : r.TotalQuestions ?? null,
+    correctAnswers:
+      typeof r.CorrectAnswers === "number"
+        ? r.CorrectAnswers
+        : r.CorrectAnswers ?? null,
+    durationSeconds:
+      typeof r.DurationSeconds === "number"
+        ? r.DurationSeconds
+        : r.DurationSeconds ?? null,
+    clientCreatedAt: r.ClientCreatedAt
+      ? new Date(r.ClientCreatedAt).toISOString()
+      : null,
+    completedAt: r.CompletedAt ? new Date(r.CompletedAt).toISOString() : null,
+    version: typeof r.Version === "number" ? r.Version : r.Version ?? null,
   };
 }

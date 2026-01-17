@@ -49,8 +49,7 @@ const extractChoiceSummary = (text: string): ChoiceSummary => {
   };
 };
 
-const normalizeSpaces = (value: string) =>
-  value.replace(/\s+/g, " ").trim();
+const normalizeSpaces = (value: string) => value.replace(/\s+/g, " ").trim();
 
 const extractQuotedTerms = (text: string): string[] => {
   const s = typeof text === "string" ? text : "";
@@ -94,7 +93,10 @@ const splitSVC = (sentence: string): SvcParts | null => {
   const trySplit = (needle: string, verbLabel: string): SvcParts | null => {
     const idx = lower.indexOf(needle);
     if (idx === -1) return null;
-    const before = s.slice(0, idx).trim().replace(/[,:;\-\s]+$/, "");
+    const before = s
+      .slice(0, idx)
+      .trim()
+      .replace(/[,:;\-\s]+$/, "");
     const after = s
       .slice(idx + needle.length)
       .trim()

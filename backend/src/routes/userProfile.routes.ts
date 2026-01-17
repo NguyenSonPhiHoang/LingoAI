@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { requireAuth } from "../middleware/auth.middleware";
 import UserProfileController, {
   uploadPhotoHandler,
@@ -14,10 +14,18 @@ const uploadsDir = path.join(__dirname, "..", "..", "uploads", "profiles");
 fs.mkdirSync(uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: function (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, destination: string) => void
+  ) {
     cb(null, uploadsDir);
   },
-  filename: function (req: any, file, cb) {
+  filename: function (
+    req: any,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void
+  ) {
     const ext = path.extname(file.originalname) || "";
     const name = `${req.user?.sub || "anon"}_${Date.now()}${ext}`;
     cb(null, name);

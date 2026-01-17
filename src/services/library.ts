@@ -1,6 +1,7 @@
 "use client";
 
 import { db, auth, firebaseEnabled } from "@/lib/firebase";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/services/api";
 import {
   collection,
   getDocs,
@@ -42,8 +43,91 @@ export interface LibraryContent {
   fileName: string;
   type: "markdown" | "image";
   content: string; // For markdown, this is text. For image, this is a data URI.
+  isNotePage?: boolean;
   createdAt: any;
 }
+
+export const getNotePageForDocument = async (
+  docId: string
+): Promise<LibraryContent | null> => {
+  if (!firebaseEnabled) {
+    const res = await apiGet<{ note: LibraryContent | null }>(
+      `/api/library/${docId}/note-page`
+    ).catch(() => ({ note: null }));
+    return res.note;
+  }
+
+  if (!auth.currentUser) return null;
+
+  const q = query(
+    collection(db, "library_content"),
+    where("docId", "==", docId),
+    where("userId", "==", auth.currentUser.uid),
+    where("isNotePage", "==", true)
+  );
+  const snapshot = await getDocs(q);
+  const first = snapshot.docs[0];
+  if (!first) return null;
+
+  const data = first.data();
+  return {
+    id: first.id,
+    ...data,
+    isNotePage: true,
+    createdAt:
+      data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate()
+        : new Date(data.createdAt),
+  } as LibraryContent;
+};
+
+export const upsertNotePageForDocument = async (
+  docId: string,
+  params: { fileName?: string; content: string }
+): Promise<LibraryContent> => {
+  const fileName = params.fileName?.trim() || "Note";
+
+  if (!firebaseEnabled) {
+    const res = await apiPut<{ note: LibraryContent }>(
+      `/api/library/${docId}/note-page`,
+      { fileName, content: params.content }
+    );
+    return res.note;
+  }
+
+  if (!auth.currentUser) throw new Error("Authentication required");
+
+  const existing = await getNotePageForDocument(docId);
+  if (existing) {
+    const ref = doc(db, "library_content", existing.id);
+    await updateDoc(ref, {
+      fileName,
+      content: params.content,
+      updatedAt: Timestamp.now(),
+    });
+    return { ...existing, fileName, content: params.content, isNotePage: true };
+  }
+
+  const contentData = {
+    docId,
+    userId: auth.currentUser.uid,
+    fileName,
+    type: "markdown" as const,
+    content: params.content,
+    isNotePage: true,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+  const contentRef = await addDoc(
+    collection(db, "library_content"),
+    contentData
+  );
+  return {
+    ...contentData,
+    id: contentRef.id,
+    createdAt: new Date(),
+  } as unknown as LibraryContent;
+};
 
 // --- LibraryDocument Functions ---
 
@@ -51,13 +135,8 @@ export const getDocumentsGroupedBySkill = async (
   userId: string
 ): Promise<Record<LibrarySkill, LibraryDocument[]>> => {
   if (!firebaseEnabled) {
-    return {
-      Reading: [],
-      Writing: [],
-      Listening: [],
-      Speaking: [],
-      Pronunciation: [],
-    };
+    // Backend enforces ownership via JWT.
+    return apiGet<Record<LibrarySkill, LibraryDocument[]>>("/api/library");
   }
 
   const q = query(
@@ -99,7 +178,9 @@ export const getDocumentsGroupedBySkill = async (
 export const getDocument = async (
   docId: string
 ): Promise<LibraryDocument | null> => {
-  if (!firebaseEnabled) return null;
+  if (!firebaseEnabled) {
+    return apiGet<LibraryDocument>(`/api/library/${docId}`).catch(() => null);
+  }
 
   const docRef = doc(db, "library", docId);
   const docSnap = await getDoc(docRef);
@@ -132,15 +213,12 @@ export const addDocument = async (
   summary?: string
 ): Promise<LibraryDocument> => {
   if (!firebaseEnabled) {
-    return {
-      id: `doc_${Date.now()}`,
-      userId,
+    return apiPost<LibraryDocument>("/api/library", {
       title,
       url,
       skill,
-      summary: summary || "",
-      createdAt: new Date(),
-    };
+      summary,
+    });
   }
 
   const docData = {
@@ -164,14 +242,20 @@ export const updateDocument = async (
   docId: string,
   updates: { title: string; url: string; skill: LibrarySkill; summary?: string }
 ) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    await apiPut(`/api/library/${docId}`, updates);
+    return;
+  }
   const docRef = doc(db, "library", docId);
   // Optional: Add a security check to ensure the user owns this document before updating.
   await updateDoc(docRef, updates);
 };
 
 export const deleteDocument = async (docId: string) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    await apiDelete(`/api/library/${docId}`);
+    return;
+  }
   if (!auth.currentUser) return;
 
   const batch = writeBatch(db);
@@ -199,7 +283,11 @@ export const deleteDocument = async (docId: string) => {
 export const getContentForDocument = async (
   docId: string
 ): Promise<LibraryContent[]> => {
-  if (!firebaseEnabled) return [];
+  if (!firebaseEnabled) {
+    return apiGet<LibraryContent[]>(`/api/library/${docId}/content`).catch(
+      () => []
+    );
+  }
   if (!auth.currentUser) return [];
 
   const q = query(
@@ -229,15 +317,11 @@ export const addContentToDocument = async (
   type: "markdown" | "image"
 ): Promise<LibraryContent> => {
   if (!firebaseEnabled) {
-    return {
-      id: `content_${Date.now()}`,
-      docId,
-      userId: auth.currentUser?.uid || "",
+    return apiPost<LibraryContent>(`/api/library/${docId}/content`, {
       fileName,
       type,
       content,
-      createdAt: new Date(),
-    };
+    });
   }
   if (!auth.currentUser) throw new Error("Authentication required");
 
@@ -265,7 +349,10 @@ export const updateContent = async (
   contentId: string,
   updates: { fileName: string; content: string }
 ) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    await apiPut(`/api/library/content/${contentId}`, updates);
+    return;
+  }
   if (!auth.currentUser) throw new Error("Authentication required");
   const contentDocRef = doc(db, "library_content", contentId);
   // TODO: Add security rule to ensure user owns this content
@@ -273,7 +360,10 @@ export const updateContent = async (
 };
 
 export const deleteContent = async (contentId: string) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    await apiDelete(`/api/library/content/${contentId}`);
+    return;
+  }
   if (!auth.currentUser) throw new Error("Authentication required");
   // Add extra security check if needed by fetching the document first
   await deleteDoc(doc(db, "library_content", contentId));

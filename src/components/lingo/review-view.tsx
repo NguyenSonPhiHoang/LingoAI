@@ -41,9 +41,12 @@ import InteractiveText from "./interactive-text";
 import FormattedFeedbackText from "./formatted-feedback-text";
 import { useSettings } from "@/context/settings-context";
 import { getUserSettings } from "@/services/settings";
+import { useAuth } from "@/context/auth-context";
+import { addTestResult } from "@/services/test-results";
 
 interface ReviewViewProps {
   words: CombinedVocabulary[];
+  initialTab?: "matching" | "fill-in-the-blank" | "part-of-speech";
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -75,9 +78,9 @@ const buildPartOfSpeechQuestions = (
 
   if (withPos.length === 0) return [];
 
-  const posPool = Array.from(new Set(withPos.map((w) => w.partOfSpeech))).filter(
-    Boolean
-  );
+  const posPool = Array.from(
+    new Set(withPos.map((w) => w.partOfSpeech))
+  ).filter(Boolean);
   const fallbackPos = [
     "Noun",
     "Verb",
@@ -88,16 +91,22 @@ const buildPartOfSpeechQuestions = (
   ];
   const allPos = Array.from(new Set([...posPool, ...fallbackPos]));
 
-  const picked = shuffleArray(withPos).slice(0, Math.min(count, withPos.length));
+  const picked = shuffleArray(withPos).slice(
+    0,
+    Math.min(count, withPos.length)
+  );
 
   return picked.map((w) => {
     const correct = w.partOfSpeech;
-    const distractors = shuffleArray(
-      allPos.filter((p) => p !== correct)
-    ).slice(0, 3);
+    const distractors = shuffleArray(allPos.filter((p) => p !== correct)).slice(
+      0,
+      3
+    );
     const options = shuffleArray([correct, ...distractors]);
 
-    const synonyms = Array.isArray(w.synonyms) ? w.synonyms.filter(Boolean) : [];
+    const synonyms = Array.isArray(w.synonyms)
+      ? w.synonyms.filter(Boolean)
+      : [];
     const hintSynonyms = synonyms.slice(0, 3);
     const hintDefinition = typeof w.definition === "string" ? w.definition : "";
     const hintSentence = typeof w.sentence === "string" ? w.sentence : "";
@@ -530,9 +539,11 @@ const PartOfSpeechQuiz: FC<{
   questions: PartOfSpeechQuestion[];
   onRegenerate: () => void;
 }> = ({ questions, onRegenerate }) => {
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [roundAnswers, setRoundAnswers] = useState<Record<number, string>>({});
 
   const q = questions[currentIndex];
 
@@ -540,6 +551,11 @@ const PartOfSpeechQuiz: FC<{
     setSelectedOption(null);
     setShowResult(false);
   }, [currentIndex, questions]);
+
+  useEffect(() => {
+    // reset round tracking when questions change (regenerate)
+    setRoundAnswers({});
+  }, [questions]);
 
   if (!q) {
     return (
@@ -555,6 +571,55 @@ const PartOfSpeechQuiz: FC<{
     if (showResult) return;
     setSelectedOption(opt);
     setShowResult(true);
+
+    const nextAnswers = { ...roundAnswers, [currentIndex]: opt };
+    setRoundAnswers(nextAnswers);
+
+    // Save once per full round (all questions answered).
+    if (user?.uid && Object.keys(nextAnswers).length === questions.length) {
+      const items = questions.map((qq, idx) => {
+        const selected = nextAnswers[idx] ?? null;
+        const isCorrectLocal = selected === qq.correctPartOfSpeech;
+        return {
+          kind: "pos-choice",
+          itemKey: `pos-${idx}`,
+          skill: "vocabulary",
+          isCorrect: isCorrectLocal,
+          score: isCorrectLocal ? 1 : 0,
+          data: {
+            wordId: qq.wordId,
+            term: qq.term,
+            options: qq.options,
+            selected,
+            correct: qq.correctPartOfSpeech,
+          },
+        };
+      });
+
+      const correct = items.reduce(
+        (acc: number, it: any) => (it.isCorrect ? acc + 1 : acc),
+        0
+      );
+      const total = items.length;
+      const percentage = total > 0 ? (correct / total) * 100 : 0;
+
+      addTestResult(user.uid, {
+        testType: "Practice",
+        correctAnswers: correct,
+        totalQuestions: total,
+        percentage,
+        skill: "vocabulary",
+        data: {
+          kind: "part-of-speech-quiz",
+          items,
+        },
+      }).catch(() => {
+        // ignore persistence failures
+      });
+
+      // start a new round of tracking
+      setRoundAnswers({});
+    }
   };
 
   const next = () => {
@@ -574,12 +639,14 @@ const PartOfSpeechQuiz: FC<{
           <div className="text-3xl font-bold text-primary">{q.term}</div>
           {q.hint?.synonyms?.length ? (
             <div className="mt-2 text-sm text-muted-foreground">
-              <span className="font-medium">Synonyms:</span> {q.hint.synonyms.join(", ")}
+              <span className="font-medium">Synonyms:</span>{" "}
+              {q.hint.synonyms.join(", ")}
             </div>
           ) : null}
           {q.hint?.definition ? (
             <div className="mt-2 text-sm text-muted-foreground">
-              <span className="font-medium">Definition:</span> {q.hint.definition}
+              <span className="font-medium">Definition:</span>{" "}
+              {q.hint.definition}
             </div>
           ) : null}
         </div>
@@ -685,7 +752,7 @@ const LoadingState: FC = () => (
   </div>
 );
 
-const ReviewView: FC<ReviewViewProps> = ({ words }) => {
+const ReviewView: FC<ReviewViewProps> = ({ words, initialTab }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [matchingQuestions, setMatchingQuestions] = useState<
     MatchingQuestion[]
@@ -773,8 +840,18 @@ const ReviewView: FC<ReviewViewProps> = ({ words }) => {
     );
   }
 
+  const safeInitialTab: "matching" | "fill-in-the-blank" | "part-of-speech" =
+    initialTab === "part-of-speech" && partOfSpeechQuestions.length === 0
+      ? "matching"
+      : initialTab === "fill-in-the-blank" &&
+        fillInTheBlankQuestions.length === 0
+      ? "matching"
+      : initialTab === "matching" && matchingQuestions.length === 0
+      ? "fill-in-the-blank"
+      : initialTab || "matching";
+
   return (
-    <Tabs defaultValue="matching" className="w-full">
+    <Tabs defaultValue={safeInitialTab} className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <TabsList className="grid grid-cols-3 w-full sm:w-auto">
           <TabsTrigger

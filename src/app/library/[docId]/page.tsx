@@ -272,7 +272,15 @@ const LibraryDocPage: FC = () => {
         >
           <ArrowLeft className="mr-2" /> Back to Library
         </Button>
-        <AddNoteDialog docId={docId} onNoteAdded={handleNoteAdded} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/library/${docId}/note`)}
+          >
+            Note Page
+          </Button>
+          <AddNoteDialog docId={docId} onNoteAdded={handleNoteAdded} />
+        </div>
       </div>
       <Card>
         <CardHeader>

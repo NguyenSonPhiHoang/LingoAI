@@ -1,6 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
-import cors from "cors";
+import cors, { type CorsOptions } from "cors";
 import userRoutes from "./routes/user.routes";
 import authRoutes from "./routes/auth.routes";
 import roleRoutes from "./routes/role.routes";
@@ -10,17 +10,43 @@ import wordRoutes from "./routes/word.routes";
 import userVocabularyRoutes from "./routes/userVocabulary.routes";
 import storybookRoutes from "./routes/storybook.routes";
 import testRoutes from "./routes/test.routes";
+import insightsRoutes from "./routes/insights.routes";
 import progressRoutes from "./routes/progress.routes";
 import userSettingsRoutes from "./routes/userSettings.routes";
 import userProjectRoutes from "./routes/userProject.routes";
 import userProfileRoutes from "./routes/userProfile.routes";
+import libraryRoutes from "./routes/library.routes";
+import learningResourceRoutes from "./routes/learningResource.routes";
+import aiRoutes from "./routes/ai.routes";
+import grammarRoutes from "./routes/grammar.routes";
 import { authenticateJWT } from "./middleware/auth.middleware";
 import { config } from "./config";
 import path from "path";
 import fs from "fs";
 
 const app = express();
-app.use(cors({ origin: config.corsOrigin, credentials: true }));
+
+const parseCorsOrigins = (value: string): string[] =>
+  value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const allowedOrigins = parseCorsOrigins(config.corsOrigin);
+const allowAnyOrigin = allowedOrigins.includes("*");
+
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowAnyOrigin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"), false);
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: "15mb" }));
 
 // Ensure uploads folder exists and serve it statically for profile photos
@@ -53,6 +79,9 @@ app.use("/api/storybooks", storybookRoutes);
 // Tests (protected)
 app.use("/api/tests", testRoutes);
 
+// Insights (protected)
+app.use("/api/insights", insightsRoutes);
+
 // Progress (protected)
 app.use("/api/progress", progressRoutes);
 
@@ -64,6 +93,18 @@ app.use("/api/projects", userProjectRoutes);
 
 // User profile (per-user)
 app.use("/api/profile", userProfileRoutes);
+
+// Library (per-user)
+app.use("/api/library", libraryRoutes);
+
+// Learning resources (system-wide)
+app.use("/api/learning-resources", learningResourceRoutes);
+
+// AI (Gemini)
+app.use("/api/ai", aiRoutes);
+
+// Grammar (system-wide public content)
+app.use("/api/grammar", grammarRoutes);
 
 // Current user info
 app.get("/api/me", authenticateJWT, (req, res) => {

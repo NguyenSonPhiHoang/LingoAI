@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const userVocabulary_controller_1 = require("../controllers/userVocabulary.controller");
+const router = (0, express_1.Router)();
+router.get("/me", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.listMe);
+router.post("/", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.upsertMe);
+router.post("/bulk", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.bulkUpsertMe);
+router.post("/:id/learn", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.learnMe);
+router.put("/:id", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.updateMe);
+router.delete("/:id", auth_middleware_1.authenticateJWT, userVocabulary_controller_1.UserVocabularyController.deleteMe);
+exports.default = router;

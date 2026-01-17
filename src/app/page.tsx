@@ -32,6 +32,7 @@ export type View =
   | "levels"
   | "ai-suggester"
   | "my-lessons"
+  | "grammar"
   | "vocabulary"
   | "review"
   | "user-management"
@@ -47,6 +48,7 @@ export type ViewState = {
   lesson?: Lesson;
   recommendedLevel?: UserLevel;
   reviewTest?: GenerateReviewTestOutput;
+  reviewTab?: "matching" | "fill-in-the-blank" | "part-of-speech";
 };
 
 const Home: FC = () => {
@@ -144,8 +146,10 @@ const Home: FC = () => {
           return (
             <DashboardOverview
               setActiveView={(view) => setActiveViewState({ view })}
+              setActiveViewState={setActiveViewState}
               favoriteWords={favoriteWords}
               setWords={setWords}
+              lessons={lessons}
             />
           );
         case "levels":
@@ -168,7 +172,12 @@ const Home: FC = () => {
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
-          return <ReviewView words={favoriteWords} />;
+          return (
+            <ReviewView
+              words={favoriteWords}
+              initialTab={activeViewState.reviewTab}
+            />
+          );
         case "user-management":
           return <UserManagement />;
         case "word-management":
@@ -212,8 +221,10 @@ const Home: FC = () => {
           return (
             <DashboardOverview
               setActiveView={(view) => setActiveViewState({ view })}
+              setActiveViewState={setActiveViewState}
               favoriteWords={favoriteWords}
               setWords={setWords}
+              lessons={lessons}
             />
           );
       }

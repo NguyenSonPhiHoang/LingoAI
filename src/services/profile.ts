@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from "./api";
+import { apiGet, apiPut, getApiBaseUrl } from "./api";
 
 export interface Profile {
   userId: string;
@@ -26,8 +26,7 @@ export const updateProfile = async (payload: {
 export const uploadPhoto = async (
   file: File
 ): Promise<{ photoUrl: string; profile: Profile }> => {
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  const API_BASE_URL = getApiBaseUrl();
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem("lingoai_token")

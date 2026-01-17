@@ -8,7 +8,6 @@ export class UserController {
   }
 
   static async ensureTable(req: Request, res: Response) {
-    await UserRepository.createTableIfNotExists();
     res.json({ ok: true });
   }
 

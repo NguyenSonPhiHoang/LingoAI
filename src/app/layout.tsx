@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import ChatEmbed from "@/components/lingo/ChatEmbed";
+import AiAssistant from "@/components/lingo/ai-assistant";
 import CopyToVocabularyListener from "@/components/lingo/copy-to-vocabulary-listener";
 import { AuthProvider } from "@/context/auth-context";
 import { SettingsProvider, useSettings } from "@/context/settings-context";
@@ -77,6 +78,7 @@ export default function RootLayout({
                 <CopyToVocabularyListener />
                 <Toaster />
                 <ChatEmbed />
+                <AiAssistant />
               </AppBody>
             </SettingsProvider>
           </ActivityTracker>

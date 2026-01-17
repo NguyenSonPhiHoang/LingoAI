@@ -102,6 +102,7 @@ import remarkGfm from "remark-gfm";
 import ReactMarkdown from "react-markdown";
 import { useAudioRecorder } from "@/hooks/use-audio-recorder";
 import { useSettings } from "@/context/settings-context";
+import { addTestResult } from "@/services/test-results";
 
 interface LessonDetailViewProps {
   lesson: Lesson;
@@ -216,6 +217,31 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
       await updateLesson(currentLesson.docId, { status: newStatus });
       onLessonUpdate(updatedLesson); // Propagate change to parent
       toast({ title: "Status Updated" });
+
+      // Persist a lesson-level assessment marker when completing.
+      if (
+        user?.uid &&
+        newStatus === "completed" &&
+        previousStatus !== "completed"
+      ) {
+        addTestResult(user.uid, {
+          testType: "Lesson Test",
+          correctAnswers: 0,
+          totalQuestions: 0,
+          percentage: 0,
+          lessonId: currentLesson.docId,
+          skill: String(currentLesson.skill || ""),
+          data: {
+            lessonId: currentLesson.docId,
+            lessonTopic: currentLesson.topic,
+            lessonLevel: currentLesson.level,
+            lessonSkill: currentLesson.skill,
+            status: "completed",
+          },
+        }).catch(() => {
+          // non-fatal
+        });
+      }
     } catch (error) {
       setCurrentLesson((prev) => ({ ...prev, status: previousStatus })); // Revert on failure
       toast({
@@ -583,11 +609,26 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             case "passage":
               return (
                 <div className="text-sm whitespace-pre-wrap">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {typeof data.body === "string"
-                      ? formatDialogueBody(data.body)
-                      : data.body}
-                  </ReactMarkdown>
+                  {typeof data.body === "string" &&
+                  tryParseDialogueLines(data.body) ? (
+                    <div className="space-y-2">
+                      {tryParseDialogueLines(data.body)!.map((line, idx) => (
+                        <div
+                          key={idx}
+                          className="grid grid-cols-[auto_1fr] gap-x-2"
+                        >
+                          <div className="font-semibold">{line.speaker}:</div>
+                          <div>{line.text}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {typeof data.body === "string"
+                        ? formatDialogueBody(data.body)
+                        : data.body}
+                    </ReactMarkdown>
+                  )}
                   {playbackHook.translations[translationKey] && (
                     <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                       <strong>Dịch:</strong>{" "}
@@ -696,6 +737,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             passage={passageText}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={currentLesson.docId}
+            lessonTopic={currentLesson.topic}
+            skill={practiceType}
           />
         );
       case "writing":
@@ -704,6 +748,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             prompts={currentExercise.prompts}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={currentLesson.docId}
+            lessonTopic={currentLesson.topic}
+            skill={practiceType}
           />
         );
       case "listening":
@@ -713,6 +760,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             passage={passageText}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={currentLesson.docId}
+            lessonTopic={currentLesson.topic}
+            skill={practiceType}
           />
         );
       case "speaking":
@@ -721,6 +771,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             exercise={currentExercise}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={currentLesson.docId}
+            lessonTopic={currentLesson.topic}
+            skill={practiceType}
           />
         );
       case "pronunciation":
@@ -729,6 +782,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             exercise={currentExercise}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={currentLesson.docId}
+            lessonTopic={currentLesson.topic}
+            skill={practiceType}
           />
         );
       default:
@@ -985,6 +1041,9 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
 type PracticeComponentProps = {
   vocabulary: CombinedVocabulary[];
   playbackHook: ReturnType<typeof useAudioPlayback>;
+  lessonId?: string;
+  lessonTopic?: string;
+  skill?: string;
 };
 
 const formatDialogueBody = (body: string): string => {
@@ -1013,17 +1072,72 @@ const formatDialogueBody = (body: string): string => {
     );
 };
 
+const tryParseDialogueLines = (
+  body: string
+): Array<{ speaker: string; text: string }> | null => {
+  const raw = (body || "").trim();
+  if (!raw) return null;
+
+  // Detect dialogue-like strings: multiple speaker labels such as "Alex:" or "Speaker 1:".
+  const speakerRe =
+    /\b([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s/g;
+  const speakers = new Set<string>();
+  let matches = 0;
+  for (const m of raw.matchAll(speakerRe)) {
+    matches++;
+    speakers.add(m[1]);
+    if (matches >= 3 && speakers.size >= 2) break;
+  }
+  if (matches < 2 || speakers.size < 2) return null;
+
+  // Force each speaker label onto its own line, then split.
+  const normalized = raw.replace(/\s+/g, " ");
+  const withLineBreaks = normalized.replace(
+    /\b([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s/g,
+    (full: string, speaker: string, offset: number) =>
+      offset === 0 ? `${speaker}: ` : `\n${speaker}: `
+  );
+
+  const lines = withLineBreaks
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const parsed = lines
+    .map((l) => {
+      const m = l.match(
+        /^([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s*(.*)$/
+      );
+      if (!m) return null;
+      const speaker = m[1];
+      const text = (m[2] || "").trim();
+      return { speaker, text };
+    })
+    .filter((x): x is { speaker: string; text: string } => !!x);
+
+  return parsed.length >= 2 ? parsed : null;
+};
+
 const ReadingPractice: FC<
   {
     questions: ReadingComprehensionQuestion[];
     passage: string;
   } & PracticeComponentProps
-> = ({ questions, passage, vocabulary, playbackHook }) => {
+> = ({
+  questions,
+  passage,
+  vocabulary,
+  playbackHook,
+  lessonId,
+  lessonTopic,
+  skill,
+}) => {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [feedback, setFeedback] = useState<Record<number, string>>({});
   const [isChecking, setIsChecking] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   if (!questions || questions.length === 0)
     return <div className="p-4 text-center">No questions available.</div>;
@@ -1036,6 +1150,49 @@ const ReadingPractice: FC<
   const handleCheckAnswers = async () => {
     setIsChecking(true);
     setShowResults(true);
+
+    // Persist a practice result (non-blocking).
+    try {
+      if (user?.uid) {
+        const total = questions.length;
+        const correct = questions.reduce((acc, q, idx) => {
+          return answers[idx] === q.correctOption ? acc + 1 : acc;
+        }, 0);
+        const percentage = total > 0 ? (correct / total) * 100 : 0;
+        await addTestResult(user.uid, {
+          testType: "Practice",
+          correctAnswers: correct,
+          totalQuestions: total,
+          percentage,
+          lessonId,
+          skill,
+          data: {
+            lessonId,
+            lessonTopic,
+            skill,
+            kind: "reading-questions",
+            items: questions.map((q, idx) => ({
+              kind: "reading-question",
+              itemKey: `q-${idx}`,
+              isCorrect: answers[idx] === q.correctOption,
+              score: answers[idx] === q.correctOption ? 1 : 0,
+              data: {
+                question: q.question,
+                options: q.options,
+                correctOption: q.correctOption,
+                selectedOption: answers[idx] ?? null,
+              },
+            })),
+            answers,
+            total,
+            correct,
+            percentage,
+          },
+        });
+      }
+    } catch {
+      // ignore persistence failures
+    }
 
     const feedbackPromises = questions.map(async (q, qIndex) => {
       const userAnswer = answers[qIndex];
@@ -1262,12 +1419,13 @@ const ReadingPractice: FC<
 
 const WritingPracticePrompt: FC<
   { prompt: WritingPrompt } & PracticeComponentProps
-> = ({ prompt, vocabulary, playbackHook }) => {
+> = ({ prompt, vocabulary, playbackHook, lessonId, lessonTopic, skill }) => {
   const [userText, setUserText] = useState("");
   const [feedback, setFeedback] =
     useState<GenerateWritingFeedbackOutput | null>(null);
   const [isGettingFeedback, setIsGettingFeedback] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleGetFeedback = async () => {
     if (!userText) {
@@ -1286,6 +1444,31 @@ const WritingPracticePrompt: FC<
         userWrittenText: userText,
       });
       setFeedback(result);
+
+      // Persist writing practice submission + feedback (non-blocking).
+      try {
+        if (user?.uid) {
+          await addTestResult(user.uid, {
+            testType: "Practice",
+            correctAnswers: 0,
+            totalQuestions: 0,
+            percentage: 0,
+            lessonId,
+            skill,
+            data: {
+              lessonId,
+              lessonTopic,
+              skill,
+              kind: "writing-feedback",
+              prompt,
+              userWrittenText: userText,
+              feedback: result,
+            },
+          });
+        }
+      } catch {
+        // ignore persistence failures
+      }
     } catch (error) {
       console.error("Error getting writing feedback:", error);
       toast({
@@ -1430,7 +1613,10 @@ const WritingPracticePrompt: FC<
                   </Button>
                 </div>
               </div>
-              <FormattedFeedbackText text={feedback.feedback} className="text-sm" />
+              <FormattedFeedbackText
+                text={feedback.feedback}
+                className="text-sm"
+              />
               {playbackHook.translations[feedbackKey] && (
                 <div className="text-sm text-blue-600 bg-blue-50 border-l-4 border-blue-300 p-2 mt-3 rounded-r-md">
                   <strong>Dịch:</strong>{" "}
@@ -1551,7 +1737,7 @@ const WritingPracticePrompt: FC<
 
 const WritingPractice: FC<
   { prompts: WritingPrompt[] } & PracticeComponentProps
-> = ({ prompts, vocabulary, playbackHook }) => {
+> = ({ prompts, vocabulary, playbackHook, lessonId, lessonTopic, skill }) => {
   if (!prompts || prompts.length === 0)
     return <div className="p-4 text-center">No prompts available.</div>;
   return (
@@ -1562,6 +1748,9 @@ const WritingPractice: FC<
           prompt={p}
           vocabulary={vocabulary}
           playbackHook={playbackHook}
+          lessonId={lessonId}
+          lessonTopic={lessonTopic}
+          skill={skill}
         />
       ))}
     </div>
@@ -1573,7 +1762,15 @@ const ListeningPractice: FC<
     exercise: GenerateListeningExerciseOutput;
     passage: string;
   } & PracticeComponentProps
-> = ({ exercise, passage, vocabulary, playbackHook }) => {
+> = ({
+  exercise,
+  passage,
+  vocabulary,
+  playbackHook,
+  lessonId,
+  lessonTopic,
+  skill,
+}) => {
   const audioRef = React.useRef<HTMLAudioElement>(null);
   return (
     <div className="h-full flex flex-col">
@@ -1601,6 +1798,9 @@ const ListeningPractice: FC<
                 passage={passage}
                 vocabulary={vocabulary}
                 playbackHook={playbackHook}
+                lessonId={lessonId}
+                lessonTopic={lessonTopic}
+                skill={skill}
               />
             </div>
           </ScrollArea>
@@ -1612,10 +1812,50 @@ const ListeningPractice: FC<
 
 const SpeakingPracticeLine: FC<
   { line: any; index: number } & PracticeComponentProps
-> = ({ line, index, vocabulary, playbackHook }) => {
+> = ({
+  line,
+  index,
+  vocabulary,
+  playbackHook,
+  lessonId,
+  lessonTopic,
+  skill,
+}) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { isRecording, audioURL, startRecording, stopRecording } =
     useAudioRecorder();
+
+  const lastSavedAudioUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!audioURL) return;
+    if (lastSavedAudioUrlRef.current === audioURL) return;
+    lastSavedAudioUrlRef.current = audioURL;
+
+    // Persist speaking practice (non-blocking). We do NOT upload audio; only record that a line was practiced.
+    if (!user?.uid) return;
+    addTestResult(user.uid, {
+      testType: "Practice",
+      correctAnswers: 0,
+      totalQuestions: 0,
+      percentage: 0,
+      lessonId,
+      skill,
+      data: {
+        lessonId,
+        lessonTopic,
+        skill,
+        kind: "speaking-roleplay-recording",
+        lineIndex: index,
+        role: line?.role,
+        lineText: line?.line,
+        hasRecording: true,
+      },
+    }).catch(() => {
+      // ignore persistence failures
+    });
+  }, [audioURL, user?.uid, lessonId, lessonTopic, skill, index, line]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -1725,7 +1965,7 @@ const SpeakingPracticeLine: FC<
 
 const SpeakingPractice: FC<
   { exercise: GenerateSpeakingExerciseOutput } & PracticeComponentProps
-> = ({ exercise, vocabulary, playbackHook }) => {
+> = ({ exercise, vocabulary, playbackHook, lessonId, lessonTopic, skill }) => {
   return (
     <div className="space-y-6">
       <div className="text-center p-2 rounded-lg bg-blue-50 border border-blue-200">
@@ -1747,6 +1987,9 @@ const SpeakingPractice: FC<
             index={index}
             vocabulary={vocabulary}
             playbackHook={playbackHook}
+            lessonId={lessonId}
+            lessonTopic={lessonTopic}
+            skill={skill}
           />
         ))}
       </div>
@@ -1756,11 +1999,12 @@ const SpeakingPractice: FC<
 
 const PronunciationPractice: FC<
   { exercise: GeneratePronunciationExerciseOutput } & PracticeComponentProps
-> = ({ exercise, vocabulary, playbackHook }) => {
+> = ({ exercise, vocabulary, playbackHook, lessonId, lessonTopic, skill }) => {
   const [selectedIntonation, setSelectedIntonation] = useState<
     Record<string, "rising" | "falling">
   >({});
   const [showIntonationResult, setShowIntonationResult] = useState(false);
+  const { user } = useAuth();
 
   if (
     !exercise ||
@@ -1783,6 +2027,78 @@ const PronunciationPractice: FC<
   ) => {
     if (showIntonationResult) return;
     setSelectedIntonation((prev) => ({ ...prev, [scenario]: choice }));
+  };
+
+  const handleCheckIntonation = async () => {
+    setShowIntonationResult(true);
+
+    // Persist intonation practice result (non-blocking).
+    try {
+      if (user?.uid) {
+        const scenarios = [
+          intonationExercise.scenario1,
+          intonationExercise.scenario2,
+        ];
+        const total = scenarios.length;
+        const correct = scenarios.reduce((acc, scenario) => {
+          const choice = selectedIntonation[scenario];
+          const isCorrect =
+            (choice === "rising" &&
+              intonationExercise.correctRising === scenario) ||
+            (choice === "falling" &&
+              intonationExercise.correctFalling === scenario);
+          return isCorrect ? acc + 1 : acc;
+        }, 0);
+        const percentage = total > 0 ? (correct / total) * 100 : 0;
+
+        await addTestResult(user.uid, {
+          testType: "Practice",
+          correctAnswers: correct,
+          totalQuestions: total,
+          percentage,
+          lessonId,
+          skill,
+          data: {
+            lessonId,
+            lessonTopic,
+            skill,
+            kind: "pronunciation-intonation",
+            items: scenarios.map((scenario, idx) => {
+              const choice = selectedIntonation[scenario];
+              const isCorrect =
+                (choice === "rising" &&
+                  intonationExercise.correctRising === scenario) ||
+                (choice === "falling" &&
+                  intonationExercise.correctFalling === scenario);
+              return {
+                kind: "intonation-choice",
+                itemKey: `scenario-${idx}`,
+                isCorrect,
+                score: isCorrect ? 1 : 0,
+                data: {
+                  sentence: intonationExercise.sentence,
+                  scenario,
+                  selected: choice ?? null,
+                  correct:
+                    intonationExercise.correctRising === scenario
+                      ? "rising"
+                      : "falling",
+                },
+              };
+            }),
+            sentence: intonationExercise.sentence,
+            selectedIntonation,
+            correctRising: intonationExercise.correctRising,
+            correctFalling: intonationExercise.correctFalling,
+            total,
+            correct,
+            percentage,
+          },
+        });
+      }
+    } catch {
+      // ignore persistence failures
+    }
   };
 
   return (
@@ -1973,9 +2289,7 @@ const PronunciationPractice: FC<
           </div>
           {!showIntonationResult && (
             <div className="text-center">
-              <Button onClick={() => setShowIntonationResult(true)}>
-                Check Answers
-              </Button>
+              <Button onClick={handleCheckIntonation}>Check Answers</Button>
             </div>
           )}
         </CardContent>

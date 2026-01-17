@@ -1159,14 +1159,23 @@ CREATE   PROCEDURE sp_Tests_Insert
   @Type NVARCHAR(100),
   @Data NVARCHAR(MAX),
   @Score FLOAT,
-  @CreatedAt DATETIMEOFFSET
+  @CreatedAt DATETIMEOFFSET,
+  @ContextType NVARCHAR(50) = NULL,
+  @ContextId NVARCHAR(100) = NULL,
+  @Skill NVARCHAR(50) = NULL,
+  @TotalQuestions INT = NULL,
+  @CorrectAnswers INT = NULL,
+  @DurationSeconds INT = NULL,
+  @ClientCreatedAt DATETIMEOFFSET = NULL,
+  @CompletedAt DATETIMEOFFSET = NULL,
+  @Version INT = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
   INSERT INTO Tests
-    (Id, UserId, Type, Data, Score, CreatedAt)
+    (Id, UserId, Type, Data, Score, CreatedAt, ContextType, ContextId, Skill, TotalQuestions, CorrectAnswers, DurationSeconds, ClientCreatedAt, CompletedAt, Version)
   VALUES
-    (@Id, @UserId, @Type, @Data, @Score, @CreatedAt);
+    (@Id, @UserId, @Type, @Data, @Score, @CreatedAt, @ContextType, @ContextId, @Skill, @TotalQuestions, @CorrectAnswers, @DurationSeconds, @ClientCreatedAt, @CompletedAt, ISNULL(@Version, 1));
 END
 GO
 
@@ -1176,11 +1185,33 @@ GO
 CREATE   PROCEDURE sp_Tests_Update
   @Id NVARCHAR(100),
   @Data NVARCHAR(MAX),
-  @Score FLOAT
+  @Score FLOAT,
+  @ContextType NVARCHAR(50) = NULL,
+  @ContextId NVARCHAR(100) = NULL,
+  @Skill NVARCHAR(50) = NULL,
+  @TotalQuestions INT = NULL,
+  @CorrectAnswers INT = NULL,
+  @DurationSeconds INT = NULL,
+  @ClientCreatedAt DATETIMEOFFSET = NULL,
+  @CompletedAt DATETIMEOFFSET = NULL,
+  @Version INT = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
-  UPDATE Tests SET Data = @Data, Score = @Score WHERE Id = @Id;
+  UPDATE Tests
+  SET
+    Data = @Data,
+    Score = @Score,
+    ContextType = COALESCE(@ContextType, ContextType),
+    ContextId = COALESCE(@ContextId, ContextId),
+    Skill = COALESCE(@Skill, Skill),
+    TotalQuestions = COALESCE(@TotalQuestions, TotalQuestions),
+    CorrectAnswers = COALESCE(@CorrectAnswers, CorrectAnswers),
+    DurationSeconds = COALESCE(@DurationSeconds, DurationSeconds),
+    ClientCreatedAt = COALESCE(@ClientCreatedAt, ClientCreatedAt),
+    CompletedAt = COALESCE(@CompletedAt, CompletedAt),
+    Version = COALESCE(@Version, Version)
+  WHERE Id = @Id;
 END
 GO
 
@@ -1351,6 +1382,77 @@ BEGIN
   FROM Tests
   WHERE UserId = @UserId
   ORDER BY CreatedAt DESC;
+END
+GO
+
+-- =============================================
+-- TEST ITEMS (per-question/per-item results)
+-- =============================================
+
+-- sp_TestItems_Insert
+IF OBJECT_ID('sp_TestItems_Insert', 'P') IS NOT NULL DROP PROCEDURE sp_TestItems_Insert;
+GO
+CREATE PROCEDURE sp_TestItems_Insert
+  @Id NVARCHAR(100),
+  @TestId NVARCHAR(100),
+  @UserId NVARCHAR(100) = NULL,
+  @Type NVARCHAR(100) = NULL,
+  @Skill NVARCHAR(50) = NULL,
+  @Kind NVARCHAR(100) = NULL,
+  @ItemKey NVARCHAR(200) = NULL,
+  @IsCorrect BIT = NULL,
+  @Score FLOAT = NULL,
+  @Data NVARCHAR(MAX) = NULL,
+  @CreatedAt DATETIMEOFFSET
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO TestItems
+    (Id, TestId, UserId, Type, Skill, Kind, ItemKey, IsCorrect, Score, Data, CreatedAt)
+  VALUES
+    (@Id, @TestId, @UserId, @Type, @Skill, @Kind, @ItemKey, @IsCorrect, @Score, @Data, @CreatedAt);
+END
+GO
+
+-- sp_TestItems_ListByTest
+IF OBJECT_ID('sp_TestItems_ListByTest', 'P') IS NOT NULL DROP PROCEDURE sp_TestItems_ListByTest;
+GO
+CREATE PROCEDURE sp_TestItems_ListByTest
+  @TestId NVARCHAR(100)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT *
+  FROM TestItems
+  WHERE TestId = @TestId
+  ORDER BY CreatedAt ASC;
+END
+GO
+
+-- sp_TestItems_ListByUser
+IF OBJECT_ID('sp_TestItems_ListByUser', 'P') IS NOT NULL DROP PROCEDURE sp_TestItems_ListByUser;
+GO
+CREATE PROCEDURE sp_TestItems_ListByUser
+  @UserId NVARCHAR(100)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT *
+  FROM TestItems
+  WHERE UserId = @UserId
+  ORDER BY CreatedAt DESC;
+END
+GO
+
+-- sp_TestItems_DeleteByTest
+IF OBJECT_ID('sp_TestItems_DeleteByTest', 'P') IS NOT NULL DROP PROCEDURE sp_TestItems_DeleteByTest;
+GO
+CREATE PROCEDURE sp_TestItems_DeleteByTest
+  @TestId NVARCHAR(100)
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DELETE FROM TestItems WHERE TestId = @TestId;
 END
 GO
 

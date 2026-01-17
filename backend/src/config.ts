@@ -2,7 +2,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const config = {
+  host: process.env.HOST || "0.0.0.0",
   port: process.env.PORT ? Number(process.env.PORT) : 4000,
+  geminiApiKey: process.env.GEMINI_API_KEY || "",
+  geminiModel:
+    process.env.GEMINI_MODEL_NAME ||
+    process.env.GEMINI_MODEL ||
+    "gemini-1.5-flash",
+  geminiTtsModel: process.env.GEMINI_TTS_MODEL || "",
   db: {
     user: process.env.DB_USER || "sa",
     password: process.env.DB_PASSWORD || "",
