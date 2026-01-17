@@ -5,7 +5,7 @@
  * - extractTextFromFile - A function that handles text extraction.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import { z } from "genkit";
 
 const ExtractTextInputSchema = z.object({
@@ -28,9 +28,11 @@ export async function extractTextFromFile(
   return extractTextFromFileFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "extractTextFromFilePrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: ExtractTextInputSchema },
   output: { schema: ExtractTextOutputSchema },
   prompt: `You are an OCR (Optical Character Recognition) expert. Your task is to extract all text from the provided image accurately. Preserve the original formatting, including paragraphs and line breaks, as much as possible.

@@ -8,7 +8,7 @@
  * - SuggestPersonalizedLessonsOutput - The return type for the suggestPersonalizedLessons function.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   SuggestPersonalizedLessonsInputSchema,
   SuggestPersonalizedLessonsOutputSchema,
@@ -22,9 +22,11 @@ export async function suggestPersonalizedLessons(
   return suggestPersonalizedLessonsFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "suggestPersonalizedLessonsPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: SuggestPersonalizedLessonsInputSchema },
   output: { schema: SuggestPersonalizedLessonsOutputSchema },
   prompt: `You are an AI-powered English language learning assistant. Based on the user's current level, learning goals, and interests, suggest a list of personalized lesson topics.

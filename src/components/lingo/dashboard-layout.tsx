@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BookCopy,
+  BookOpenText,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -123,6 +124,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       icon: Library,
       role: ["role_student", "role_teacher", "role_admin"],
       href: "/library",
+    },
+    {
+      id: "grammar",
+      label: "Grammar",
+      icon: BookOpenText,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/grammar",
     },
     {
       id: "vocabulary",

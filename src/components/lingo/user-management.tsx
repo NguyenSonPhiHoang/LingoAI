@@ -9,6 +9,7 @@ import {
 } from "@/services/admin-users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectTrigger,
@@ -68,6 +69,12 @@ export default function UserManagement() {
         DisplayName: it.DisplayName || it.displayName,
         RoleId: it.RoleId || it.roleId,
         Status: it.Status || it.status,
+        OmniChatEnabled:
+          typeof it.OmniChatEnabled === "boolean"
+            ? it.OmniChatEnabled
+            : typeof it.omniChatEnabled === "boolean"
+            ? it.omniChatEnabled
+            : it.OmniChatEnabled === 1,
         CreatedAt: it.CreatedAt || it.createdAt,
       }));
       setItems(normalized);
@@ -154,6 +161,7 @@ export default function UserManagement() {
   };
 
   const openEdit = (item: any) => {
+    if ((item.RoleId || "") === "role_admin") return;
     setEditTarget(item);
     setEditEmail(item.Email || "");
     setEditDisplayName(item.DisplayName || "");
@@ -186,6 +194,7 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (item: any) => {
+    if ((item.RoleId || "") === "role_admin") return;
     if (!confirm(`Delete user ${item.Email}?`)) return;
     try {
       await adminDeleteUser(item.Id);
@@ -327,71 +336,114 @@ export default function UserManagement() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-12 text-center">STT</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>OmniChat</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((it) => (
-            <TableRow key={it.Id}>
-              <TableCell>{it.Email}</TableCell>
-              <TableCell>{it.DisplayName}</TableCell>
-              <TableCell>{it.RoleId}</TableCell>
-              <TableCell>
-                <Select
-                  value={it.Status || "pending"}
-                  onValueChange={async (val) => {
-                    try {
-                      await adminUpdateUser(it.Id, { status: val });
-                      setItems((prev) =>
-                        prev.map((row) =>
-                          row.Id === it.Id ? { ...row, Status: val } : row
-                        )
-                      );
-                      toast({ title: "Status updated" });
-                    } catch (err: any) {
-                      console.error(err);
-                      toast({ variant: "destructive", title: "Update failed" });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-9 w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell>
-                {it.CreatedAt ? new Date(it.CreatedAt).toLocaleString() : "-"}
-              </TableCell>
-              <TableCell className="space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEdit(it)}
-                  aria-label="Edit user"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDelete(it)}
-                  aria-label="Delete user"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {items.map((it, idx) => {
+            const isAdmin = (it.RoleId || "") === "role_admin";
+            const index = (page - 1) * pageSize + idx + 1;
+
+            return (
+              <TableRow key={it.Id}>
+                <TableCell className="text-center">{index}</TableCell>
+                <TableCell>{it.Email}</TableCell>
+                <TableCell>{it.DisplayName}</TableCell>
+                <TableCell>{it.RoleId}</TableCell>
+                <TableCell>
+                  <Select
+                    value={it.Status || "pending"}
+                    disabled={isAdmin}
+                    onValueChange={async (val) => {
+                      if (isAdmin) return;
+                      try {
+                        await adminUpdateUser(it.Id, { status: val });
+                        setItems((prev) =>
+                          prev.map((row) =>
+                            row.Id === it.Id ? { ...row, Status: val } : row
+                          )
+                        );
+                        toast({ title: "Status updated" });
+                      } catch (err: any) {
+                        console.error(err);
+                        toast({
+                          variant: "destructive",
+                          title: "Update failed",
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    disabled={isAdmin}
+                    checked={!!it.OmniChatEnabled}
+                    onCheckedChange={async (val) => {
+                      if (isAdmin) return;
+                      try {
+                        await adminUpdateUser(it.Id, {
+                          omniChatEnabled: val,
+                        });
+                        setItems((prev) =>
+                          prev.map((row) =>
+                            row.Id === it.Id
+                              ? { ...row, OmniChatEnabled: val }
+                              : row
+                          )
+                        );
+                        toast({ title: "OmniChat updated" });
+                      } catch (err) {
+                        console.error(err);
+                        toast({
+                          variant: "destructive",
+                          title: "Update failed",
+                        });
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  {it.CreatedAt ? new Date(it.CreatedAt).toLocaleString() : "-"}
+                </TableCell>
+                <TableCell className="space-x-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEdit(it)}
+                    aria-label="Edit user"
+                    disabled={isAdmin}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(it)}
+                    aria-label="Delete user"
+                    disabled={isAdmin}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 

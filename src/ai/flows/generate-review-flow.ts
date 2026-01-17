@@ -8,7 +8,7 @@
  * - GenerateReviewOutput - The return type for the generateReviewExercises function.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateReviewInputSchema,
   GenerateReviewOutputSchema,
@@ -22,9 +22,11 @@ export async function generateReviewExercises(
   return generateReviewFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "generateReviewPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GenerateReviewInputSchema },
   output: { schema: GenerateReviewOutputSchema },
   prompt: `You are an AI English learning assistant. Your task is to generate review exercises based on a provided list of vocabulary words.

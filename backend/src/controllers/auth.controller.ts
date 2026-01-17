@@ -42,6 +42,10 @@ export class AuthController {
         (await UserRepository.findById(emailOrId));
       if (!user) return res.status(401).json({ error: "User not found" });
 
+      const status = (user.Status || user.status || "").toLowerCase();
+      if (status !== "approved")
+        return res.status(403).json({ error: "account not approved" });
+
       const payload = {
         sub: user.Id,
         email: user.Email,
@@ -99,6 +103,10 @@ export class AuthController {
         status: profile?.Status || null,
         photoUrl,
         bio: profile?.Bio || null,
+        omniChatEnabled:
+          typeof user.OmniChatEnabled === "boolean"
+            ? user.OmniChatEnabled
+            : user.OmniChatEnabled === 1,
       });
     } catch (error: any) {
       console.error("Me error:", error);

@@ -18,6 +18,7 @@ import {
   UserProfile,
 } from "@/services/auth-api";
 import { apiPost } from "@/services/api";
+import { endUserSession, startUserSession } from "@/services/activity";
 
 export interface User {
   id: string;
@@ -30,6 +31,7 @@ export interface User {
   status?: string | null;
   photoUrl?: string | null;
   bio?: string | null;
+  omniChatEnabled?: boolean | null;
 }
 
 interface AuthContextType {
@@ -85,7 +87,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 "approved",
               photoUrl: (userProfile as any).photoUrl || null,
               bio: (userProfile as any).bio || null,
+              omniChatEnabled:
+                typeof (userProfile as any).omniChatEnabled === "boolean"
+                  ? (userProfile as any).omniChatEnabled
+                  : null,
             });
+
+            // Start a new session for this browser tab.
+            startUserSession(userProfile.id);
           }
         }
       } catch (error) {
@@ -99,6 +108,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     initAuth();
   }, []);
+
+  useEffect(() => {
+    const userId = user?.uid || user?.id;
+    if (!userId) return;
+
+    const onBeforeUnload = () => {
+      endUserSession(userId);
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [user?.uid, user?.id]);
 
   const login = async (email: string, password: string) => {
     const response = await loginApi(email, password);
@@ -122,7 +145,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           "approved",
         photoUrl: (userProfile as any).photoUrl || null,
         bio: (userProfile as any).bio || null,
+        omniChatEnabled:
+          typeof (userProfile as any).omniChatEnabled === "boolean"
+            ? (userProfile as any).omniChatEnabled
+            : null,
       });
+
+      startUserSession(userProfile.id);
     }
   };
 
@@ -149,6 +178,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    const userId = user?.uid || user?.id;
+    if (userId) endUserSession(userId);
     logoutApi();
     setUser(null);
     setToken(null);

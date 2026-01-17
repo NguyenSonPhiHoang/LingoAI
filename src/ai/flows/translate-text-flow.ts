@@ -6,7 +6,8 @@
  * - translateText - A function that translates text.
  */
 
-import { ai } from "@/ai/genkit";
+import { createAi, getTextModel } from "@/ai/genkit";
+import { generateWithAutoModel } from "@/ai/model-selector";
 import {
   TranslateTextInputSchema,
   TranslateTextOutputSchema,
@@ -20,26 +21,26 @@ export async function translateText(
   return translateTextFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: "translateTextPrompt",
-  model: "vertexai/gemini-1.5-flash",
-  input: { schema: TranslateTextInputSchema },
-  output: { schema: TranslateTextOutputSchema },
-  prompt: `Translate the following English text to Vietnamese. Provide only the translation, without any additional explanations or context.
-
-Text to translate:
-"{{{text}}}"
-`,
-});
-
-const translateTextFlow = ai.defineFlow(
+const translateTextFlow = createAi().defineFlow(
   {
     name: "translateTextFlow",
     inputSchema: TranslateTextInputSchema,
     outputSchema: TranslateTextOutputSchema,
   },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+  async ({ text, geminiApiKey }) => {
+    const runtimeAi = createAi(geminiApiKey);
+    const { output } = await generateWithAutoModel({
+      ai: runtimeAi,
+      preferredModel: getTextModel(),
+      candidates: ["models/gemini-2.0-flash"],
+      prompt: `Translate the following English text to Vietnamese. Provide only the translation, without any additional explanations or context.
+
+Text to translate:
+"${text}"
+`,
+      output: { schema: TranslateTextOutputSchema },
+    });
+
+    return { translation: output?.translation || "" };
   }
 );

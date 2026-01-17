@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -16,7 +15,9 @@ export default function LibraryLayout({
 }) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeView, setActiveView] = React.useState<View | 'storybook' | 'library' | 'guide'>('library');
+  const [activeView, setActiveView] = React.useState<
+    View | "storybook" | "library" | "guide"
+  >("library");
   const [words, setWords] = React.useState<CombinedVocabulary[]>([]);
 
   React.useEffect(() => {
@@ -27,34 +28,35 @@ export default function LibraryLayout({
     }
   }, [user, authLoading, router]);
 
-  const handleSetActiveView = (view: View | 'storybook' | 'library' | 'guide') => {
-      if (view === 'library') {
-          router.push('/library');
-      } else if (view === 'storybook') {
-          router.push('/storybook');
-      } else if (view === 'guide') {
-          router.push('/guide');
-      }
-      else {
-          router.push('/');
-      }
-  }
+  const handleSetActiveView = (
+    view: View | "storybook" | "library" | "guide"
+  ) => {
+    if (view === "library") {
+      router.push("/library");
+    } else if (view === "storybook") {
+      router.push("/storybook");
+    } else if (view === "guide") {
+      router.push("/guide");
+    } else {
+      router.push("/");
+    }
+  };
 
   if (authLoading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex min-h-svh w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
-  
+
   return (
-      <DashboardLayout
-        activeView={activeView}
-        setActiveView={handleSetActiveView}
-        setWords={setWords}
-       >
-        {children}
-       </DashboardLayout>
+    <DashboardLayout
+      activeView={activeView}
+      setActiveView={handleSetActiveView}
+      setWords={setWords}
+    >
+      {children}
+    </DashboardLayout>
   );
 }

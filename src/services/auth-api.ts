@@ -23,6 +23,7 @@ export interface UserProfile {
   roleId: string;
   roleName?: string;
   createdAt?: string;
+  omniChatEnabled?: boolean | null;
 }
 
 // Token storage

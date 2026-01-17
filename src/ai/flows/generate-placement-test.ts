@@ -5,7 +5,7 @@
  * - generatePlacementTest - A function that creates a set of questions.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GeneratePlacementTestInputSchema,
   GeneratePlacementTestOutputSchema,
@@ -19,9 +19,11 @@ export async function generatePlacementTest(
   return generatePlacementTestFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "generatePlacementTestPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GeneratePlacementTestInputSchema },
   output: { schema: GeneratePlacementTestOutputSchema },
   prompt: `You are an expert English language assessment creator. Your task is to create a comprehensive placement test to determine a user's English proficiency level (Beginner, Intermediate, Advanced).

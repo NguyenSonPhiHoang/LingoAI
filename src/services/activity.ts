@@ -25,6 +25,120 @@ export interface DailyActivity {
   durationSeconds: number;
 }
 
+type SessionRecord = {
+  id: string;
+  userId: string;
+  loginAt: number; // ms epoch
+  logoutAt?: number | null; // ms epoch
+};
+
+const sessionStorageKey = (userId: string) => `lingoai_sessions_${userId}`;
+const activeSessionIdKey = (userId: string) =>
+  `lingoai_active_session_${userId}`;
+
+const safeNow = () => Date.now();
+
+const readSessions = (userId: string): SessionRecord[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(sessionStorageKey(userId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((s) => s && typeof s === "object")
+      .map((s) => ({
+        id: String((s as any).id || ""),
+        userId: String((s as any).userId || userId),
+        loginAt: Number((s as any).loginAt || 0),
+        logoutAt:
+          (s as any).logoutAt === null || (s as any).logoutAt === undefined
+            ? (s as any).logoutAt
+            : Number((s as any).logoutAt),
+      }))
+      .filter(
+        (s) =>
+          !!s.id && !!s.userId && Number.isFinite(s.loginAt) && s.loginAt > 0
+      );
+  } catch {
+    return [];
+  }
+};
+
+const writeSessions = (userId: string, sessions: SessionRecord[]) => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(sessionStorageKey(userId), JSON.stringify(sessions));
+  } catch {
+    // ignore storage failures
+  }
+};
+
+export const startUserSession = (userId: string) => {
+  if (typeof window === "undefined") return;
+  if (!userId) return;
+
+  try {
+    const existingId = sessionStorage.getItem(activeSessionIdKey(userId));
+    if (existingId) {
+      // If we already have an active session id for this tab, keep it.
+      return;
+    }
+
+    const id = `${userId}_${safeNow()}_${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const sessions = readSessions(userId);
+    sessions.unshift({ id, userId, loginAt: safeNow(), logoutAt: null });
+    writeSessions(userId, sessions);
+    sessionStorage.setItem(activeSessionIdKey(userId), id);
+  } catch {
+    // ignore
+  }
+};
+
+export const endUserSession = (userId: string) => {
+  if (typeof window === "undefined") return;
+  if (!userId) return;
+
+  try {
+    const id = sessionStorage.getItem(activeSessionIdKey(userId));
+    if (!id) return;
+
+    const now = safeNow();
+    const sessions = readSessions(userId);
+    const updated = sessions.map((s) =>
+      s.id === id && (!s.logoutAt || s.logoutAt === null)
+        ? { ...s, logoutAt: now }
+        : s
+    );
+    writeSessions(userId, updated);
+
+    sessionStorage.removeItem(activeSessionIdKey(userId));
+  } catch {
+    // ignore
+  }
+};
+
+export const getTotalUserSessionSeconds = (userId: string): number => {
+  if (typeof window === "undefined") return 0;
+  if (!userId) return 0;
+
+  const sessions = readSessions(userId);
+  const now = safeNow();
+
+  let totalMs = 0;
+  for (const s of sessions) {
+    const start = s.loginAt;
+    const end =
+      typeof s.logoutAt === "number" && s.logoutAt > 0 ? s.logoutAt : now;
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      totalMs += end - start;
+    }
+  }
+
+  return Math.floor(totalMs / 1000);
+};
+
 // Records an incremental amount of active time for a user on a specific day.
 export const recordActivity = async (userId: string, seconds: number) => {
   if (!firebaseEnabled) return;

@@ -5,7 +5,7 @@
  * - generateStorybook - Creates a story based on a topic or vocabulary list.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateStorybookInputSchema,
   GenerateStorybookOutputSchema,
@@ -19,9 +19,11 @@ export async function generateStorybook(
   return generateStorybookFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "generateStorybookPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GenerateStorybookInputSchema },
   output: { schema: GenerateStorybookOutputSchema },
   prompt: `You are an expert English language teacher and a creative storyteller. Your task is to generate a short story for an English learner at the "{{level}}" level. The story should be engaging and educational.

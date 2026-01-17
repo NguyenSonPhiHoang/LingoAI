@@ -5,7 +5,7 @@
  * - generateWritingExercise - A function that creates writing prompts.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateWritingExerciseInputSchema,
   GenerateWritingExerciseOutputSchema,
@@ -43,9 +43,10 @@ const generateWritingExerciseFlow = ai.defineFlow(
     outputSchema: GenerateWritingExerciseOutputSchema,
   },
   async (input) => {
+    const model = getTextModel();
     try {
       const { output } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: { schema: GenerateWritingExerciseOutputSchema, format: "json" },
       });
@@ -57,7 +58,7 @@ const generateWritingExerciseFlow = ai.defineFlow(
         error
       );
       const { output: fallbackOutput } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: { schema: GenerateWritingExerciseOutputSchema, format: "json" },
       });

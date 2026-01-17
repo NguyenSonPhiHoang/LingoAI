@@ -1,54 +1,60 @@
-
-
 /**
  * @fileOverview Shared schemas for Genkit flows.
  * This file does not have a 'use server' directive,
  * so it can be imported by both server and client components.
  */
 
-import {z} from 'zod';
+import { z } from "zod";
 
 // Schemas for extract-vocabulary.ts
-export const ExtractVocabularyInputSchema = z.object({
-  documentContent: z
-    .string()
-    .optional()
-    .describe('The text content of the document to extract vocabulary from.'),
-  imageDataUri: z
-    .string()
-    .optional()
-    .describe("An image of vocabulary, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-}).refine(data => data.documentContent || data.imageDataUri, {
-    message: 'Either documentContent or imageDataUri must be provided.',
-});
+export const ExtractVocabularyInputSchema = z
+  .object({
+    documentContent: z
+      .string()
+      .optional()
+      .describe("The text content of the document to extract vocabulary from."),
+    imageDataUri: z
+      .string()
+      .optional()
+      .describe(
+        "An image of vocabulary, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      ),
+  })
+  .refine((data) => data.documentContent || data.imageDataUri, {
+    message: "Either documentContent or imageDataUri must be provided.",
+  });
 
 export type ExtractVocabularyInput = z.infer<
   typeof ExtractVocabularyInputSchema
 >;
 
 export const VocabularyEntrySchema = z.object({
-  term: z.string().describe('The vocabulary word, phrase, or sentence.'),
+  term: z.string().describe("The vocabulary word, phrase, or sentence."),
   pronunciation: z
     .string()
-    .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
+    .describe("The International Phonetic Alphabet (IPA) pronunciation."),
   partOfSpeech: z
     .string()
-    .describe('The part of speech (e.g., Noun, Verb, Adjective, Phrase).'),
-  definition: z.string().describe('A clear and concise definition of the term.'),
+    .describe("The part of speech (e.g., Noun, Verb, Adjective, Phrase)."),
+  definition: z
+    .string()
+    .describe("A clear and concise definition of the term."),
   vietnameseDefinition: z
     .string()
-    .describe('A clear and concise Vietnamese definition of the term.'),
-  sentence: z.string().describe('An example sentence using the term in context.'),
+    .describe("A clear and concise Vietnamese definition of the term."),
+  sentence: z
+    .string()
+    .describe("An example sentence using the term in context."),
   vietnameseSentence: z
     .string()
-    .describe('The Vietnamese translation of the example sentence.'),
+    .describe("The Vietnamese translation of the example sentence."),
 });
 export type VocabularyEntry = z.infer<typeof VocabularyEntrySchema>;
 
 export const ExtractVocabularyOutputSchema = z.object({
   vocabulary: z
     .array(VocabularyEntrySchema)
-    .describe('A list of vocabulary entries extracted from the document.'),
+    .describe("A list of vocabulary entries extracted from the document."),
 });
 export type ExtractVocabularyOutput = z.infer<
   typeof ExtractVocabularyOutputSchema
@@ -56,13 +62,16 @@ export type ExtractVocabularyOutput = z.infer<
 
 // Schemas for generate-audio.ts
 export const GenerateAudioInputSchema = z.object({
-  text: z.string().describe('The text to convert to audio.'),
+  text: z.string().describe("The text to convert to audio."),
+  geminiApiKey: z
+    .string()
+    .optional()
+    .describe("Optional per-user Gemini API key to use for TTS."),
 });
 export type GenerateAudioInput = z.infer<typeof GenerateAudioInputSchema>;
 
-
 export const GenerateAudioOutputSchema = z.object({
-  audioUrl: z.string().describe('The base64 encoded data URI of the audio.'),
+  audioUrl: z.string().describe("The base64 encoded data URI of the audio."),
 });
 export type GenerateAudioOutput = z.infer<typeof GenerateAudioOutputSchema>;
 
@@ -79,12 +88,12 @@ export const GenerateReviewInputSchema = z.object({
 export type GenerateReviewInput = z.infer<typeof GenerateReviewInputSchema>;
 
 const MatchingQuestionSchema = z.object({
-  term: z.string().describe('The word to be defined.'),
+  term: z.string().describe("The word to be defined."),
   options: z
     .array(z.string())
     .length(4)
-    .describe('An array of 4 definitions, one of which is correct.'),
-  correctDefinition: z.string().describe('The correct definition.'),
+    .describe("An array of 4 definitions, one of which is correct."),
+  correctDefinition: z.string().describe("The correct definition."),
 });
 export type MatchingQuestion = z.infer<typeof MatchingQuestionSchema>;
 
@@ -93,8 +102,8 @@ const FillInTheBlankQuestionSchema = z.object({
   options: z
     .array(z.string())
     .length(4)
-    .describe('An array of 4 terms, one of which is correct.'),
-  correctTerm: z.string().describe('The word that correctly fills the blank.'),
+    .describe("An array of 4 terms, one of which is correct."),
+  correctTerm: z.string().describe("The word that correctly fills the blank."),
 });
 export type FillInTheBlankQuestion = z.infer<
   typeof FillInTheBlankQuestionSchema
@@ -103,16 +112,22 @@ export type FillInTheBlankQuestion = z.infer<
 export const GenerateReviewOutputSchema = z.object({
   matchingQuestions: z
     .array(MatchingQuestionSchema)
-    .describe('An array of matching questions.'),
+    .describe("An array of matching questions."),
   fillInTheBlankQuestions: z
     .array(FillInTheBlankQuestionSchema)
-    .describe('An array of fill-in-the-blank questions.'),
+    .describe("An array of fill-in-the-blank questions."),
 });
 export type GenerateReviewOutput = z.infer<typeof GenerateReviewOutputSchema>;
 
 // Schemas for generate-word-details.ts
 export const GenerateWordDetailsInputSchema = z.object({
-  term: z.string().describe('The word, phrase, or sentence to generate details for.'),
+  term: z
+    .string()
+    .describe("The word, phrase, or sentence to generate details for."),
+  geminiApiKey: z
+    .string()
+    .optional()
+    .describe("Optional per-user Gemini API key to use for this request."),
 });
 export type GenerateWordDetailsInput = z.infer<
   typeof GenerateWordDetailsInputSchema
@@ -121,30 +136,66 @@ export type GenerateWordDetailsInput = z.infer<
 export const GenerateWordDetailsOutputSchema = z.object({
   pronunciation: z
     .string()
-    .describe('The International Phonetic Alphabet (IPA) pronunciation.'),
+    .describe("The International Phonetic Alphabet (IPA) pronunciation."),
   partOfSpeech: z
     .string()
-    .describe('The part of speech (e.g., Noun, Verb, Adjective, Phrase).'),
-  definition: z.string().describe('A clear and concise definition of the term.'),
+    .describe("The part of speech (e.g., Noun, Verb, Adjective, Phrase)."),
+  definition: z
+    .string()
+    .describe("A clear and concise definition of the term."),
   vietnameseDefinition: z
     .string()
-    .describe('A clear and concise Vietnamese definition of the term.'),
-  sentence: z.string().describe('An example sentence using the term in context.'),
+    .describe("A clear and concise Vietnamese definition of the term."),
+  sentence: z
+    .string()
+    .describe("An example sentence using the term in context."),
   vietnameseSentence: z
     .string()
-    .describe('The Vietnamese translation of the example sentence.'),
-  synonyms: z.array(z.string()).optional().describe('A list of synonyms for the term.'),
-  antonyms: z.array(z.string()).optional().describe('A list of antonyms for the term.'),
-  irregularForms: z.object({
-    v1: z.string().describe('The base form of the verb (Infinitive).'),
-    v2: z.string().describe('The past simple form of the verb.'),
-    v3: z.string().describe('The past participle form of the verb.'),
-  }).optional().describe('The irregular forms of the verb (V1, V2, V3), if applicable.'),
+    .describe("The Vietnamese translation of the example sentence."),
+  synonyms: z
+    .array(z.string())
+    .optional()
+    .describe("A list of synonyms for the term."),
+  antonyms: z
+    .array(z.string())
+    .optional()
+    .describe("A list of antonyms for the term."),
+  irregularForms: z
+    .object({
+      v1: z.string().describe("The base form of the verb (Infinitive)."),
+      v2: z.string().describe("The past simple form of the verb."),
+      v3: z.string().describe("The past participle form of the verb."),
+    })
+    .optional()
+    .describe("The irregular forms of the verb (V1, V2, V3), if applicable."),
+
+  wordForms: z
+    .object({
+      noun: z
+        .string()
+        .optional()
+        .describe("Common noun form of the term, if applicable."),
+      verb: z
+        .string()
+        .optional()
+        .describe("Common verb form of the term, if applicable."),
+      adjective: z
+        .string()
+        .optional()
+        .describe("Common adjective form of the term, if applicable."),
+      adverb: z
+        .string()
+        .optional()
+        .describe("Common adverb form of the term, if applicable."),
+    })
+    .optional()
+    .describe(
+      "Common word-family forms across parts of speech (only include common forms; omit keys if not applicable)."
+    ),
 });
 export type GenerateWordDetailsOutput = z.infer<
   typeof GenerateWordDetailsOutputSchema
 >;
-
 
 // Schemas for group-vocabulary.ts
 // The input for grouping now only needs the minimal schema, not the full user-specific data.
@@ -154,23 +205,30 @@ export const GroupVocabularyInputSchema = z.object({
 export type GroupVocabularyInput = z.infer<typeof GroupVocabularyInputSchema>;
 
 export const VocabularyTopicSchema = z.object({
-  topic: z.string().describe('The name of the vocabulary topic.'),
-  words: z.array(VocabularyEntrySchema).describe('A list of vocabulary entries belonging to this topic.'),
+  topic: z.string().describe("The name of the vocabulary topic."),
+  words: z
+    .array(VocabularyEntrySchema)
+    .describe("A list of vocabulary entries belonging to this topic."),
 });
 export type VocabularyTopic = z.infer<typeof VocabularyTopicSchema>;
 
-
 export const GroupVocabularyOutputSchema = z.object({
-  topics: z.array(VocabularyTopicSchema).describe('A list of topics, each containing a list of related vocabulary words.'),
+  topics: z
+    .array(VocabularyTopicSchema)
+    .describe(
+      "A list of topics, each containing a list of related vocabulary words."
+    ),
 });
 export type GroupVocabularyOutput = z.infer<typeof GroupVocabularyOutputSchema>;
 
 // Schemas for suggest-personalized-lessons.ts
-export const UserLevelSchema = z.enum(['beginner', 'intermediate', 'advanced']);
+export const UserLevelSchema = z.enum(["beginner", "intermediate", "advanced"]);
 export type UserLevel = z.infer<typeof UserLevelSchema>;
 
 export const SuggestPersonalizedLessonsInputSchema = z.object({
-  userLevel: UserLevelSchema.describe('The user\'s current English proficiency level.'),
+  userLevel: UserLevelSchema.describe(
+    "The user's current English proficiency level."
+  ),
   learningGoals: z
     .string()
     .describe(
@@ -180,7 +238,7 @@ export const SuggestPersonalizedLessonsInputSchema = z.object({
     .string()
     .optional()
     .describe(
-      'The user\'s interests, which could be used to contextualize the lesson recommendations.'
+      "The user's interests, which could be used to contextualize the lesson recommendations."
     ),
 });
 export type SuggestPersonalizedLessonsInput = z.infer<
@@ -188,9 +246,11 @@ export type SuggestPersonalizedLessonsInput = z.infer<
 >;
 
 const LessonSuggestionSchema = z.object({
-    topic: z.string().describe('A concise and engaging topic for the lesson.'),
-    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation']).describe('The core skill this lesson focuses on.'),
-    level: UserLevelSchema.describe('The difficulty level of the lesson.'),
+  topic: z.string().describe("A concise and engaging topic for the lesson."),
+  skill: z
+    .enum(["Listening", "Speaking", "Reading", "Writing", "Pronunciation"])
+    .describe("The core skill this lesson focuses on."),
+  level: UserLevelSchema.describe("The difficulty level of the lesson."),
 });
 export type LessonSuggestion = z.infer<typeof LessonSuggestionSchema>;
 
@@ -198,110 +258,169 @@ export const SuggestPersonalizedLessonsOutputSchema = z.object({
   lessonSuggestions: z
     .array(LessonSuggestionSchema)
     .describe(
-      'A list of personalized lesson suggestions, each with a topic and a skill category.'
+      "A list of personalized lesson suggestions, each with a topic and a skill category."
     ),
 });
 export type SuggestPersonalizedLessonsOutput = z.infer<
   typeof SuggestPersonalizedLessonsOutputSchema
 >;
 
-
 // Schemas for generate-reading-exercise-flow.ts
 export const GenerateReadingExerciseInputSchema = z.object({
-    passage: z.string().describe('The reading passage to base the exercise on.'),
-    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to focus on in the questions.'),
+  passage: z.string().describe("The reading passage to base the exercise on."),
+  focusPoints: z
+    .string()
+    .optional()
+    .describe(
+      "Specific grammar, vocabulary, or tense to focus on in the questions."
+    ),
 });
-export type GenerateReadingExerciseInput = z.infer<typeof GenerateReadingExerciseInputSchema>;
+export type GenerateReadingExerciseInput = z.infer<
+  typeof GenerateReadingExerciseInputSchema
+>;
 
 export const ReadingComprehensionQuestionSchema = z.object({
-    question: z.string().describe('The comprehension question.'),
-    options: z.array(z.string()).length(4).describe('Four possible answers.'),
-    correctOption: z.string().describe('The correct answer from the options.'),
+  question: z.string().describe("The comprehension question."),
+  options: z.array(z.string()).length(4).describe("Four possible answers."),
+  correctOption: z.string().describe("The correct answer from the options."),
 });
-export type ReadingComprehensionQuestion = z.infer<typeof ReadingComprehensionQuestionSchema>;
+export type ReadingComprehensionQuestion = z.infer<
+  typeof ReadingComprehensionQuestionSchema
+>;
 
 export const GenerateReadingExerciseOutputSchema = z.object({
-    questions: z.array(ReadingComprehensionQuestionSchema).describe('A list of comprehension questions.'),
+  questions: z
+    .array(ReadingComprehensionQuestionSchema)
+    .describe("A list of comprehension questions."),
 });
-export type GenerateReadingExerciseOutput = z.infer<typeof GenerateReadingExerciseOutputSchema>;
-
+export type GenerateReadingExerciseOutput = z.infer<
+  typeof GenerateReadingExerciseOutputSchema
+>;
 
 // Schemas for generate-writing-exercise-flow.ts
 export const GenerateWritingExerciseInputSchema = z.object({
-    topic: z.string().describe('The lesson topic.'),
-    userLevel: UserLevelSchema.describe('The user\'s proficiency level.'),
-    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense the user should practice.'),
+  topic: z.string().describe("The lesson topic."),
+  userLevel: UserLevelSchema.describe("The user's proficiency level."),
+  focusPoints: z
+    .string()
+    .optional()
+    .describe(
+      "Specific grammar, vocabulary, or tense the user should practice."
+    ),
 });
-export type GenerateWritingExerciseInput = z.infer<typeof GenerateWritingExerciseInputSchema>;
+export type GenerateWritingExerciseInput = z.infer<
+  typeof GenerateWritingExerciseInputSchema
+>;
 
 export const WritingPromptSchema = z.object({
-    vietnamesePrompt: z.string().describe('The sentence prompt in Vietnamese.'),
-    englishHint: z.string().describe("A hint, which MUST be a grammar structure or syntax advice (e.g., \"Use the past continuous tense\", \"Try using a relative clause with 'which'\")."),
-    exampleAnswer: z.string().describe('An example of a good answer in English.'),
+  vietnamesePrompt: z.string().describe("The sentence prompt in Vietnamese."),
+  englishHint: z
+    .string()
+    .describe(
+      'A hint, which MUST be a grammar structure or syntax advice (e.g., "Use the past continuous tense", "Try using a relative clause with \'which\'").'
+    ),
+  exampleAnswer: z.string().describe("An example of a good answer in English."),
 });
 export type WritingPrompt = z.infer<typeof WritingPromptSchema>;
 
 export const GenerateWritingExerciseOutputSchema = z.object({
-    prompts: z.array(WritingPromptSchema).describe('A list of writing prompts.'),
+  prompts: z.array(WritingPromptSchema).describe("A list of writing prompts."),
 });
-export type GenerateWritingExerciseOutput = z.infer<typeof GenerateWritingExerciseOutputSchema>;
-
+export type GenerateWritingExerciseOutput = z.infer<
+  typeof GenerateWritingExerciseOutputSchema
+>;
 
 // Schemas for generate-listening-exercise-flow.ts
 export const GenerateListeningExerciseInputSchema = z.object({
-    topic: z.string().describe('The lesson topic.'),
-    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to include in the dialogue.'),
+  topic: z.string().describe("The lesson topic."),
+  focusPoints: z
+    .string()
+    .optional()
+    .describe(
+      "Specific grammar, vocabulary, or tense to include in the dialogue."
+    ),
 });
-export type GenerateListeningExerciseInput = z.infer<typeof GenerateListeningExerciseInputSchema>;
+export type GenerateListeningExerciseInput = z.infer<
+  typeof GenerateListeningExerciseInputSchema
+>;
 
 export const GenerateListeningExerciseOutputSchema = z.object({
-    dialogue: z.array(z.object({
-        speaker: z.string().describe('The name of the speaker (e.g., Speaker 1, Alex).'),
-        line: z.string().describe('The line spoken by the speaker.'),
-    })).describe('The dialogue script.'),
-    audioUrl: z.string().describe('The base64 encoded data URI of the dialogue audio.'),
-    questions: z.array(ReadingComprehensionQuestionSchema).describe('A list of comprehension questions based on the dialogue.'),
+  dialogue: z
+    .array(
+      z.object({
+        speaker: z
+          .string()
+          .describe("The name of the speaker (e.g., Speaker 1, Alex)."),
+        line: z.string().describe("The line spoken by the speaker."),
+      })
+    )
+    .describe("The dialogue script."),
+  audioUrl: z
+    .string()
+    .describe("The base64 encoded data URI of the dialogue audio."),
+  questions: z
+    .array(ReadingComprehensionQuestionSchema)
+    .describe("A list of comprehension questions based on the dialogue."),
 });
-export type GenerateListeningExerciseOutput = z.infer<typeof GenerateListeningExerciseOutputSchema>;
-
+export type GenerateListeningExerciseOutput = z.infer<
+  typeof GenerateListeningExerciseOutputSchema
+>;
 
 // Schemas for generate-speaking-exercise-flow.ts
 export const GenerateSpeakingExerciseInputSchema = z.object({
-    topic: z.string().describe('The lesson topic.'),
-    focusPoints: z.string().optional().describe('Specific grammar, vocabulary, or tense to include in the role-play.'),
+  topic: z.string().describe("The lesson topic."),
+  focusPoints: z
+    .string()
+    .optional()
+    .describe(
+      "Specific grammar, vocabulary, or tense to include in the role-play."
+    ),
 });
-export type GenerateSpeakingExerciseInput = z.infer<typeof GenerateSpeakingExerciseInputSchema>;
+export type GenerateSpeakingExerciseInput = z.infer<
+  typeof GenerateSpeakingExerciseInputSchema
+>;
 
 export const SpeakingRolePlayLineSchema = z.object({
-    role: z.string().describe('The role to be played (e.g., "You", "Interviewer").'),
-    line: z.string().describe('The line or instruction for that role.'),
+  role: z
+    .string()
+    .describe('The role to be played (e.g., "You", "Interviewer").'),
+  line: z.string().describe("The line or instruction for that role."),
 });
 export type SpeakingRolePlayLine = z.infer<typeof SpeakingRolePlayLineSchema>;
 
 export const GenerateSpeakingExerciseOutputSchema = z.object({
-    scenario: z.string().describe('A brief description of the role-play scenario.'),
-    dialogue: z.array(SpeakingRolePlayLineSchema).describe('The role-play dialogue script.'),
+  scenario: z
+    .string()
+    .describe("A brief description of the role-play scenario."),
+  dialogue: z
+    .array(SpeakingRolePlayLineSchema)
+    .describe("The role-play dialogue script."),
 });
-export type GenerateSpeakingExerciseOutput = z.infer<typeof GenerateSpeakingExerciseOutputSchema>;
+export type GenerateSpeakingExerciseOutput = z.infer<
+  typeof GenerateSpeakingExerciseOutputSchema
+>;
 
 // Schemas for translate-text-flow.ts
 export const TranslateTextInputSchema = z.object({
-  text: z.string().describe('The text to be translated.'),
+  text: z.string().describe("The text to be translated."),
+  geminiApiKey: z
+    .string()
+    .optional()
+    .describe("Optional per-user Gemini API key to use for translation."),
 });
 export type TranslateTextInput = z.infer<typeof TranslateTextInputSchema>;
 
 export const TranslateTextOutputSchema = z.object({
-  translation: z.string().describe('The Vietnamese translation of the text.'),
+  translation: z.string().describe("The Vietnamese translation of the text."),
 });
 export type TranslateTextOutput = z.infer<typeof TranslateTextOutputSchema>;
 
-
 // Schemas for generate-feedback-flow.ts
 export const GenerateFeedbackInputSchema = z.object({
-  passage: z.string().describe('The original reading passage.'),
-  question: z.string().describe('The question the user was asked.'),
-  userAnswer: z.string().describe('The user\'s incorrect answer.'),
-  correctAnswer: z.string().describe('The correct answer.'),
+  passage: z.string().describe("The original reading passage."),
+  question: z.string().describe("The question the user was asked."),
+  userAnswer: z.string().describe("The user's incorrect answer."),
+  correctAnswer: z.string().describe("The correct answer."),
 });
 export type GenerateFeedbackInput = z.infer<typeof GenerateFeedbackInputSchema>;
 
@@ -309,125 +428,205 @@ export const GenerateFeedbackOutputSchema = z.object({
   explanation: z
     .string()
     .describe(
-      'A detailed explanation of why the user\'s answer is incorrect and the correct answer is right.'
+      "A detailed explanation of why the user's answer is incorrect and the correct answer is right."
     ),
 });
 export type GenerateFeedbackOutput = z.infer<
   typeof GenerateFeedbackOutputSchema
 >;
 
-
 // Schemas for generate-writing-feedback-flow.ts
 export const GenerateWritingFeedbackInputSchema = z.object({
-  vietnamesePrompt: z.string().describe('The original prompt in Vietnamese.'),
-  englishHint: z.string().describe('The English hint that was provided.'),
-  userWrittenText: z.string().describe("The user's written response in English."),
+  vietnamesePrompt: z.string().describe("The original prompt in Vietnamese."),
+  englishHint: z.string().describe("The English hint that was provided."),
+  userWrittenText: z
+    .string()
+    .describe("The user's written response in English."),
 });
-export type GenerateWritingFeedbackInput = z.infer<typeof GenerateWritingFeedbackInputSchema>;
+export type GenerateWritingFeedbackInput = z.infer<
+  typeof GenerateWritingFeedbackInputSchema
+>;
 
 export const GenerateWritingFeedbackOutputSchema = z.object({
-  feedback: z.string().describe('Constructive feedback on the user\'s writing, explaining grammar, style, and vocabulary issues.'),
-  correctedText: z.string().describe('A corrected version of the user\'s text.'),
+  feedback: z
+    .string()
+    .describe(
+      "Constructive feedback on the user's writing, explaining grammar, style, and vocabulary issues."
+    ),
+  correctedText: z.string().describe("A corrected version of the user's text."),
 });
-export type GenerateWritingFeedbackOutput = z.infer<typeof GenerateWritingFeedbackOutputSchema>;
-
+export type GenerateWritingFeedbackOutput = z.infer<
+  typeof GenerateWritingFeedbackOutputSchema
+>;
 
 // Schemas for generate-lesson-content.ts
 export const GenerateLessonContentInputSchema = z.object({
-    topic: z.string().describe("The lesson's main topic."),
-    skill: z.enum(['Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation']).describe("The skill focus of the lesson."),
-    level: UserLevelSchema.describe("The user's proficiency level."),
+  topic: z.string().describe("The lesson's main topic."),
+  skill: z
+    .enum(["Listening", "Speaking", "Reading", "Writing", "Pronunciation"])
+    .describe("The skill focus of the lesson."),
+  level: UserLevelSchema.describe("The user's proficiency level."),
+  geminiApiKey: z
+    .string()
+    .optional()
+    .describe("Optional per-user Gemini API key for content generation."),
 });
-export type GenerateLessonContentInput = z.infer<typeof GenerateLessonContentInputSchema>;
+export type GenerateLessonContentInput = z.infer<
+  typeof GenerateLessonContentInputSchema
+>;
 
 const LessonVocabularySuggestionSchema = z.object({
-    word: z.string().describe("The vocabulary word or phrase."),
-    partOfSpeech: z.string().describe("The part of speech (e.g., Noun, Verb, Adjective)."),
-    pronunciation: z.string().describe("The International Phonetic Alphabet (IPA) pronunciation."),
-    definition: z.string().describe("A simple English definition."),
-    vietnameseDefinition: z.string().describe("A simple Vietnamese definition."),
+  word: z.string().describe("The vocabulary word or phrase."),
+  partOfSpeech: z
+    .string()
+    .describe("The part of speech (e.g., Noun, Verb, Adjective)."),
+  pronunciation: z
+    .string()
+    .describe("The International Phonetic Alphabet (IPA) pronunciation."),
+  definition: z.string().describe("A simple English definition."),
+  vietnameseDefinition: z.string().describe("A simple Vietnamese definition."),
 });
-export type LessonVocabularySuggestion = z.infer<typeof LessonVocabularySuggestionSchema>;
-
+export type LessonVocabularySuggestion = z.infer<
+  typeof LessonVocabularySuggestionSchema
+>;
 
 const PassageSchema = z.object({
-    title: z.string().describe("A title for the passage or dialogue."),
-    body: z.string().describe("The full text of the reading passage or dialogue script."),
+  title: z.string().describe("A title for the passage or dialogue."),
+  body: z
+    .string()
+    .describe("The full text of the reading passage or dialogue script."),
 });
 
 export const GenerateLessonContentOutputSchema = z.object({
-    vocabularySuggestions: z.array(LessonVocabularySuggestionSchema).describe("A list of suggested vocabulary relevant to the topic."),
-    keyPoints: z.array(z.string()).describe("A list of 3-5 key phrases or concepts central to the topic."),
-    passage: PassageSchema.describe("A reading passage or dialogue."),
+  vocabularySuggestions: z
+    .array(LessonVocabularySuggestionSchema)
+    .describe("A list of suggested vocabulary relevant to the topic."),
+  keyPoints: z
+    .array(z.string())
+    .describe("A list of 3-5 key phrases or concepts central to the topic."),
+  passage: PassageSchema.describe("A reading passage or dialogue."),
 });
-export type GenerateLessonContentOutput = z.infer<typeof GenerateLessonContentOutputSchema>;
-
+export type GenerateLessonContentOutput = z.infer<
+  typeof GenerateLessonContentOutputSchema
+>;
 
 // Schemas for generate-pronunciation-exercise.ts
 export const GeneratePronunciationExerciseInputSchema = z.object({
-    topic: z.string().describe('The lesson topic.'),
-    userLevel: UserLevelSchema.describe('The user\'s proficiency level.'),
-    focusPoints: z.string().optional().describe('Specific sounds or phonetic patterns the user should practice.'),
+  topic: z.string().describe("The lesson topic."),
+  userLevel: UserLevelSchema.describe("The user's proficiency level."),
+  focusPoints: z
+    .string()
+    .optional()
+    .describe("Specific sounds or phonetic patterns the user should practice."),
 });
-export type GeneratePronunciationExerciseInput = z.infer<typeof GeneratePronunciationExerciseInputSchema>;
+export type GeneratePronunciationExerciseInput = z.infer<
+  typeof GeneratePronunciationExerciseInputSchema
+>;
 
 const MinimalPairSchema = z.object({
-    word1: z.string().describe('The first word in the pair.'),
-    pronunciation1: z.string().describe('The IPA pronunciation for the first word.'),
-    word2: z.string().describe('The second word in the pair.'),
-    pronunciation2: z.string().describe('The IPA pronunciation for the second word.'),
+  word1: z.string().describe("The first word in the pair."),
+  pronunciation1: z
+    .string()
+    .describe("The IPA pronunciation for the first word."),
+  word2: z.string().describe("The second word in the pair."),
+  pronunciation2: z
+    .string()
+    .describe("The IPA pronunciation for the second word."),
 });
 
 const IntonationExerciseSchema = z.object({
-    sentence: z.string().describe('The sentence to be analyzed.'),
-    scenario1: z.string().describe('The first scenario (e.g., a genuine question).'),
-    scenario2: z.string().describe('The second scenario (e.g., a statement of surprise).'),
-    correctRising: z.string().describe("The scenario that uses rising intonation."),
-    correctFalling: z.string().describe("The scenario that uses falling intonation."),
+  sentence: z.string().describe("The sentence to be analyzed."),
+  scenario1: z
+    .string()
+    .describe("The first scenario (e.g., a genuine question)."),
+  scenario2: z
+    .string()
+    .describe("The second scenario (e.g., a statement of surprise)."),
+  correctRising: z
+    .string()
+    .describe("The scenario that uses rising intonation."),
+  correctFalling: z
+    .string()
+    .describe("The scenario that uses falling intonation."),
 });
 
 export const GeneratePronunciationExerciseOutputSchema = z.object({
-    wordExercise: z.array(MinimalPairSchema).length(3).describe('An array of 3 minimal pairs for word pronunciation practice.'),
-    sentenceExercise: z.array(z.string()).length(2).describe('An array of 2 sentences for connected speech practice.'),
-    intonationExercise: IntonationExerciseSchema.describe('An exercise for practicing sentence intonation.'),
+  wordExercise: z
+    .array(MinimalPairSchema)
+    .length(3)
+    .describe("An array of 3 minimal pairs for word pronunciation practice."),
+  sentenceExercise: z
+    .array(z.string())
+    .length(2)
+    .describe("An array of 2 sentences for connected speech practice."),
+  intonationExercise: IntonationExerciseSchema.describe(
+    "An exercise for practicing sentence intonation."
+  ),
 });
-export type GeneratePronunciationExerciseOutput = z.infer<typeof GeneratePronunciationExerciseOutputSchema>;
+export type GeneratePronunciationExerciseOutput = z.infer<
+  typeof GeneratePronunciationExerciseOutputSchema
+>;
 
 // Schemas for generate-storybook-flow.ts
-export const StorybookFormatSchema = z.enum(['bilingual', 'interspersed']);
+export const StorybookFormatSchema = z.enum(["bilingual", "interspersed"]);
 export type StorybookFormat = z.infer<typeof StorybookFormatSchema>;
 
 export const GenerateStorybookInputSchema = z.object({
-    level: UserLevelSchema,
-    format: StorybookFormatSchema,
-    topic: z.string().optional(),
-    vocabulary: z.array(z.object({
+  level: UserLevelSchema,
+  format: StorybookFormatSchema,
+  topic: z.string().optional(),
+  vocabulary: z
+    .array(
+      z.object({
         term: z.string(),
         definition: z.string(),
-    })).optional(),
+      })
+    )
+    .optional(),
 });
-export type GenerateStorybookInput = z.infer<typeof GenerateStorybookInputSchema>;
+export type GenerateStorybookInput = z.infer<
+  typeof GenerateStorybookInputSchema
+>;
 
 const StorybookVocabularySchema = z.object({
-    word: z.string().describe("The English vocabulary word."),
-    definition: z.string().describe("The English definition."),
-    partOfSpeech: z.string().describe("The part of speech."),
-    pronunciation: z.string().describe("The IPA pronunciation."),
-    vietnameseWord: z.string().describe("The Vietnamese translation of the word."),
+  word: z.string().describe("The English vocabulary word."),
+  definition: z.string().describe("The English definition."),
+  partOfSpeech: z.string().describe("The part of speech."),
+  pronunciation: z.string().describe("The IPA pronunciation."),
+  vietnameseWord: z
+    .string()
+    .describe("The Vietnamese translation of the word."),
 });
 
 export const GenerateStorybookOutputSchema = z.object({
-    title: z.string(),
-    keyVocabulary: z.array(StorybookVocabularySchema),
-    // Bilingual story fields
-    englishStory: z.string().optional().describe("The full story in English. Used for 'bilingual' format."),
-    vietnameseStory: z.string().optional().describe("The full story in Vietnamese. Used for 'bilingual' format."),
-    // Interspersed story fields
-    interspersedStory: z.string().optional().describe("The story primarily in Vietnamese with interspersed English words. Used for 'interspersed' format."),
-    fullEnglishStory: z.string().optional().describe("The full English version of the interspersed story. Used for 'interspersed' format."),
+  title: z.string(),
+  keyVocabulary: z.array(StorybookVocabularySchema),
+  // Bilingual story fields
+  englishStory: z
+    .string()
+    .optional()
+    .describe("The full story in English. Used for 'bilingual' format."),
+  vietnameseStory: z
+    .string()
+    .optional()
+    .describe("The full story in Vietnamese. Used for 'bilingual' format."),
+  // Interspersed story fields
+  interspersedStory: z
+    .string()
+    .optional()
+    .describe(
+      "The story primarily in Vietnamese with interspersed English words. Used for 'interspersed' format."
+    ),
+  fullEnglishStory: z
+    .string()
+    .optional()
+    .describe(
+      "The full English version of the interspersed story. Used for 'interspersed' format."
+    ),
 });
-export type GenerateStorybookOutput = z.infer<typeof GenerateStorybookOutputSchema>;
-
+export type GenerateStorybookOutput = z.infer<
+  typeof GenerateStorybookOutputSchema
+>;
 
 // Schemas for generate-placement-test.ts
 export const GeneratePlacementTestInputSchema = z.object({
@@ -438,45 +637,66 @@ export type GeneratePlacementTestInput = z.infer<
 >;
 
 export const PlacementTestQuestionSchema = z.object({
-    question: z.string().describe('The test question.'),
-    options: z.array(z.string()).length(4).describe('Four possible answers.'),
-    correctOption: z.string().describe('The correct answer from the options.'),
-    level: UserLevelSchema.describe('The difficulty level of the question.'),
+  question: z.string().describe("The test question."),
+  options: z.array(z.string()).length(4).describe("Four possible answers."),
+  correctOption: z.string().describe("The correct answer from the options."),
+  level: UserLevelSchema.describe("The difficulty level of the question."),
 });
 export type PlacementTestQuestion = z.infer<typeof PlacementTestQuestionSchema>;
 
 export const GeneratePlacementTestOutputSchema = z.object({
-    questions: z.array(PlacementTestQuestionSchema).describe('A list of placement test questions.'),
+  questions: z
+    .array(PlacementTestQuestionSchema)
+    .describe("A list of placement test questions."),
 });
-export type GeneratePlacementTestOutput = z.infer<typeof GeneratePlacementTestOutputSchema>;
-
+export type GeneratePlacementTestOutput = z.infer<
+  typeof GeneratePlacementTestOutputSchema
+>;
 
 // Schemas for generate-review-test-flow.ts
 export const GenerateReviewTestInputSchema = z.object({
-  vocabulary: z.array(
-    z.object({
-      term: z.string(),
-      definition: z.string(),
-    })
-  ).describe('A list of vocabulary words from completed lessons.'),
-  passages: z.array(z.string()).describe('A list of reading passages from completed lessons.'),
+  vocabulary: z
+    .array(
+      z.object({
+        term: z.string(),
+        definition: z.string(),
+      })
+    )
+    .describe("A list of vocabulary words from completed lessons."),
+  passages: z
+    .array(z.string())
+    .describe("A list of reading passages from completed lessons."),
 });
-export type GenerateReviewTestInput = z.infer<typeof GenerateReviewTestInputSchema>;
+export type GenerateReviewTestInput = z.infer<
+  typeof GenerateReviewTestInputSchema
+>;
 
 export const GenerateReviewTestOutputSchema = z.object({
-  vocabularyQuestions: z.array(FillInTheBlankQuestionSchema).describe('An array of 10 fill-in-the-blank vocabulary questions.'),
-  readingQuestions: z.array(ReadingComprehensionQuestionSchema).describe('An array of 5 reading comprehension questions.'),
+  vocabularyQuestions: z
+    .array(FillInTheBlankQuestionSchema)
+    .describe("An array of 10 fill-in-the-blank vocabulary questions."),
+  readingQuestions: z
+    .array(ReadingComprehensionQuestionSchema)
+    .describe("An array of 5 reading comprehension questions."),
 });
-export type GenerateReviewTestOutput = z.infer<typeof GenerateReviewTestOutputSchema>;
+export type GenerateReviewTestOutput = z.infer<
+  typeof GenerateReviewTestOutputSchema
+>;
 
 // Schemas for generate-vocabulary-feedback-flow.ts
 export const GenerateVocabularyFeedbackInputSchema = z.object({
-  sentenceWithBlank: z.string().describe('The sentence with a blank (e.g., "___").'),
+  sentenceWithBlank: z
+    .string()
+    .describe('The sentence with a blank (e.g., "___").'),
   userAnswerTerm: z.string().describe("The user's incorrect word choice."),
-  correctAnswerTerm: z.string().describe('The correct word for the blank.'),
-  correctAnswerDefinition: z.string().describe('The definition of the correct word.'),
+  correctAnswerTerm: z.string().describe("The correct word for the blank."),
+  correctAnswerDefinition: z
+    .string()
+    .describe("The definition of the correct word."),
 });
-export type GenerateVocabularyFeedbackInput = z.infer<typeof GenerateVocabularyFeedbackInputSchema>;
+export type GenerateVocabularyFeedbackInput = z.infer<
+  typeof GenerateVocabularyFeedbackInputSchema
+>;
 
 export const GenerateVocabularyFeedbackOutputSchema = z.object({
   vocabularyAnalysis: z
@@ -487,7 +707,9 @@ export const GenerateVocabularyFeedbackOutputSchema = z.object({
   grammarAnalysis: z
     .string()
     .describe(
-      'An analysis of the grammatical structure of the complete, correct sentence, identifying main components and how they work together.'
+      "An analysis of the grammatical structure of the complete, correct sentence, identifying main components and how they work together."
     ),
 });
-export type GenerateVocabularyFeedbackOutput = z.infer<typeof GenerateVocabularyFeedbackOutputSchema>;
+export type GenerateVocabularyFeedbackOutput = z.infer<
+  typeof GenerateVocabularyFeedbackOutputSchema
+>;

@@ -5,7 +5,7 @@
  * - generateListeningExercise - Creates a dialogue, audio, and questions.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel, getTtsModel } from "@/ai/genkit";
 import wav from "wav";
 import {
   GenerateListeningExerciseInputSchema,
@@ -59,6 +59,7 @@ const toWav = async (
 const generateDialogueScript = async (
   input: GenerateListeningExerciseInput
 ) => {
+  const model = getTextModel();
   const promptText = `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
     {{#if focusPoints}}
     Please make sure the dialogue incorporates the following focus points: {{{focusPoints}}}.
@@ -67,7 +68,7 @@ const generateDialogueScript = async (
 
   try {
     const { output } = await ai.generate({
-      model: "vertexai/gemini-1.5-flash",
+      model,
       prompt: { text: promptText, input },
       output: { schema: DialogueSchema, format: "json" },
     });
@@ -80,7 +81,7 @@ const generateDialogueScript = async (
       error
     );
     const { output: fallbackOutput } = await ai.generate({
-      model: "vertexai/gemini-1.5-flash",
+      model,
       prompt: { text: promptText, input },
       output: { schema: DialogueSchema, format: "json" },
     });
@@ -93,6 +94,7 @@ const generateDialogueScript = async (
 };
 
 const generateComprehensionQuestions = async (dialogueText: string) => {
+  const model = getTextModel();
   const promptText = `Based on the following dialogue, create 3 multiple-choice comprehension questions. Each question must have 4 options, with one clear correct answer.
 
 Dialogue:
@@ -105,7 +107,7 @@ Dialogue:
 
   try {
     const { output } = await ai.generate({
-      model: "vertexai/gemini-1.5-flash",
+      model,
       prompt: { text: promptText, input },
       output: { schema: outputSchema, format: "json" },
     });
@@ -117,7 +119,7 @@ Dialogue:
       error
     );
     const { output: fallbackOutput } = await ai.generate({
-      model: "vertexai/gemini-1.5-flash",
+      model,
       prompt: { text: promptText, input },
       output: { schema: outputSchema, format: "json" },
     });
@@ -144,7 +146,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
 
     // 2. Generate Audio from Script
     const { media } = await ai.generate({
-      model: "googleai/gemini-2.5-flash-preview-tts",
+      model: getTtsModel(),
       config: {
         responseModalities: ["AUDIO"],
         speechConfig: {

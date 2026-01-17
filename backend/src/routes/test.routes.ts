@@ -13,6 +13,7 @@ router.post("/", TestController.create);
 
 // Single test
 router.get("/:id", TestController.getById);
+router.get("/:id/items", TestController.listItemsByTest);
 router.put("/:id", TestController.update);
 router.delete("/:id", TestController.delete);
 

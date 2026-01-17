@@ -5,7 +5,7 @@
  * - generateReadingExercise - A function that creates questions for a passage.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateReadingExerciseInputSchema,
   GenerateReadingExerciseOutputSchema,
@@ -36,9 +36,10 @@ const generateReadingExerciseFlow = ai.defineFlow(
     outputSchema: GenerateReadingExerciseOutputSchema,
   },
   async (input) => {
+    const model = getTextModel();
     try {
       const { output } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: { schema: GenerateReadingExerciseOutputSchema, format: "json" },
       });
@@ -50,7 +51,7 @@ const generateReadingExerciseFlow = ai.defineFlow(
         error
       );
       const { output: fallbackOutput } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: { schema: GenerateReadingExerciseOutputSchema, format: "json" },
       });

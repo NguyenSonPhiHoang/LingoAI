@@ -1,6 +1,7 @@
 "use client";
 
 import { db, auth, firebaseEnabled } from "@/lib/firebase";
+import { apiDelete, apiGet, apiPost } from "./api";
 import {
   collection,
   getDocs,
@@ -39,7 +40,9 @@ export interface LearningResource {
 }
 
 export const getResources = async (): Promise<LearningResource[]> => {
-  if (!firebaseEnabled) return [];
+  if (!firebaseEnabled) {
+    return apiGet<LearningResource[]>("/api/learning-resources");
+  }
 
   const q = query(resourcesCollection, orderBy("createdAt", "asc"));
   const snapshot = await getDocs(q);
@@ -69,14 +72,7 @@ export const addResource = async (
   >
 ): Promise<LearningResource> => {
   if (!firebaseEnabled) {
-    return {
-      ...payload,
-      id: `resource_${Date.now()}`,
-      createdAt: new Date(),
-      ratings: {},
-      ratingCount: 0,
-      averageRating: 0,
-    };
+    return apiPost<LearningResource>("/api/learning-resources", payload);
   }
 
   if (auth.currentUser?.email !== "admin@lingoai.com") {
@@ -100,10 +96,16 @@ export const addResource = async (
 };
 
 export const deleteResource = async (id: string) => {
-  if (!firebaseEnabled) return;
+  if (!firebaseEnabled) {
+    await apiDelete(`/api/learning-resources/${id}`);
+    return;
+  }
 
   const user = auth.currentUser;
   if (!user) throw new Error("Authentication required.");
+  if (user.email !== "admin@lingoai.com") {
+    throw new Error("Only admins can delete resources.");
+  }
   // A more robust solution would be custom claims for roles
   // For now, we allow deletion by the creator or an admin.
   // Let's assume only admin can delete for now.
@@ -117,7 +119,12 @@ export const rateResource = async (
   resourceId: string,
   rating: number
 ): Promise<{ averageRating: number; ratingCount: number }> => {
-  if (!firebaseEnabled) return { averageRating: 0, ratingCount: 0 };
+  if (!firebaseEnabled) {
+    return apiPost<{ averageRating: number; ratingCount: number }>(
+      `/api/learning-resources/${resourceId}/rate`,
+      { rating }
+    );
+  }
 
   const user = auth.currentUser;
   if (!user) throw new Error("You must be logged in to rate.");

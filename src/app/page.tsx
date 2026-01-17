@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -28,12 +27,12 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
 
-
 export type View =
   | "overview"
   | "levels"
   | "ai-suggester"
   | "my-lessons"
+  | "grammar"
   | "vocabulary"
   | "review"
   | "user-management"
@@ -43,24 +42,26 @@ export type View =
   | "settings"
   | "placement-test"
   | "review-test";
-  
 
 export type ViewState = {
   view: View | "storybook" | "library" | "guide";
   lesson?: Lesson;
   recommendedLevel?: UserLevel;
   reviewTest?: GenerateReviewTestOutput;
+  reviewTab?: "matching" | "fill-in-the-blank" | "part-of-speech";
 };
 
 const Home: FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeViewState, setActiveViewState] = useState<ViewState>({ view: "overview" });
+  const [activeViewState, setActiveViewState] = useState<ViewState>({
+    view: "overview",
+  });
   const [words, setWords] = useState<CombinedVocabulary[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  
+
   const userId = user?.uid;
   const userStatus = user?.status;
 
@@ -72,13 +73,13 @@ const Home: FC = () => {
       return;
     }
 
-    if (userStatus === 'approved') {
+    if (userStatus === "approved") {
       const fetchData = async () => {
         setIsLoading(true);
         try {
           const [fetchedWords, fetchedLessons] = await Promise.all([
             getVocabulary(userId),
-            getLessons(userId)
+            getLessons(userId),
           ]);
           setWords(fetchedWords);
           setLessons(fetchedLessons);
@@ -90,7 +91,7 @@ const Home: FC = () => {
             description: "Could not fetch your data. Please try again later.",
           });
         } finally {
-            setIsLoading(false);
+          setIsLoading(false);
         }
       };
       fetchData();
@@ -101,73 +102,107 @@ const Home: FC = () => {
 
   if (authLoading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex min-h-svh w-full items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
 
   const favoriteWords = words.filter((word) => word.favorite);
-  
-  const setActiveView = (view: View | "storybook" | "library" | "guide") => {
-      if (view === 'storybook') {
-          router.push('/storybook');
-      } else if (view === 'library') {
-          router.push('/library');
-      } else if (view === 'guide') {
-          router.push('/guide');
-      }
-      setActiveViewState({ view });
-  }
 
-  const handleLessonUpdate = (updatedLesson: Lesson) => {
-    setLessons(prev => prev.map(l => l.id === updatedLesson.id ? updatedLesson : l));
+  const setActiveView = (view: View | "storybook" | "library" | "guide") => {
+    if (view === "storybook") {
+      router.push("/storybook");
+    } else if (view === "library") {
+      router.push("/library");
+    } else if (view === "guide") {
+      router.push("/guide");
+    }
+    setActiveViewState({ view });
   };
 
+  const handleLessonUpdate = (updatedLesson: Lesson) => {
+    setLessons((prev) =>
+      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+    );
+  };
 
   const renderContent = () => {
-    if (user.status === 'approved' && isLoading) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+    if (user.status === "approved" && isLoading) {
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+      );
     }
-    
-    if (user.status === 'pending' || user.status === 'rejected') {
-        return <WaitingForApproval />;
+
+    if (user.status === "pending" || user.status === "rejected") {
+      return <WaitingForApproval />;
     }
-    
-    if (user.status === 'approved') {
+
+    if (user.status === "approved") {
       switch (activeViewState.view) {
         case "overview":
-          return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
+          return (
+            <DashboardOverview
+              setActiveView={(view) => setActiveViewState({ view })}
+              setActiveViewState={setActiveViewState}
+              favoriteWords={favoriteWords}
+              setWords={setWords}
+              lessons={lessons}
+            />
+          );
         case "levels":
           return <LevelView />;
         case "ai-suggester":
-          return <AiSuggester setActiveViewState={setActiveViewState} recommendedLevel={activeViewState.recommendedLevel}/>;
+          return (
+            <AiSuggester
+              setActiveViewState={setActiveViewState}
+              recommendedLevel={activeViewState.recommendedLevel}
+            />
+          );
         case "my-lessons":
-          return <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
+          return (
+            <MyLessonsView
+              lessons={lessons}
+              setLessons={setLessons}
+              setActiveViewState={setActiveViewState}
+            />
+          );
         case "vocabulary":
           return <VocabularyList words={words} setWords={setWords} />;
         case "review":
-          return <ReviewView words={favoriteWords} />;
+          return (
+            <ReviewView
+              words={favoriteWords}
+              initialTab={activeViewState.reviewTab}
+            />
+          );
         case "user-management":
           return <UserManagement />;
         case "word-management":
-            return <WordManagement />;
+          return <WordManagement />;
         case "profile":
-            return <ProfileView />;
+          return <ProfileView />;
         case "settings":
-            return <SettingsView />;
+          return <SettingsView />;
         case "placement-test":
-            return <PlacementTest setActiveViewState={setActiveViewState} />;
+          return <PlacementTest setActiveViewState={setActiveViewState} />;
         case "review-test":
-             return activeViewState.reviewTest ? (
-                <ReviewTestView test={activeViewState.reviewTest} onBack={() => setActiveViewState({view: 'my-lessons'})} />
-            ) : <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />;
+          return activeViewState.reviewTest ? (
+            <ReviewTestView
+              test={activeViewState.reviewTest}
+              onBack={() => setActiveViewState({ view: "my-lessons" })}
+            />
+          ) : (
+            <MyLessonsView
+              lessons={lessons}
+              setLessons={setLessons}
+              setActiveViewState={setActiveViewState}
+            />
+          );
         case "lesson-detail":
-           return activeViewState.lesson ? (
+          return activeViewState.lesson ? (
             <LessonDetailView
               lesson={activeViewState.lesson}
               vocabulary={words}
@@ -176,16 +211,28 @@ const Home: FC = () => {
               onLessonUpdate={handleLessonUpdate}
             />
           ) : (
-            <MyLessonsView lessons={lessons} setLessons={setLessons} setActiveViewState={setActiveViewState} />
+            <MyLessonsView
+              lessons={lessons}
+              setLessons={setLessons}
+              setActiveViewState={setActiveViewState}
+            />
           );
         default:
-          return <DashboardOverview setActiveView={(view) => setActiveViewState({ view })} />;
+          return (
+            <DashboardOverview
+              setActiveView={(view) => setActiveViewState({ view })}
+              setActiveViewState={setActiveViewState}
+              favoriteWords={favoriteWords}
+              setWords={setWords}
+              lessons={lessons}
+            />
+          );
       }
     }
 
     return null;
   };
-  
+
   return (
     <DashboardLayout
       activeView={activeViewState.view}

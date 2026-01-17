@@ -5,7 +5,7 @@
  * - generatePronunciationExercise - A function that creates pronunciation drills.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GeneratePronunciationExerciseInputSchema,
   GeneratePronunciationExerciseOutputSchema,
@@ -44,9 +44,10 @@ const generatePronunciationExerciseFlow = ai.defineFlow(
     outputSchema: GeneratePronunciationExerciseOutputSchema,
   },
   async (input) => {
+    const model = getTextModel();
     try {
       const { output } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: {
           schema: GeneratePronunciationExerciseOutputSchema,
@@ -61,7 +62,7 @@ const generatePronunciationExerciseFlow = ai.defineFlow(
         error
       );
       const { output: fallbackOutput } = await ai.generate({
-        model: "vertexai/gemini-1.5-flash",
+        model,
         prompt: { text: promptText, input },
         output: {
           schema: GeneratePronunciationExerciseOutputSchema,

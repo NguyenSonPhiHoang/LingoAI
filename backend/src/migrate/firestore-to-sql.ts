@@ -25,9 +25,6 @@ async function main() {
     console.warn("Schema execution warning:", e?.message || e);
   }
 
-  // Ensure users table exists
-  await UserRepository.createTableIfNotExists();
-
   // Migrate users collection
   const usersSnapshot = await db.collection("users").get();
   console.log(`Found ${usersSnapshot.size} users in Firestore`);

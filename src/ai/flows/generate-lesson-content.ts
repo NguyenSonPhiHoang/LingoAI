@@ -5,24 +5,15 @@
  * - generateLessonContent - Creates vocabulary, grammar, and a passage/dialogue.
  */
 
-import { ai } from "@/ai/genkit";
+import { createAi, getTextModel } from "@/ai/genkit";
 import { genkit } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
-import { vertexAI } from "@genkit-ai/vertexai";
 import {
   GenerateLessonContentInputSchema,
   GenerateLessonContentOutputSchema,
   type GenerateLessonContentInput,
   type GenerateLessonContentOutput,
 } from "./schemas";
-import { getAuth } from "firebase-admin/auth";
-import { auth } from "@/lib/firebase";
-import type { User } from "@/context/auth-context";
-
-const getApiKey = () => {
-  const user = auth.currentUser as User | null;
-  return user?.geminiApiKey || process.env.GEMINI_API_KEY;
-};
 
 export async function generateLessonContent(
   input: GenerateLessonContentInput
@@ -55,15 +46,18 @@ User Level: "{{level}}"
 Generate the complete learning materials now.
 `;
 
-const generateLessonContentFlow = ai.defineFlow(
+const baseAi = createAi();
+
+const generateLessonContentFlow = baseAi.defineFlow(
   {
     name: "generateLessonContentFlow",
     inputSchema: GenerateLessonContentInputSchema,
     outputSchema: GenerateLessonContentOutputSchema,
   },
   async (input, streamingCallback) => {
-    const user = auth.currentUser as User | null;
-    const apiKey = user?.geminiApiKey;
+    // NOTE: This file is a Server Action/Genkit flow ("use server").
+    // Firebase client auth (`auth.currentUser`) is not available here and will be null.
+    const apiKey = input.geminiApiKey;
 
     if (apiKey) {
       console.log("[LingoAI] Using User's Gemini API Key.");
@@ -73,23 +67,18 @@ const generateLessonContentFlow = ai.defineFlow(
       );
     }
 
-    // Create a per-request AI instance. Use user's Google API key when provided; otherwise use Vertex AI.
-    const useGoogle = Boolean(apiKey || process.env.GEMINI_API_KEY);
+    const systemDefaultKey = process.env.GEMINI_API_KEY;
+    if (!apiKey && !systemDefaultKey) {
+      throw new Error(
+        "GEMINI_API_KEY is not configured and no user Gemini key was provided"
+      );
+    }
+
+    // Create a per-request AI instance using Gemini API key only (no Vertex fallback).
     const runtimeAi = genkit({
-      plugins: [
-        useGoogle
-          ? googleAI({ apiKey: (apiKey || process.env.GEMINI_API_KEY)! })
-          : vertexAI({
-              projectId:
-                process.env.VERTEXAI_PROJECT ||
-                process.env.GOOGLE_CLOUD_PROJECT,
-              location: process.env.VERTEXAI_LOCATION || "us-central1",
-            }),
-      ],
+      plugins: [googleAI({ apiKey: (apiKey || systemDefaultKey)! })],
     });
-    const textModel = useGoogle
-      ? "googleai/gemini-1.5-flash"
-      : "vertexai/gemini-1.5-flash";
+    const textModel = getTextModel();
 
     // Simple exponential backoff with jitter for 429s and transient errors.
     const withRetry = async <T>(

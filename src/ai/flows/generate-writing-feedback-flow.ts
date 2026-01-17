@@ -5,7 +5,7 @@
  * - generateWritingFeedback - A function that provides corrections and suggestions.
  */
 
-import { ai } from "@/ai/genkit";
+import { ai, getTextModel } from "@/ai/genkit";
 import {
   GenerateWritingFeedbackInputSchema,
   GenerateWritingFeedbackOutputSchema,
@@ -19,9 +19,11 @@ export async function generateWritingFeedback(
   return generateWritingFeedbackFlow(input);
 }
 
+const textModel = getTextModel();
+
 const prompt = ai.definePrompt({
   name: "generateWritingFeedbackPrompt",
-  model: "vertexai/gemini-1.5-flash",
+  model: textModel,
   input: { schema: GenerateWritingFeedbackInputSchema },
   output: { schema: GenerateWritingFeedbackOutputSchema },
   prompt: `You are an English teacher providing feedback on a writing exercise. The user was given a Vietnamese prompt, an English hint, and they have written an English sentence.

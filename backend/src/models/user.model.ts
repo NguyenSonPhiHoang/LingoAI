@@ -6,4 +6,5 @@ export interface User {
   roleId?: string | null;
   status?: string | null;
   createdAt?: string; // ISO
+  omniChatEnabled?: boolean | null;
 }

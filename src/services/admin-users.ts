@@ -7,6 +7,7 @@ export interface AdminUserRow {
   RoleId?: string;
   CreatedAt?: string;
   Status?: string;
+  OmniChatEnabled?: boolean;
 }
 
 export interface AdminListResult {

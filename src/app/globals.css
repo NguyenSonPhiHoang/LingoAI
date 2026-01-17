@@ -86,24 +86,24 @@ body {
   }
 
   .theme-blue {
-      --primary: 221 83% 53%;
-      --primary-foreground: 221 83% 98%;
-      --ring: 221 83% 53%;
-      --chart-1: 221 83% 53%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 221 83% 98%;
+    --ring: 221 83% 53%;
+    --chart-1: 221 83% 53%;
   }
 
   .theme-green {
-      --primary: 142 71% 45%;
-      --primary-foreground: 142 71% 95%;
-      --ring: 142 71% 45%;
-      --chart-1: 142 71% 45%;
+    --primary: 142 71% 45%;
+    --primary-foreground: 142 71% 95%;
+    --ring: 142 71% 45%;
+    --chart-1: 142 71% 45%;
   }
 
   .theme-rose {
-      --primary: 347 90% 58%;
-      --primary-foreground: 347 90% 98%;
-      --ring: 347 90% 58%;
-      --chart-1: 347 90% 58%;
+    --primary: 347 90% 58%;
+    --primary-foreground: 347 90% 98%;
+    --ring: 347 90% 58%;
+    --chart-1: 347 90% 58%;
   }
 }
 
@@ -111,7 +111,38 @@ body {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-svh overflow-x-hidden;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Markdown/typography content should not cause horizontal scroll on mobile. */
+  .prose {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .prose pre,
+  .prose code {
+    max-width: 100%;
+  }
+
+  .prose pre {
+    overflow-x: auto;
+  }
+
+  img,
+  video,
+  svg,
+  canvas {
+    max-width: 100%;
+    height: auto;
   }
 }

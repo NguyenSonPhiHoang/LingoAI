@@ -1,5 +1,7 @@
 
 # Hướng Dẫn Sử Dụng LingoAI
+# Chạy Script thêm pronounciation
+npm run backfill:pronunciation -- --limit 200 --delayMs 250
 
 Chào mừng bạn đến với LingoAI, người bạn đồng hành học tiếng Anh được cá nhân hóa bởi trí tuệ nhân tạo. Dưới đây là hướng dẫn chi tiết về các chức năng chính của hệ thống.
 
