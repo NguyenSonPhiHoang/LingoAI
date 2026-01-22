@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/services/api";
+import { apiGet, apiPost, apiPut } from "@/services/api";
 
 export type GrammarLessonListItem = {
   id: string;
@@ -28,6 +28,7 @@ export type GrammarLessonDetail = {
   topic: string | null;
   contentMarkdown: string;
   exercises: GrammarExercise[];
+  resources?: Array<{ title: string; url: string }>;
 };
 
 export async function listGrammarLessons() {
@@ -36,7 +37,7 @@ export async function listGrammarLessons() {
 
 export async function getGrammarLesson(lessonId: string) {
   return apiGet<{ lesson: GrammarLessonDetail }>(
-    `/api/grammar/lessons/${lessonId}`
+    `/api/grammar/lessons/${lessonId}`,
   );
 }
 
@@ -60,11 +61,11 @@ export type SubmitGrammarAttemptResult = {
 
 export async function submitGrammarAttempt(
   lessonId: string,
-  answers: SubmitGrammarAttemptAnswer[]
+  answers: SubmitGrammarAttemptAnswer[],
 ) {
   return apiPost<SubmitGrammarAttemptResult>(
     `/api/grammar/lessons/${lessonId}/attempts`,
-    { answers }
+    { answers },
   );
 }
 
@@ -73,11 +74,27 @@ export type CreateGrammarLessonInput = {
   level: "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
   topic?: string | null;
   contentMarkdown: string;
+  resources?: Array<{ title: string; url: string }>;
   isPublished?: boolean;
 };
 
 export async function createGrammarLesson(input: CreateGrammarLessonInput) {
   return apiPost<{ id: string }>("/api/grammar/lessons", input);
+}
+
+export type UpdateGrammarLessonInput = {
+  id: string;
+  title?: string;
+  level?: "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
+  topic?: string | null;
+  contentMarkdown?: string;
+  resources?: Array<{ title: string; url: string }>;
+  isPublished?: boolean;
+};
+
+export async function updateGrammarLesson(input: UpdateGrammarLessonInput) {
+  const { id, ...rest } = input;
+  return apiPut<{ ok: true }>(`/api/grammar/lessons/${id}`, rest);
 }
 
 export type UpsertGrammarExerciseInput = {
@@ -93,7 +110,7 @@ export type UpsertGrammarExerciseInput = {
 
 export async function upsertGrammarExercises(
   lessonId: string,
-  exercises: UpsertGrammarExerciseInput[]
+  exercises: UpsertGrammarExerciseInput[],
 ) {
   return apiPost<{ ok: true }>(`/api/grammar/lessons/${lessonId}/exercises`, {
     exercises,

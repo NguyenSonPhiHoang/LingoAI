@@ -46,6 +46,7 @@ import {
   type GrammarExercise,
   type SubmitGrammarAttemptResult,
   upsertGrammarExercises,
+  updateGrammarLesson,
 } from "@/services/grammar";
 
 type AnswerState = Record<string, any>;
@@ -63,7 +64,7 @@ type EditorExercise = {
 };
 
 function safeParseOptions(
-  optionsJson: string | null
+  optionsJson: string | null,
 ): Array<{ id: string; label: string }> {
   if (!optionsJson) return [];
   try {
@@ -71,7 +72,7 @@ function safeParseOptions(
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter(
-        (o) => o && typeof o.id === "string" && typeof o.label === "string"
+        (o) => o && typeof o.id === "string" && typeof o.label === "string",
       )
       .map((o) => ({ id: o.id, label: o.label }));
   } catch {
@@ -80,7 +81,7 @@ function safeParseOptions(
 }
 
 function toEditorExercises(
-  exercises: any[] | undefined | null
+  exercises: any[] | undefined | null,
 ): EditorExercise[] {
   return (exercises || []).map((e: any) => {
     let options: Array<{ id: string; label: string }> | undefined = undefined;
@@ -153,10 +154,41 @@ const GrammarLessonPage: FC = () => {
   // Exercise editor state for admins/teachers
   const [editorOpen, setEditorOpen] = useState(false);
   const [exercisesEditable, setExercisesEditable] = useState<EditorExercise[]>(
-    []
+    [],
   );
   const [isSavingExercises, setIsSavingExercises] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Collapsible sections
+  const [openLesson, setOpenLesson] = useState(true);
+  const [openResources, setOpenResources] = useState(true);
+  const [openExercises, setOpenExercises] = useState(true);
+
+  useEffect(() => {
+    if (!lesson) return;
+    setOpenResources(!!(lesson.resources && lesson.resources.length > 0));
+    setOpenExercises(!!(lesson.exercises && lesson.exercises.length > 0));
+  }, [lesson]);
+
+  // Helper for smooth collapse animation
+  const collapseStyle = (open: boolean, max = 800) => ({
+    maxHeight: open ? `${max}px` : "0px",
+    overflow: "hidden",
+    transition: "max-height 260ms ease, opacity 200ms ease",
+    opacity: open ? 1 : 0,
+  });
+
+  // Edit lesson dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editLevel, setEditLevel] =
+    useState<GrammarLessonDetail["level"]>("a1");
+  const [editTopic, setEditTopic] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editResources, setEditResources] = useState<
+    Array<{ title: string; url: string }>
+  >([]);
+  const [isSavingLesson, setIsSavingLesson] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -185,6 +217,23 @@ const GrammarLessonPage: FC = () => {
       })
       .finally(() => setIsLoading(false));
   }, [authLoading, user, lessonId, router, toast]);
+
+  useEffect(() => {
+    if (editOpen && lesson) {
+      setEditTitle(lesson.title || "");
+      setEditLevel(lesson.level || "a1");
+      setEditTopic(lesson.topic || null);
+      setEditContent(lesson.contentMarkdown || "");
+      setEditResources(
+        lesson.resources
+          ? lesson.resources.map((r) => ({
+              title: r.title || "",
+              url: r.url || "",
+            }))
+          : [],
+      );
+    }
+  }, [editOpen, lesson]);
 
   const resultByExerciseId = useMemo(() => {
     const map = new Map<
@@ -361,7 +410,7 @@ const GrammarLessonPage: FC = () => {
             correctOptionId = options[asIndex - 1]?.id || null;
           } else {
             const found = options.find(
-              (o) => o.label.toLowerCase() === correctRaw.toLowerCase()
+              (o) => o.label.toLowerCase() === correctRaw.toLowerCase(),
             );
             correctOptionId = found?.id || null;
           }
@@ -380,7 +429,7 @@ const GrammarLessonPage: FC = () => {
         });
       } else {
         const acceptedStr = String(
-          row.acceptedAnswers || row.AcceptedAnswers || ""
+          row.acceptedAnswers || row.AcceptedAnswers || "",
         ).trim();
         const acceptedAnswers = acceptedStr
           ? acceptedStr
@@ -413,7 +462,7 @@ const GrammarLessonPage: FC = () => {
     }
 
     const replace = window.confirm(
-      `Import ${imported.length} exercises.\n\nOK = Replace existing\nCancel = Append to existing`
+      `Import ${imported.length} exercises.\n\nOK = Replace existing\nCancel = Append to existing`,
     );
 
     setExercisesEditable((prev) => {
@@ -443,498 +492,115 @@ const GrammarLessonPage: FC = () => {
           </div>
           <h1 className="text-2xl font-bold truncate">{lesson.title}</h1>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push("/grammar")}
-          className="shrink-0"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" /> Back
-        </Button>
-        {canManage ? (
-          <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost">Manage exercises</Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-5xl">
-              <DialogHeader>
-                <DialogTitle>Manage Exercises</DialogTitle>
-              </DialogHeader>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!file) return;
-                  try {
-                    await importExercisesFromFile(file);
-                  } catch (err) {
-                    console.error("Import exercises failed", err);
-                    toast({
-                      variant: "destructive",
-                      title: "Import failed",
-                      description: "Could not read the Excel file.",
-                    });
-                  }
-                }}
-              />
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm text-muted-foreground">
-                  Tip: Use “Download template” then fill and import.
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={downloadExercisesTemplate}
-                  >
-                    <Download className="h-4 w-4 mr-2" /> Download template
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="h-4 w-4 mr-2" /> Import Excel
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={exportCurrentExercises}
-                    disabled={exercisesEditable.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-2" /> Export current
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                {exercisesEditable.map((ex, idx) => (
-                  <div
-                    key={ex.id || idx}
-                    className="space-y-2 border p-3 rounded"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-start gap-2 w-full">
-                        <Select
-                          value={ex.type}
-                          onValueChange={(v) =>
-                            setExercisesEditable((prev) =>
-                              prev.map((e, i) =>
-                                i === idx ? { ...e, type: v as any } : e
-                              )
-                            )
-                          }
-                        >
-                          <SelectTrigger className="w-28">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="mcq">MCQ</SelectItem>
-                            <SelectItem value="text">Text</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                        <Textarea
-                          value={ex.prompt}
-                          onChange={(e) =>
-                            setExercisesEditable((prev) =>
-                              prev.map((p, i) =>
-                                i === idx ? { ...p, prompt: e.target.value } : p
-                              )
-                            )
-                          }
-                          className="w-full min-h-[80px]"
-                          placeholder="Enter the exercise question..."
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={String(ex.points || 1)}
-                          onChange={(e) =>
-                            setExercisesEditable((prev) =>
-                              prev.map((p, i) =>
-                                i === idx
-                                  ? {
-                                      ...p,
-                                      points: Number(e.target.value) || 1,
-                                    }
-                                  : p
-                              )
-                            )
-                          }
-                          className="w-20"
-                        />
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setExercisesEditable((prev) => {
-                                if (idx === 0) return prev;
-                                const copy = [...prev];
-                                const a = copy[idx - 1];
-                                copy[idx - 1] = copy[idx];
-                                copy[idx] = a;
-                                return copy;
-                              })
-                            }
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              setExercisesEditable((prev) => {
-                                if (idx === prev.length - 1) return prev;
-                                const copy = [...prev];
-                                const a = copy[idx + 1];
-                                copy[idx + 1] = copy[idx];
-                                copy[idx] = a;
-                                return copy;
-                              })
-                            }
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            onClick={() =>
-                              setExercisesEditable((prev) =>
-                                prev.filter((_, i) => i !== idx)
-                              )
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {ex.type === "mcq" ? (
-                      <div className="space-y-2">
-                        <Label>Options</Label>
-                        <div className="space-y-2">
-                          {(ex.options || []).map((opt, oi) => (
-                            <div
-                              key={opt.id || oi}
-                              className="flex items-center gap-2"
-                            >
-                              <RadioGroup
-                                value={ex.correctOptionId || ""}
-                                onValueChange={(v) =>
-                                  setExercisesEditable((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx
-                                        ? { ...p, correctOptionId: v }
-                                        : p
-                                    )
-                                  )
-                                }
-                              >
-                                <RadioGroupItem
-                                  value={opt.id}
-                                  id={`opt-${idx}-${oi}`}
-                                />
-                              </RadioGroup>
-                              <Input
-                                value={opt.label}
-                                onChange={(e) =>
-                                  setExercisesEditable((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx
-                                        ? {
-                                            ...p,
-                                            options: (p.options || []).map(
-                                              (o, ii) =>
-                                                ii === oi
-                                                  ? {
-                                                      ...o,
-                                                      label: e.target.value,
-                                                    }
-                                                  : o
-                                            ),
-                                          }
-                                        : p
-                                    )
-                                  )
-                                }
-                                className="flex-1"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  setExercisesEditable((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx
-                                        ? {
-                                            ...p,
-                                            options: (p.options || []).filter(
-                                              (_, ii) => ii !== oi
-                                            ),
-                                          }
-                                        : p
-                                    )
-                                  )
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              setExercisesEditable((prev) =>
-                                prev.map((p, i) =>
-                                  i === idx
-                                    ? {
-                                        ...p,
-                                        options: [
-                                          ...(p.options || []),
-                                          {
-                                            id: `opt-${Date.now()}-${Math.random()
-                                              .toString(36)
-                                              .slice(2, 6)}`,
-                                            label: "Option",
-                                          },
-                                        ],
-                                      }
-                                    : p
-                                )
-                              )
-                            }
-                          >
-                            <Plus className="h-4 w-4 mr-2" /> Add option
-                          </Button>
-                        </div>
-
-                        <Label>Explanation (optional)</Label>
-                        <Textarea
-                          value={ex.explanation || ""}
-                          onChange={(e) =>
-                            setExercisesEditable((prev) =>
-                              prev.map((p, i) =>
-                                i === idx
-                                  ? { ...p, explanation: e.target.value }
-                                  : p
-                              )
-                            )
-                          }
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label>Accepted answers</Label>
-                        <div className="space-y-2">
-                          {(ex.acceptedAnswers || []).map((ans, ai) => (
-                            <div key={ai} className="flex items-center gap-2">
-                              <Input
-                                value={ans}
-                                onChange={(e) =>
-                                  setExercisesEditable((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx
-                                        ? {
-                                            ...p,
-                                            acceptedAnswers: (
-                                              p.acceptedAnswers || []
-                                            ).map((a, ii) =>
-                                              ii === ai ? e.target.value : a
-                                            ),
-                                          }
-                                        : p
-                                    )
-                                  )
-                                }
-                                className="flex-1"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  setExercisesEditable((prev) =>
-                                    prev.map((p, i) =>
-                                      i === idx
-                                        ? {
-                                            ...p,
-                                            acceptedAnswers: (
-                                              p.acceptedAnswers || []
-                                            ).filter((_, ii) => ii !== ai),
-                                          }
-                                        : p
-                                    )
-                                  )
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              setExercisesEditable((prev) =>
-                                prev.map((p, i) =>
-                                  i === idx
-                                    ? {
-                                        ...p,
-                                        acceptedAnswers: [
-                                          ...(p.acceptedAnswers || []),
-                                          "",
-                                        ],
-                                      }
-                                    : p
-                                )
-                              )
-                            }
-                          >
-                            <Plus className="h-4 w-4 mr-2" /> Add accepted
-                            answer
-                          </Button>
-                        </div>
-
-                        <Label>Explanation (optional)</Label>
-                        <Textarea
-                          value={ex.explanation || ""}
-                          onChange={(e) =>
-                            setExercisesEditable((prev) =>
-                              prev.map((p, i) =>
-                                i === idx
-                                  ? { ...p, explanation: e.target.value }
-                                  : p
-                              )
-                            )
-                          }
-                          className="min-h-[80px]"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                <div>
-                  <Button
-                    onClick={() => {
-                      setExercisesEditable((prev) => [
-                        ...prev,
-                        {
-                          id: "",
-                          type: "mcq",
-                          prompt: "",
-                          options: [
-                            { id: `opt-${Date.now()}`, label: "Option 1" },
-                          ],
-                          correctOptionId: null,
-                          acceptedAnswers: [],
-                          explanation: null,
-                          points: 1,
-                          sortOrder: prev.length,
-                        },
-                      ]);
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> Add exercise
-                  </Button>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditorOpen(false)}>
-                  Close
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!lesson) return;
-                    setIsSavingExercises(true);
-                    try {
-                      // Map to upsert input
-                      const payload = exercisesEditable.map((e, i) => ({
-                        id: e.id || undefined,
-                        type: e.type,
-                        prompt: e.prompt,
-                        optionsJson:
-                          e.options && e.options.length ? e.options : undefined,
-                        answerJson:
-                          e.type === "mcq"
-                            ? { correctOptionId: e.correctOptionId }
-                            : { accepted: e.acceptedAnswers || [] },
-                        explanation: e.explanation || null,
-                        points: e.points || 1,
-                        sortOrder: i,
-                      }));
-
-                      await upsertGrammarExercises(lesson.id, payload);
-                      toast({
-                        title: "Saved",
-                        description: "Exercises updated.",
-                      });
-                      setEditorOpen(false);
-                      // reload lesson
-                      const res = await getGrammarLesson(lesson.id);
-                      setLesson(res.lesson);
-                      setExercisesEditable(
-                        toEditorExercises(res.lesson.exercises as any[])
-                      );
-                    } catch (err: any) {
-                      console.error("Failed to save exercises", err);
-                      toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description:
-                          err?.message || "Could not save exercises.",
-                      });
-                    } finally {
-                      setIsSavingExercises(false);
-                    }
-                  }}
-                  disabled={isSavingExercises}
-                >
-                  {isSavingExercises ? "Saving..." : "Save changes"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        ) : null}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push("/grammar")}>
+            <ChevronLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
+          {canManage ? (
+            <Button variant="ghost" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between">
           <CardTitle>Lesson</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setOpenLesson((v) => !v)}
+          >
+            <ChevronDown
+              className={
+                "h-4 w-4 transition-transform " +
+                (openLesson ? "rotate-180" : "")
+              }
+            />
+          </Button>
         </CardHeader>
-        <CardContent>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {lesson.contentMarkdown}
-            </ReactMarkdown>
-          </div>
-        </CardContent>
+        <div style={collapseStyle(openLesson, 1600)}>
+          <CardContent>
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {lesson.contentMarkdown}
+              </ReactMarkdown>
+            </div>
+          </CardContent>
+        </div>
       </Card>
 
+      {lesson.resources && lesson.resources.length > 0 ? (
+        <Card>
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Resources</CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOpenResources((v) => !v)}
+            >
+              <ChevronDown
+                className={
+                  "h-4 w-4 transition-transform " +
+                  (openResources ? "rotate-180" : "")
+                }
+              />
+            </Button>
+          </CardHeader>
+          <div style={collapseStyle(openResources, 400)}>
+            <CardContent>
+              <ul className="space-y-2">
+                {lesson.resources.map((r, i) => (
+                  <li key={i}>
+                    <div className="rounded-md bg-muted/30 p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm text-foreground truncate">
+                          {r.title || r.url}
+                        </div>
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline text-sm break-all"
+                        >
+                          {r.url}
+                        </a>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </div>
+        </Card>
+      ) : null}
+
       <Card>
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between">
           <CardTitle>Exercises</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setOpenExercises((v) => !v)}
+          >
+            <ChevronDown
+              className={
+                "h-4 w-4 transition-transform " +
+                (openExercises ? "rotate-180" : "")
+              }
+            />
+          </Button>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {lesson.exercises.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No exercises for this lesson yet.
-            </p>
-          ) : (
-            lesson.exercises.map((ex, idx) => {
-              const r = resultByExerciseId.get(ex.id);
-              return (
+        <div style={collapseStyle(openExercises, 1200)}>
+          <CardContent className="space-y-6">
+            {lesson.exercises.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No exercises for this lesson yet.
+              </p>
+            ) : (
+              lesson.exercises.map((ex, idx) => (
                 <div key={ex.id} className="space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -943,89 +609,13 @@ const GrammarLessonPage: FC = () => {
                       </div>
                       <div className="font-medium">{ex.prompt}</div>
                     </div>
-                    {r ? (
-                      <Badge variant={r.isCorrect ? "default" : "destructive"}>
-                        {r.isCorrect ? "Correct" : "Wrong"}
-                      </Badge>
-                    ) : null}
                   </div>
-
-                  {ex.type === "mcq" ? (
-                    <McqExercise
-                      exercise={ex}
-                      value={answers[ex.id]?.optionId || ""}
-                      onChange={(optionId) =>
-                        setAnswers((prev) => ({
-                          ...prev,
-                          [ex.id]: { optionId },
-                        }))
-                      }
-                      disabled={!!result}
-                    />
-                  ) : (
-                    <div className="space-y-2">
-                      <Label htmlFor={`ex-${ex.id}`}>Your answer</Label>
-                      <Input
-                        id={`ex-${ex.id}`}
-                        value={
-                          typeof answers[ex.id] === "string"
-                            ? answers[ex.id]
-                            : answers[ex.id]?.text || ""
-                        }
-                        onChange={(e) =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [ex.id]: e.target.value,
-                          }))
-                        }
-                        disabled={!!result}
-                      />
-                    </div>
-                  )}
-
-                  {r?.explanation ? (
-                    <div className="text-sm text-muted-foreground">
-                      Explanation: {r.explanation}
-                    </div>
-                  ) : null}
-
                   <div className="border-b pt-3" />
                 </div>
-              );
-            })
-          )}
-
-          {lesson.exercises.length > 0 ? (
-            <div className="flex items-center justify-between gap-3">
-              {result ? (
-                <div className="text-sm">
-                  Score: <span className="font-semibold">{result.score}</span>/
-                  {result.maxScore}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Submit to get your score.
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setResult(null);
-                    setAnswers({});
-                  }}
-                  disabled={submitting}
-                >
-                  Reset
-                </Button>
-                <Button onClick={onSubmit} disabled={submitting || !!result}>
-                  {submitting ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
+              ))
+            )}
+          </CardContent>
+        </div>
       </Card>
     </div>
   );
@@ -1039,7 +629,7 @@ const McqExercise: FC<{
 }> = ({ exercise, value, onChange, disabled }) => {
   const options = useMemo(
     () => safeParseOptions(exercise.optionsJson),
-    [exercise.optionsJson]
+    [exercise.optionsJson],
   );
 
   if (options.length === 0) {
