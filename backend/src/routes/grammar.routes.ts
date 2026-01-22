@@ -10,7 +10,7 @@ router.get("/lessons/:id", requireAuth, GrammarController.getLesson);
 router.post(
   "/lessons/:id/attempts",
   requireAuth,
-  GrammarController.submitAttempt
+  GrammarController.submitAttempt,
 );
 
 // Content management (Admin/Teacher)
@@ -18,13 +18,19 @@ router.post(
   "/lessons",
   requireAuth,
   authorizeRoles("role_admin", "role_teacher"),
-  GrammarController.createLesson
+  GrammarController.createLesson,
+);
+router.put(
+  "/lessons/:id",
+  requireAuth,
+  authorizeRoles("role_admin", "role_teacher"),
+  GrammarController.updateLesson,
 );
 router.post(
   "/lessons/:id/exercises",
   requireAuth,
   authorizeRoles("role_admin", "role_teacher"),
-  GrammarController.upsertExercises
+  GrammarController.upsertExercises,
 );
 
 export default router;

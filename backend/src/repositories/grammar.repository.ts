@@ -32,6 +32,7 @@ export type GrammarLessonDetailPublic = {
   topic: string | null;
   contentMarkdown: string;
   exercises: GrammarExercisePublic[];
+  resources?: Array<{ title: string; url: string }>;
 };
 
 export type GrammarExerciseForGrading = GrammarExercisePublic & {
@@ -59,7 +60,7 @@ export class GrammarRepository {
   }
 
   static async getPublishedLessonDetail(
-    id: string
+    id: string,
   ): Promise<GrammarLessonDetailPublic | null> {
     const pool = await getPool();
 
@@ -69,13 +70,22 @@ export class GrammarRepository {
           Title as title,
           Level as level,
           Topic as topic,
-          ContentMarkdown as contentMarkdown
+          ContentMarkdown as contentMarkdown,
+          ResourcesJson as resourcesJson
         FROM dbo.GrammarLessons
         WHERE Id = @Id AND IsPublished = 1
       `);
 
-    const lesson = lessonRes.recordset?.[0];
-    if (!lesson) return null;
+    const lessonRaw = lessonRes.recordset?.[0];
+    if (!lessonRaw) return null;
+    const lesson = { ...lessonRaw } as any;
+    try {
+      lesson.resources = lessonRaw.resourcesJson
+        ? JSON.parse(lessonRaw.resourcesJson)
+        : [];
+    } catch {
+      lesson.resources = [];
+    }
 
     const exRes = await pool.request().input("LessonId", id).query(`
         SELECT
@@ -98,7 +108,7 @@ export class GrammarRepository {
   }
 
   static async getExercisesForGrading(
-    lessonId: string
+    lessonId: string,
   ): Promise<GrammarExerciseForGrading[]> {
     const pool = await getPool();
     const exRes = await pool.request().input("LessonId", lessonId).query(`
@@ -137,13 +147,68 @@ export class GrammarRepository {
       .input("Level", input.level)
       .input("Topic", input.topic || null)
       .input("ContentMarkdown", input.contentMarkdown)
+      .input(
+        "ResourcesJson",
+        typeof input.resources === "undefined"
+          ? null
+          : JSON.stringify(input.resources),
+      )
       .input("IsPublished", input.isPublished ?? true)
       .input("CreatedByUserId", input.createdByUserId || null).query(`
-        INSERT INTO dbo.GrammarLessons (Id, Title, Level, Topic, ContentMarkdown, IsPublished, CreatedByUserId)
-        VALUES (@Id, @Title, @Level, @Topic, @ContentMarkdown, @IsPublished, @CreatedByUserId)
+        INSERT INTO dbo.GrammarLessons (Id, Title, Level, Topic, ContentMarkdown, ResourcesJson, IsPublished, CreatedByUserId)
+        VALUES (@Id, @Title, @Level, @Topic, @ContentMarkdown, @ResourcesJson, @IsPublished, @CreatedByUserId)
       `);
 
     return { id };
+  }
+
+  static async updateLesson(input: {
+    id: string;
+    title?: string;
+    level?: GrammarLevel;
+    topic?: string | null;
+    contentMarkdown?: string;
+    resourcesJson?: any;
+    isPublished?: boolean;
+  }): Promise<void> {
+    const pool = await getPool();
+    // Build partial update - only update provided fields
+    const sets: string[] = [];
+    const req = pool.request().input("Id", input.id);
+    if (typeof input.title !== "undefined") {
+      req.input("Title", input.title);
+      sets.push("Title = @Title");
+    }
+    if (typeof input.level !== "undefined") {
+      req.input("Level", input.level);
+      sets.push("Level = @Level");
+    }
+    if (typeof input.topic !== "undefined") {
+      req.input("Topic", input.topic);
+      sets.push("Topic = @Topic");
+    }
+    if (typeof input.contentMarkdown !== "undefined") {
+      req.input("ContentMarkdown", input.contentMarkdown);
+      sets.push("ContentMarkdown = @ContentMarkdown");
+    }
+    if (typeof input.resourcesJson !== "undefined") {
+      req.input(
+        "ResourcesJson",
+        input.resourcesJson === null
+          ? null
+          : JSON.stringify(input.resourcesJson),
+      );
+      sets.push("ResourcesJson = @ResourcesJson");
+    }
+    if (typeof input.isPublished !== "undefined") {
+      req.input("IsPublished", input.isPublished ? 1 : 0);
+      sets.push("IsPublished = @IsPublished");
+    }
+
+    if (sets.length === 0) return;
+
+    const sql = `UPDATE dbo.GrammarLessons SET ${sets.join(", ")}, UpdatedAt = SYSUTCDATETIME() WHERE Id = @Id`;
+    await req.query(sql);
   }
 
   static async upsertExercises(
@@ -157,7 +222,7 @@ export class GrammarRepository {
       explanation?: string | null;
       points?: number;
       sortOrder?: number;
-    }>
+    }>,
   ): Promise<void> {
     const pool = await getPool();
 

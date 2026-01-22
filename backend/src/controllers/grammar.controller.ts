@@ -30,7 +30,7 @@ function safeJsonParse(value: any): any {
 
 function gradeExercise(
   ex: GrammarExerciseForGrading,
-  userAnswer: any
+  userAnswer: any,
 ): {
   isCorrect: boolean;
   score: number;
@@ -108,9 +108,8 @@ export class GrammarController {
       const lesson = await GrammarRepository.getPublishedLessonDetail(lessonId);
       if (!lesson) return res.status(404).json({ error: "lesson not found" });
 
-      const exercises = await GrammarRepository.getExercisesForGrading(
-        lessonId
-      );
+      const exercises =
+        await GrammarRepository.getExercisesForGrading(lessonId);
       const byId = new Map(exercises.map((e) => [String(e.id), e]));
 
       let score = 0;
@@ -120,7 +119,7 @@ export class GrammarController {
         maxScore += Number(ex.points) || 1;
 
         const found = answers.find(
-          (a: any) => String(a?.exerciseId) === String(ex.id)
+          (a: any) => String(a?.exerciseId) === String(ex.id),
         );
         const userAnswer = found?.answer;
 
@@ -143,7 +142,7 @@ export class GrammarController {
         maxScore,
         answers: exercises.map((ex) => {
           const found = answers.find(
-            (a: any) => String(a?.exerciseId) === String(ex.id)
+            (a: any) => String(a?.exerciseId) === String(ex.id),
           );
           const userAnswer = found?.answer;
           const graded = gradeExercise(ex, userAnswer);
@@ -172,7 +171,7 @@ export class GrammarController {
   // Admin/Teacher create lesson
   static async createLesson(req: AuthRequest, res: Response) {
     const userId = getUserId(req);
-    const { title, level, topic, contentMarkdown, isPublished } =
+    const { title, level, topic, contentMarkdown, isPublished, resources } =
       req.body || {};
 
     if (!title || typeof title !== "string" || !title.trim()) {
@@ -197,6 +196,7 @@ export class GrammarController {
         level: levelNorm as any,
         topic: typeof topic === "string" ? topic.trim() : null,
         contentMarkdown,
+        resources: Array.isArray(resources) ? resources : undefined,
         createdByUserId: userId,
         isPublished: typeof isPublished === "boolean" ? isPublished : true,
       });
@@ -205,6 +205,33 @@ export class GrammarController {
     } catch (err: any) {
       console.error("Grammar create error:", err?.message || err);
       return res.status(500).json({ error: "failed to create lesson" });
+    }
+  }
+
+  // Admin/Teacher update lesson
+  static async updateLesson(req: AuthRequest, res: Response) {
+    const lessonId = req.params.id;
+    const { title, level, topic, contentMarkdown, isPublished, resources } =
+      req.body || {};
+
+    if (!lessonId) return res.status(400).json({ error: "lesson id required" });
+
+    try {
+      await GrammarRepository.updateLesson({
+        id: lessonId,
+        title: typeof title === "string" ? title.trim() : undefined,
+        level: typeof level === "string" ? (level as any) : undefined,
+        topic: typeof topic === "string" ? topic.trim() : undefined,
+        contentMarkdown:
+          typeof contentMarkdown === "string" ? contentMarkdown : undefined,
+        resourcesJson: typeof resources === "undefined" ? undefined : resources,
+        isPublished: typeof isPublished === "boolean" ? isPublished : undefined,
+      });
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Grammar update error:", err?.message || err);
+      return res.status(500).json({ error: "failed to update lesson" });
     }
   }
 

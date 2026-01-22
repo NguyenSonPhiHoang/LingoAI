@@ -59,6 +59,9 @@ const GrammarPage: FC = () => {
   const [addLevel, setAddLevel] = useState<GrammarLevel>("a1");
   const [addTopic, setAddTopic] = useState("");
   const [addContent, setAddContent] = useState("");
+  const [addResources, setAddResources] = useState<
+    Array<{ title: string; url: string }>
+  >([]);
   const [addPublished, setAddPublished] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -68,6 +71,7 @@ const GrammarPage: FC = () => {
     setAddTopic("");
     setAddContent("");
     setAddPublished(true);
+    setAddResources([]);
   }, []);
 
   const loadLessons = useCallback(async () => {
@@ -112,6 +116,15 @@ const GrammarPage: FC = () => {
       });
       return;
     }
+    const MAX_CONTENT = 3000;
+    if (addContent.length > MAX_CONTENT) {
+      toast({
+        variant: "destructive",
+        title: "Content too long",
+        description: `Content must be at most ${MAX_CONTENT} characters.`,
+      });
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -120,6 +133,8 @@ const GrammarPage: FC = () => {
         level: addLevel,
         topic: addTopic.trim() ? addTopic.trim() : null,
         contentMarkdown: addContent,
+        resources:
+          addResources && addResources.length ? addResources : undefined,
         isPublished: addPublished,
       });
 
@@ -244,6 +259,60 @@ const GrammarPage: FC = () => {
                     placeholder="Write the lesson explanation in Markdown..."
                     className="min-h-[180px]"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Resources (optional)</Label>
+                  <div className="space-y-2">
+                    {addResources.map((r, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={r.title}
+                          onChange={(e) =>
+                            setAddResources((prev) =>
+                              prev.map((p, ii) =>
+                                ii === i ? { ...p, title: e.target.value } : p,
+                              ),
+                            )
+                          }
+                          placeholder="Title"
+                        />
+                        <Input
+                          value={r.url}
+                          onChange={(e) =>
+                            setAddResources((prev) =>
+                              prev.map((p, ii) =>
+                                ii === i ? { ...p, url: e.target.value } : p,
+                              ),
+                            )
+                          }
+                          placeholder="https://..."
+                        />
+                        <Button
+                          variant="destructive"
+                          onClick={() =>
+                            setAddResources((prev) =>
+                              prev.filter((_, ii) => ii !== i),
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setAddResources((prev) => [
+                          ...prev,
+                          { title: "", url: "" },
+                        ])
+                      }
+                    >
+                      Add resource
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-3 rounded-md border p-3">
