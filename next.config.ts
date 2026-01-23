@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "lingo.fitlhu.com",
+        "www.lingo.fitlhu.com"
+      ]
+    }
+  }
 };
 
 export default nextConfig;
