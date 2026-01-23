@@ -48,3 +48,6 @@ firestore-debug.log
 logs/
 *.log
 pm2.json
+
+backend/dist
+backend/node_modules
