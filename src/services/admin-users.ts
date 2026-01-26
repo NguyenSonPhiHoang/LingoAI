@@ -18,7 +18,7 @@ export interface AdminListResult {
 }
 
 export const adminListUsers = async (
-  params: Record<string, any>
+  params: Record<string, any>,
 ): Promise<AdminListResult> => {
   const qs = new URLSearchParams();
   Object.entries(params || {}).forEach(([k, v]) => {
@@ -35,3 +35,10 @@ export const adminUpdateUser = async (id: string, payload: any) =>
   apiPut(`/api/users/admin/${id}`, payload);
 export const adminDeleteUser = async (id: string) =>
   apiDelete(`/api/users/admin/${id}`);
+export const adminSetAllowGemini = async (id: string, allow: boolean) =>
+  apiPut(`/api/users/admin/${id}/allow-gemini`, { allow });
+
+export const adminUpdateGeminiApiKey = async (
+  id: string,
+  geminiApiKey: string,
+) => apiPut(`/api/users/admin/${id}/gemini-api-key`, { geminiApiKey });

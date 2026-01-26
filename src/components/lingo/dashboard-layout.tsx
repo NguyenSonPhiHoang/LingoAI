@@ -8,6 +8,7 @@ import {
   BookOpenText,
   GraduationCap,
   LayoutDashboard,
+  FileText,
   LogOut,
   Settings,
   Sparkles,
@@ -78,8 +79,8 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   const roleIdNormalized = roleIdRaw.startsWith("role_")
     ? roleIdRaw
     : roleIdRaw
-    ? `role_${roleIdRaw}`
-    : "role_student";
+      ? `role_${roleIdRaw}`
+      : "role_student";
   const isAdminRole = roleIdNormalized === "role_admin";
 
   const menuItems = [
@@ -133,6 +134,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       href: "/grammar",
     },
     {
+      id: "vtep",
+      label: "VTEP",
+      icon: FileText,
+      role: ["role_teacher", "role_admin"],
+      href: "/",
+    },
+    {
       id: "vocabulary",
       label: "My Vocabulary",
       icon: BookCopy,
@@ -175,7 +183,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
 
   const handleMenuClick = (
     itemId: View | "storybook" | "library" | "guide",
-    href: string
+    href: string,
   ) => {
     if (href && href !== "/") {
       router.push(href);

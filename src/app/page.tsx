@@ -18,6 +18,7 @@ import ProfileView from "@/components/lingo/profile-view";
 import SettingsView from "@/components/lingo/settings-view";
 import PlacementTest from "@/components/lingo/placement-test";
 import ReviewTestView from "@/components/lingo/review-test-view";
+import VtepAdminPage from "@/app/vtep/page";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -33,6 +34,7 @@ export type View =
   | "ai-suggester"
   | "my-lessons"
   | "grammar"
+  | "vtep"
   | "vocabulary"
   | "review"
   | "user-management"
@@ -123,7 +125,7 @@ const Home: FC = () => {
 
   const handleLessonUpdate = (updatedLesson: Lesson) => {
     setLessons((prev) =>
-      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l))
+      prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)),
     );
   };
 
@@ -217,6 +219,8 @@ const Home: FC = () => {
               setActiveViewState={setActiveViewState}
             />
           );
+        case "vtep":
+          return <VtepAdminPage />;
         default:
           return (
             <DashboardOverview

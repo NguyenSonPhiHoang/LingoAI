@@ -30,13 +30,23 @@ class GrammarRepository {
           Title as title,
           Level as level,
           Topic as topic,
-          ContentMarkdown as contentMarkdown
+          ContentMarkdown as contentMarkdown,
+          ResourcesJson as resourcesJson
         FROM dbo.GrammarLessons
         WHERE Id = @Id AND IsPublished = 1
       `);
-        const lesson = lessonRes.recordset?.[0];
-        if (!lesson)
+        const lessonRaw = lessonRes.recordset?.[0];
+        if (!lessonRaw)
             return null;
+        const lesson = { ...lessonRaw };
+        try {
+            lesson.resources = lessonRaw.resourcesJson
+                ? JSON.parse(lessonRaw.resourcesJson)
+                : [];
+        }
+        catch {
+            lesson.resources = [];
+        }
         const exRes = await pool.request().input("LessonId", id).query(`
         SELECT
           Id as id,
@@ -83,12 +93,51 @@ class GrammarRepository {
             .input("Level", input.level)
             .input("Topic", input.topic || null)
             .input("ContentMarkdown", input.contentMarkdown)
+            .input("ResourcesJson", typeof input.resources === "undefined"
+            ? null
+            : JSON.stringify(input.resources))
             .input("IsPublished", input.isPublished ?? true)
             .input("CreatedByUserId", input.createdByUserId || null).query(`
-        INSERT INTO dbo.GrammarLessons (Id, Title, Level, Topic, ContentMarkdown, IsPublished, CreatedByUserId)
-        VALUES (@Id, @Title, @Level, @Topic, @ContentMarkdown, @IsPublished, @CreatedByUserId)
+        INSERT INTO dbo.GrammarLessons (Id, Title, Level, Topic, ContentMarkdown, ResourcesJson, IsPublished, CreatedByUserId)
+        VALUES (@Id, @Title, @Level, @Topic, @ContentMarkdown, @ResourcesJson, @IsPublished, @CreatedByUserId)
       `);
         return { id };
+    }
+    static async updateLesson(input) {
+        const pool = await (0, db_1.getPool)();
+        // Build partial update - only update provided fields
+        const sets = [];
+        const req = pool.request().input("Id", input.id);
+        if (typeof input.title !== "undefined") {
+            req.input("Title", input.title);
+            sets.push("Title = @Title");
+        }
+        if (typeof input.level !== "undefined") {
+            req.input("Level", input.level);
+            sets.push("Level = @Level");
+        }
+        if (typeof input.topic !== "undefined") {
+            req.input("Topic", input.topic);
+            sets.push("Topic = @Topic");
+        }
+        if (typeof input.contentMarkdown !== "undefined") {
+            req.input("ContentMarkdown", input.contentMarkdown);
+            sets.push("ContentMarkdown = @ContentMarkdown");
+        }
+        if (typeof input.resourcesJson !== "undefined") {
+            req.input("ResourcesJson", input.resourcesJson === null
+                ? null
+                : JSON.stringify(input.resourcesJson));
+            sets.push("ResourcesJson = @ResourcesJson");
+        }
+        if (typeof input.isPublished !== "undefined") {
+            req.input("IsPublished", input.isPublished ? 1 : 0);
+            sets.push("IsPublished = @IsPublished");
+        }
+        if (sets.length === 0)
+            return;
+        const sql = `UPDATE dbo.GrammarLessons SET ${sets.join(", ")}, UpdatedAt = SYSUTCDATETIME() WHERE Id = @Id`;
+        await req.query(sql);
     }
     static async upsertExercises(lessonId, exercises) {
         const pool = await (0, db_1.getPool)();

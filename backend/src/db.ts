@@ -39,6 +39,18 @@ export async function getPool(): Promise<any> {
     database: config.db.database,
     options,
   });
+  // In non-production, verify which database we connected to for easier debugging
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const res = await pool.request().query("SELECT DB_NAME() AS currentDb");
+      console.debug(
+        "DB connected to:",
+        res.recordset && res.recordset[0]?.currentDb,
+      );
+    } catch (err) {
+      console.debug("Failed to query current DB:", err);
+    }
+  }
   return pool;
 }
 

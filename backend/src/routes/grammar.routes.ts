@@ -33,4 +33,11 @@ router.post(
   GrammarController.upsertExercises,
 );
 
+router.post(
+  "/lessons/:id/generate-exercises",
+  requireAuth,
+  authorizeRoles("role_admin", "role_teacher"),
+  GrammarController.generateExercises,
+);
+
 export default router;

@@ -35,6 +35,7 @@ const SettingsView: FC = () => {
   const [localRate, setLocalRate] = useState(speechRate);
   const [localTheme, setLocalTheme] = useState(theme);
   const [localApiKey, setLocalApiKey] = useState(user?.geminiApiKey || "");
+  const [allowGemini, setAllowGemini] = useState<boolean | null>(null);
   const [localChatBotId, setLocalChatBotId] = useState("");
   const [initialChatBotId, setInitialChatBotId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -46,6 +47,8 @@ const SettingsView: FC = () => {
       try {
         const remote = await getUserSettings();
         if (remote?.geminiApiKey) setLocalApiKey(remote.geminiApiKey);
+        if ((remote as any)?.allowGeminiApiKey !== undefined)
+          setAllowGemini((remote as any).allowGeminiApiKey);
         if (remote?.chatBotId) {
           setLocalChatBotId(remote.chatBotId);
           setInitialChatBotId(remote.chatBotId);
@@ -146,7 +149,7 @@ const SettingsView: FC = () => {
   const handleTestAudio = () => {
     if ("speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(
-        "This is a test of the current speech rate."
+        "This is a test of the current speech rate.",
       );
       utterance.lang = "en-US";
       utterance.rate = localRate;
@@ -213,7 +216,7 @@ const SettingsView: FC = () => {
                     "h-10 w-10 rounded-full border-2 transition-all",
                     localTheme === t.name
                       ? "border-ring"
-                      : "border-transparent hover:border-muted-foreground/50"
+                      : "border-transparent hover:border-muted-foreground/50",
                   )}
                   style={{ backgroundColor: t.color }}
                   onClick={() => setLocalTheme(t.name)}
@@ -306,15 +309,21 @@ const SettingsView: FC = () => {
               onChange={(e) => setLocalApiKey(e.target.value)}
               placeholder="Enter your Gemini API key"
               className="mt-2"
+              disabled={allowGemini === false}
             />
           </div>
           <Button
             onClick={handleSaveApiKey}
-            disabled={!isApiKeyDirty || isSaving}
+            disabled={!isApiKeyDirty || isSaving || allowGemini === false}
           >
             {isSaving && <Loader2 className="mr-2 animate-spin" />}
             Save API Key
           </Button>
+          {allowGemini === false && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Your organization disallows adding a personal Gemini API key.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

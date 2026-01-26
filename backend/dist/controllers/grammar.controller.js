@@ -140,7 +140,7 @@ class GrammarController {
     // Admin/Teacher create lesson
     static async createLesson(req, res) {
         const userId = getUserId(req);
-        const { title, level, topic, contentMarkdown, isPublished } = req.body || {};
+        const { title, level, topic, contentMarkdown, isPublished, resources } = req.body || {};
         if (!title || typeof title !== "string" || !title.trim()) {
             return res.status(400).json({ error: "title required" });
         }
@@ -160,6 +160,7 @@ class GrammarController {
                 level: levelNorm,
                 topic: typeof topic === "string" ? topic.trim() : null,
                 contentMarkdown,
+                resources: Array.isArray(resources) ? resources : undefined,
                 createdByUserId: userId,
                 isPublished: typeof isPublished === "boolean" ? isPublished : true,
             });
@@ -168,6 +169,29 @@ class GrammarController {
         catch (err) {
             console.error("Grammar create error:", err?.message || err);
             return res.status(500).json({ error: "failed to create lesson" });
+        }
+    }
+    // Admin/Teacher update lesson
+    static async updateLesson(req, res) {
+        const lessonId = req.params.id;
+        const { title, level, topic, contentMarkdown, isPublished, resources } = req.body || {};
+        if (!lessonId)
+            return res.status(400).json({ error: "lesson id required" });
+        try {
+            await grammar_repository_1.GrammarRepository.updateLesson({
+                id: lessonId,
+                title: typeof title === "string" ? title.trim() : undefined,
+                level: typeof level === "string" ? level : undefined,
+                topic: typeof topic === "string" ? topic.trim() : undefined,
+                contentMarkdown: typeof contentMarkdown === "string" ? contentMarkdown : undefined,
+                resourcesJson: typeof resources === "undefined" ? undefined : resources,
+                isPublished: typeof isPublished === "boolean" ? isPublished : undefined,
+            });
+            return res.json({ ok: true });
+        }
+        catch (err) {
+            console.error("Grammar update error:", err?.message || err);
+            return res.status(500).json({ error: "failed to update lesson" });
         }
     }
     // Admin/Teacher upsert exercises

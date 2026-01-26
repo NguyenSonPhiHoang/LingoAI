@@ -18,11 +18,15 @@ export async function getUserSettings(): Promise<UserSettings | null> {
       settings: UserSettings;
       geminiApiKey?: string | null;
       chatBotId?: string | null;
+      allowGeminiApiKey?: boolean;
     }>("/api/settings", token);
     const combined: UserSettings = { ...(res?.settings || {}) };
     if (res?.geminiApiKey !== undefined)
       combined.geminiApiKey = res.geminiApiKey;
     if (res?.chatBotId !== undefined) combined.chatBotId = res.chatBotId;
+    // attach allowGemini flag if present
+    if (res?.allowGeminiApiKey !== undefined)
+      (combined as any).allowGeminiApiKey = res.allowGeminiApiKey;
     return combined;
   } catch (err) {
     console.error("getUserSettings failed:", err);
@@ -31,7 +35,7 @@ export async function getUserSettings(): Promise<UserSettings | null> {
 }
 
 export async function saveUserSettings(
-  settings: UserSettings
+  settings: UserSettings,
 ): Promise<boolean> {
   try {
     const token = getStoredToken();

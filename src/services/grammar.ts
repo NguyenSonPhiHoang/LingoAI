@@ -116,3 +116,10 @@ export async function upsertGrammarExercises(
     exercises,
   });
 }
+
+export async function generateGrammarExercises(lessonId: string) {
+  return apiPost<{ ok: true; count?: number }>(
+    `/api/grammar/lessons/${lessonId}/generate-exercises`,
+    {},
+  );
+}

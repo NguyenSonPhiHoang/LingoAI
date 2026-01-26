@@ -6,6 +6,8 @@ import {
   adminCreateUser,
   adminUpdateUser,
   adminDeleteUser,
+  adminSetAllowGemini,
+  adminUpdateGeminiApiKey,
 } from "@/services/admin-users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,8 +75,14 @@ export default function UserManagement() {
           typeof it.OmniChatEnabled === "boolean"
             ? it.OmniChatEnabled
             : typeof it.omniChatEnabled === "boolean"
-            ? it.omniChatEnabled
-            : it.OmniChatEnabled === 1,
+              ? it.omniChatEnabled
+              : it.OmniChatEnabled === 1,
+        allowGeminiApiKey:
+          typeof it.allowGeminiApiKey === "boolean"
+            ? it.allowGeminiApiKey
+            : typeof it.AllowGemini === "boolean"
+              ? it.AllowGemini
+              : it.allowGemini === 1 || it.AllowGemini === 1 || false,
         CreatedAt: it.CreatedAt || it.createdAt,
       }));
       setItems(normalized);
@@ -103,6 +111,10 @@ export default function UserManagement() {
   const [editRoleId, setEditRoleId] = useState("role_student");
   const [editStatus, setEditStatus] = useState("pending");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [keyDialogOpen, setKeyDialogOpen] = useState(false);
+  const [keyDialogTarget, setKeyDialogTarget] = useState<any | null>(null);
+  const [keyDialogValue, setKeyDialogValue] = useState("");
+  const [keyDialogSaving, setKeyDialogSaving] = useState(false);
 
   const handleCreate = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -203,6 +215,32 @@ export default function UserManagement() {
     } catch (err: any) {
       console.error(err);
       toast({ variant: "destructive", title: "Delete failed" });
+    }
+  };
+
+  const handleOpenKeyDialog = (item: any) => {
+    if ((item.RoleId || "") === "role_admin") return;
+    setKeyDialogTarget(item);
+    setKeyDialogValue("");
+    setKeyDialogOpen(true);
+  };
+
+  const handleSaveKeyDialog = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!keyDialogTarget) return;
+    setKeyDialogSaving(true);
+    try {
+      await adminUpdateGeminiApiKey(keyDialogTarget.Id, keyDialogValue || "");
+      toast({ title: "Gemini API key updated" });
+      setKeyDialogOpen(false);
+      setKeyDialogTarget(null);
+      setKeyDialogValue("");
+      fetch();
+    } catch (err: any) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Update failed" });
+    } finally {
+      setKeyDialogSaving(false);
     }
   };
 
@@ -342,6 +380,7 @@ export default function UserManagement() {
             <TableHead>Role</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>OmniChat</TableHead>
+            <TableHead>Gemini</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -367,8 +406,8 @@ export default function UserManagement() {
                         await adminUpdateUser(it.Id, { status: val });
                         setItems((prev) =>
                           prev.map((row) =>
-                            row.Id === it.Id ? { ...row, Status: val } : row
-                          )
+                            row.Id === it.Id ? { ...row, Status: val } : row,
+                          ),
                         );
                         toast({ title: "Status updated" });
                       } catch (err: any) {
@@ -404,10 +443,37 @@ export default function UserManagement() {
                           prev.map((row) =>
                             row.Id === it.Id
                               ? { ...row, OmniChatEnabled: val }
-                              : row
-                          )
+                              : row,
+                          ),
                         );
                         toast({ title: "OmniChat updated" });
+                      } catch (err) {
+                        console.error(err);
+                        toast({
+                          variant: "destructive",
+                          title: "Update failed",
+                        });
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    disabled={isAdmin}
+                    checked={!!it.allowGeminiApiKey}
+                    onCheckedChange={async (val) => {
+                      if (isAdmin) return;
+                      try {
+                        // call admin API to set allowGemini
+                        await adminSetAllowGemini(it.Id, !!val);
+                        setItems((prev) =>
+                          prev.map((row) =>
+                            row.Id === it.Id
+                              ? { ...row, allowGeminiApiKey: !!val }
+                              : row,
+                          ),
+                        );
+                        toast({ title: "Updated" });
                       } catch (err) {
                         console.error(err);
                         toast({
@@ -430,6 +496,15 @@ export default function UserManagement() {
                     disabled={isAdmin}
                   >
                     <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenKeyDialog(it)}
+                    aria-label="Set Gemini API key"
+                    disabled={isAdmin}
+                  >
+                    Key
                   </Button>
                   <Button
                     size="sm"
@@ -508,6 +583,39 @@ export default function UserManagement() {
               </DialogClose>
               <Button type="submit" disabled={isUpdating}>
                 {isUpdating ? "Đang lưu..." : "Lưu"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Gemini API key</DialogTitle>
+            <DialogDescription>
+              Provide a Gemini API key for the selected user. Leave blank to
+              clear.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveKeyDialog} className="space-y-4 mt-2">
+            <div className="grid grid-cols-1 gap-2">
+              <label className="text-sm">Gemini API Key</label>
+              <Input
+                type="password"
+                value={keyDialogValue}
+                onChange={(e) => setKeyDialogValue(e.target.value)}
+                placeholder="Enter API key"
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={keyDialogSaving}>
+                {keyDialogSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>
