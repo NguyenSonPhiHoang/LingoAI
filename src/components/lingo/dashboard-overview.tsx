@@ -42,6 +42,7 @@ import { incrementUserVocabularyLearnCount } from "@/services/vocabulary";
 import InsightsCard from "@/components/lingo/insights-card";
 import { useAuth } from "@/context/auth-context";
 import { getTotalUserSessionSeconds } from "@/services/activity";
+import { getMyTotalSecondsFromServer } from "@/services/sessions";
 import { getTestResults } from "@/services/test-results";
 import { getMyInsights, type MyInsights } from "@/services/insights";
 
@@ -173,7 +174,7 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
     if (word.userVocabularyId) {
       try {
         const updated = await incrementUserVocabularyLearnCount(
-          word.userVocabularyId
+          word.userVocabularyId,
         );
         if (updated) {
           setWords((prev) =>
@@ -184,8 +185,8 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
                     learnCount: updated.learnCount,
                     favorite: updated.favorite,
                   }
-                : w
-            )
+                : w,
+            ),
           );
         }
       } catch {
@@ -199,13 +200,13 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
 
   const totalLessons = lessons.length;
   const lessonsInProgress = lessons.filter(
-    (l) => l.status === "in-progress"
+    (l) => l.status === "in-progress",
   ).length;
   const lessonsCompleted = lessons.filter(
-    (l) => l.status === "completed"
+    (l) => l.status === "completed",
   ).length;
   const lessonsNotStarted = lessons.filter(
-    (l) => l.status === "not-started"
+    (l) => l.status === "not-started",
   ).length;
 
   const userId = user?.uid || user?.id;
@@ -215,15 +216,32 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
   const [skillInsights, setSkillInsights] = useState<MyInsights | null>(null);
 
   useEffect(() => {
-    if (!userId || !token) return;
+    let cancelled = false;
+    if (!userId) return;
 
-    const update = () => {
-      setTotalUsageSeconds(getTotalUserSessionSeconds(userId));
+    const update = async () => {
+      // Prefer server-side persisted sessions when available
+      try {
+        if (token) {
+          const secs = await getMyTotalSecondsFromServer(token);
+          if (!cancelled) {
+            setTotalUsageSeconds(secs);
+            return;
+          }
+        }
+      } catch {
+        // ignore and fall back to local
+      }
+
+      if (!cancelled) setTotalUsageSeconds(getTotalUserSessionSeconds(userId));
     };
 
     update();
     const id = window.setInterval(update, 60_000);
-    return () => window.clearInterval(id);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, [userId, token]);
 
   useEffect(() => {
@@ -281,7 +299,7 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
       try {
         const results = await getTestResults(userId);
         const latestPlacement = results.find(
-          (r) => r.testType === "Placement Test"
+          (r) => r.testType === "Placement Test",
         );
         if (cancelled) return;
 
@@ -304,11 +322,11 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
 
   const hasEnoughFavoritesToReview = favoriteWords.length >= 4;
   const hasPartOfSpeechData = favoriteWords.some(
-    (w) => typeof w.partOfSpeech === "string" && w.partOfSpeech.trim()
+    (w) => typeof w.partOfSpeech === "string" && w.partOfSpeech.trim(),
   );
 
   const goToReview = (
-    tab: "matching" | "fill-in-the-blank" | "part-of-speech"
+    tab: "matching" | "fill-in-the-blank" | "part-of-speech",
   ) => {
     if (setActiveViewState) {
       setActiveViewState({ view: "review", reviewTab: tab } as ViewState);
@@ -454,7 +472,7 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
                             goToReview(
                               hasPartOfSpeechData
                                 ? "part-of-speech"
-                                : "matching"
+                                : "matching",
                             )
                           }
                         >

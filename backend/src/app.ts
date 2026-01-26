@@ -20,6 +20,7 @@ import learningResourceRoutes from "./routes/learningResource.routes";
 import aiRoutes from "./routes/ai.routes";
 import grammarRoutes from "./routes/grammar.routes";
 import vtepRoutes from "./routes/vtep.routes";
+import userLearningSessionRoutes from "./routes/userLearningSession.routes";
 import { authenticateJWT } from "./middleware/auth.middleware";
 import { config } from "./config";
 import path from "path";
@@ -108,6 +109,9 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/grammar", grammarRoutes);
 // VTEP document import and management
 app.use("/api/vtep", vtepRoutes);
+
+// User learning sessions (client records of lessons / time)
+app.use("/api/sessions", userLearningSessionRoutes);
 
 // Current user info
 app.get("/api/me", authenticateJWT, (req, res) => {

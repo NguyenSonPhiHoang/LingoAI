@@ -15,6 +15,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { format } from "date-fns";
+import { apiPost } from "./api";
 
 const activityCollection = firebaseEnabled
   ? collection(db, "user_activity")
@@ -57,7 +58,7 @@ const readSessions = (userId: string): SessionRecord[] => {
       }))
       .filter(
         (s) =>
-          !!s.id && !!s.userId && Number.isFinite(s.loginAt) && s.loginAt > 0
+          !!s.id && !!s.userId && Number.isFinite(s.loginAt) && s.loginAt > 0,
       );
   } catch {
     return [];
@@ -109,11 +110,33 @@ export const endUserSession = (userId: string) => {
     const updated = sessions.map((s) =>
       s.id === id && (!s.logoutAt || s.logoutAt === null)
         ? { ...s, logoutAt: now }
-        : s
+        : s,
     );
     writeSessions(userId, updated);
 
     sessionStorage.removeItem(activeSessionIdKey(userId));
+    // Try to POST the just-ended session to backend for persistence
+    try {
+      const updatedSession = updated.find((s) => s.id === id);
+      if (updatedSession && updatedSession.logoutAt) {
+        // send asynchronously (don't await)
+        const payload = {
+          // lessonId unknown on client; backend accepts null
+          lessonId: null,
+          startTime: new Date(updatedSession.loginAt).toISOString(),
+          endTime: new Date(updatedSession.logoutAt).toISOString(),
+          learningMode: null,
+          accuracyRate: null,
+          completed: false,
+          ipAddress: null,
+        };
+        apiPost("/sessions", payload).catch(() => {
+          // ignore network errors; data stays in localStorage for retry
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
   } catch {
     // ignore
   }
@@ -159,7 +182,7 @@ export const recordActivity = async (userId: string, seconds: number) => {
         durationSeconds: increment(seconds),
         lastActive: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
   } catch (error) {
     console.error("Error recording user activity:", error);
@@ -204,7 +227,7 @@ export const getAllUsersTotalActivity = async (): Promise<
 export const getUserActivityForMonth = async (
   userId: string,
   year: number,
-  month: number
+  month: number,
 ): Promise<DailyActivity[]> => {
   if (!firebaseEnabled) return [];
   // Create dates in UTC to avoid timezone issues.
@@ -216,7 +239,7 @@ export const getUserActivityForMonth = async (
     where("userId", "==", userId),
     where("date", ">=", Timestamp.fromDate(startDate)),
     where("date", "<", Timestamp.fromDate(endDate)),
-    orderBy("date", "asc")
+    orderBy("date", "asc"),
   );
 
   const querySnapshot = await getDocs(q);
