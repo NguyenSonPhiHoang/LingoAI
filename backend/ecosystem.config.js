@@ -1,9 +1,9 @@
 module.exports = {
     apps: [
         {
-            name: 'lingoAI',
+            name: 'lingoAI-be',
             cwd: './',
-            script: 'node_modules/next/dist/bin/next',
+            script: '',
             args: 'start -p 3124',
             env: {
                 NODE_ENV: 'production'

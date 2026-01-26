@@ -37,18 +37,18 @@ const parseCorsOrigins = (value: string): string[] =>
 const allowedOrigins = parseCorsOrigins(config.corsOrigin);
 const allowAnyOrigin = allowedOrigins.includes("*");
 
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow non-browser requests (no Origin header)
-    if (!origin) return callback(null, true);
-    if (allowAnyOrigin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"), false);
-  },
-  credentials: true,
-};
+// const corsOptions: CorsOptions = {
+//   origin: (origin, callback) => {
+//     // Allow non-browser requests (no Origin header)
+//     if (!origin) return callback(null, true);
+//     if (allowAnyOrigin) return callback(null, true);
+//     if (allowedOrigins.includes(origin)) return callback(null, true);
+//     return callback(new Error("Not allowed by CORS"), false);
+//   },
+//   credentials: true,
+// };
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(bodyParser.json({ limit: "15mb" }));
 
 // Ensure uploads folder exists and serve it statically for profile photos
