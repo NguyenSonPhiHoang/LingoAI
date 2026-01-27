@@ -14,7 +14,7 @@ import {
 } from "./schemas";
 
 export async function generateReadingExercise(
-  input: GenerateReadingExerciseInput
+  input: GenerateReadingExerciseInput,
 ): Promise<GenerateReadingExerciseOutput> {
   return generateReadingExerciseFlow(input);
 }
@@ -42,24 +42,24 @@ const generateReadingExerciseFlow = ai.defineFlow(
         model,
         prompt: { text: promptText, input },
         output: { schema: GenerateReadingExerciseOutputSchema, format: "json" },
-      });
+      } as any);
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
       console.warn(
         "Primary model failed for reading exercise. Retrying with fallback model.",
-        error
+        error,
       );
       const { output: fallbackOutput } = await ai.generate({
         model,
         prompt: { text: promptText, input },
         output: { schema: GenerateReadingExerciseOutputSchema, format: "json" },
-      });
+      } as any);
       if (!fallbackOutput)
         throw new Error(
-          "Fallback model also returned no output for reading exercise."
+          "Fallback model also returned no output for reading exercise.",
         );
       return fallbackOutput;
     }
-  }
+  },
 );

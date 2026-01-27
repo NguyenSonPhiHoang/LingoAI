@@ -1,7 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GrammarController = void 0;
 const grammar_repository_1 = require("../repositories/grammar.repository");
+const generative_ai_1 = require("@google/generative-ai");
+const config_1 = require("../config");
+const userSettings_repository_1 = __importDefault(require("../repositories/userSettings.repository"));
+const role_repository_1 = require("../repositories/role.repository");
 function getUserId(req) {
     const sub = req.user?.sub;
     return typeof sub === "string" && sub.trim() ? sub : null;
@@ -37,6 +44,28 @@ function gradeExercise(ex, userAnswer) {
         const isCorrect = !!expectedId && expectedId === pickedId;
         return { isCorrect, score: isCorrect ? points : 0, points, userAnswerJson };
     }
+    if (ex.type === "multichoice") {
+        const expectedIds = Array.isArray(expected.correctOptionIds)
+            ? expected.correctOptionIds.map((s) => String(s))
+            : [];
+        const pickedIds = userAnswer &&
+            typeof userAnswer === "object" &&
+            Array.isArray(userAnswer.optionIds)
+            ? userAnswer.optionIds.map((s) => String(s))
+            : [];
+        // Full credit only when selected set exactly matches expected set
+        const setEq = (a, b) => {
+            if (a.length !== b.length)
+                return false;
+            const sa = new Set(a);
+            for (const x of b)
+                if (!sa.has(x))
+                    return false;
+            return true;
+        };
+        const isCorrect = expectedIds.length > 0 && setEq(expectedIds, pickedIds);
+        return { isCorrect, score: isCorrect ? points : 0, points, userAnswerJson };
+    }
     // text
     const accepted = Array.isArray(expected.accepted)
         ? expected.accepted.map((s) => String(s))
@@ -63,7 +92,25 @@ class GrammarController {
         if (!id)
             return res.status(400).json({ error: "id required" });
         try {
-            const lesson = await grammar_repository_1.GrammarRepository.getPublishedLessonDetail(id);
+            // If user is admin or teacher, include answers by returning full lesson detail
+            let lesson = null;
+            try {
+                const roleId = req.user?.roleId;
+                if (roleId) {
+                    const role = await role_repository_1.RoleRepository.findById(roleId);
+                    const roleName = role?.name?.toLowerCase();
+                    if (roleName === "admin" || roleName === "teacher") {
+                        lesson = await grammar_repository_1.GrammarRepository.getLessonDetail(id);
+                    }
+                }
+            }
+            catch (e) {
+                // ignore role lookup errors and fall back to published view
+                console.error("Role lookup error:", e);
+            }
+            if (!lesson) {
+                lesson = await grammar_repository_1.GrammarRepository.getPublishedLessonDetail(id);
+            }
             if (!lesson)
                 return res.status(404).json({ error: "not found" });
             return res.json({ lesson });
@@ -210,6 +257,275 @@ class GrammarController {
         catch (err) {
             console.error("Grammar exercises error:", err?.message || err);
             return res.status(500).json({ error: "failed to upsert exercises" });
+        }
+    }
+    static async generateExercises(req, res) {
+        const userId = getUserId(req);
+        if (!userId)
+            return res.status(401).json({ error: "unauthorized" });
+        const lessonId = req.params.id;
+        if (!lessonId)
+            return res.status(400).json({ error: "lesson id required" });
+        try {
+            const lesson = await grammar_repository_1.GrammarRepository.getLessonDetail(lessonId);
+            if (!lesson)
+                return res.status(404).json({ error: "lesson not found" });
+            // Get API key for user or fallback to server key
+            const row = await userSettings_repository_1.default.getByUserId(userId);
+            const userKey = row?.GeminiApiKey;
+            const apiKey = typeof userKey === "string" && userKey.trim()
+                ? userKey.trim()
+                : typeof config_1.config.geminiApiKey === "string" &&
+                    config_1.config.geminiApiKey.trim()
+                    ? config_1.config.geminiApiKey.trim()
+                    : null;
+            if (!apiKey)
+                return res.status(400).json({ error: "Gemini API key not configured" });
+            const client = new generative_ai_1.GoogleGenerativeAI(apiKey);
+            const modelName = typeof config_1.config.geminiModel === "string" && config_1.config.geminiModel.trim()
+                ? config_1.config.geminiModel.trim()
+                : "gemini-1.5-flash";
+            const model = client.getGenerativeModel({
+                model: modelName,
+                systemInstruction: "You are an assistant that generates short grammar exercises in JSON format.",
+            });
+            // Build prompt to request 5 MCQ, 5 text, 5 multichoice exercises
+            const prompt = `Given the following grammar lesson content, generate exercises for learners.
+
+Lesson content:
+${lesson.contentMarkdown}
+
+Produce a JSON array with 15 objects. Each object should have:
+- type: one of \"mcq\", \"text\", \"multichoice\";
+- prompt: the question/prompt text;
+- options: for mcq and multichoice, an array of option labels (strings). For text, this should be an empty array or omitted;
+- correct: for mcq a single string equal to the correct option label; for multichoice an array of strings equal to the correct option labels; for text an array of accepted answers (can be empty).
+- explanation: brief explanation (optional).
+
+Requirements:
+- Generate exactly 5 objects of type \"mcq\" (each with 4 options and one correct), 5 of type \"text\" (short answer prompts), and 5 of type \"multichoice\" (each with 3-5 options and 1-3 correct options).
+- Return ONLY valid JSON (no extra text). Use option labels (not ids). Example object:
+  { "type": "mcq", "prompt": "...", "options": ["A","B","C","D"], "correct": "A", "explanation": "..." }
+
+Return the JSON array.`;
+            const result = await model.generateContent(prompt);
+            const raw = (result.response.text() || "").trim();
+            // Try a sequence of tolerant parsing strategies to extract a JSON array
+            let parsed = [];
+            function extractJsonArrayByBrackets(s) {
+                const start = s.indexOf("[");
+                if (start === -1)
+                    return null;
+                let depth = 0;
+                for (let i = start; i < s.length; i++) {
+                    const ch = s[i];
+                    if (ch === "[")
+                        depth++;
+                    else if (ch === "]") {
+                        depth--;
+                        if (depth === 0)
+                            return s.slice(start, i + 1);
+                    }
+                }
+                return null;
+            }
+            function sanitizeLikelyJson(s) {
+                return (s
+                    .replace(/[“”]/g, '"')
+                    .replace(/[’]/g, "'")
+                    // remove trailing commas before closing objects/arrays
+                    .replace(/,\s*(\]|\})/g, "$1")
+                    .trim());
+            }
+            // 1) direct parse
+            try {
+                parsed = JSON.parse(raw);
+            }
+            catch (e1) {
+                // 2) try to extract via bracket matching
+                const sub = extractJsonArrayByBrackets(raw);
+                if (sub) {
+                    try {
+                        parsed = JSON.parse(sub);
+                    }
+                    catch (e2) {
+                        // 3) try regex fallback
+                        const m = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                        if (m) {
+                            try {
+                                parsed = JSON.parse(m[0]);
+                            }
+                            catch (e3) {
+                                // 4) attempt sanitized parse
+                                try {
+                                    const san = sanitizeLikelyJson(m[0]);
+                                    parsed = JSON.parse(san);
+                                }
+                                catch (e4) {
+                                    console.error("AI returned invalid JSON (parse failures). Raw output:\n", raw);
+                                    return res.status(500).json({
+                                        error: "AI returned invalid JSON",
+                                        raw: String(raw).slice(0, 2000),
+                                    });
+                                }
+                            }
+                        }
+                        else {
+                            // 4) try sanitized full raw
+                            try {
+                                const san = sanitizeLikelyJson(raw);
+                                parsed = JSON.parse(san);
+                            }
+                            catch (e5) {
+                                console.error("AI returned invalid JSON (could not extract array). Raw output:\n", raw);
+                                return res.status(500).json({
+                                    error: "AI returned invalid JSON",
+                                    raw: String(raw).slice(0, 2000),
+                                });
+                            }
+                        }
+                    }
+                }
+                else {
+                    // try regex match
+                    const m = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                    if (m) {
+                        try {
+                            parsed = JSON.parse(m[0]);
+                        }
+                        catch (e6) {
+                            try {
+                                const san = sanitizeLikelyJson(m[0]);
+                                parsed = JSON.parse(san);
+                            }
+                            catch (e7) {
+                                console.error("AI returned invalid JSON (regex extract failed). Raw output:\n", raw);
+                                return res.status(500).json({
+                                    error: "AI returned invalid JSON",
+                                    raw: String(raw).slice(0, 2000),
+                                });
+                            }
+                        }
+                    }
+                    else {
+                        try {
+                            const san = sanitizeLikelyJson(raw);
+                            parsed = JSON.parse(san);
+                        }
+                        catch (e8) {
+                            console.error("AI returned invalid format. Raw output:\n", raw);
+                            return res.status(500).json({
+                                error: "AI returned invalid format",
+                                raw: String(raw).slice(0, 2000),
+                            });
+                        }
+                    }
+                }
+            }
+            // Normalize parsed objects into upsert payload
+            const payload = [];
+            let optCounter = 0;
+            function normalizeLabelForMatch(v) {
+                if (typeof v !== "string")
+                    return "";
+                return v
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[“”]/g, '"')
+                    .replace(/[’]/g, "'")
+                    .replace(/^[A-Za-z0-9]\s*[\.\)]\s*/g, "")
+                    .replace(/\s+/g, " ");
+            }
+            for (const p of parsed) {
+                const type = p.type === "text"
+                    ? "text"
+                    : p.type === "multichoice"
+                        ? "multichoice"
+                        : "mcq";
+                const promptText = typeof p.prompt === "string" ? p.prompt : String(p.prompt || "");
+                const optionLabels = Array.isArray(p.options)
+                    ? p.options.map((s) => String(s))
+                    : [];
+                const options = optionLabels.map((label) => ({
+                    id: `opt-${Date.now()}-${optCounter++}-${Math.random().toString(36).slice(2, 8)}`,
+                    label,
+                }));
+                let answerJson = undefined;
+                if (type === "mcq") {
+                    const correctLabel = typeof p.correct === "string"
+                        ? p.correct
+                        : Array.isArray(p.correct)
+                            ? p.correct[0]
+                            : null;
+                    const desired = normalizeLabelForMatch(correctLabel);
+                    let correctOpt = options.find((o) => normalizeLabelForMatch(o.label) === desired);
+                    // Fallback: if correctLabel is a single letter (A/B/C...) map to index
+                    if (!correctOpt && typeof correctLabel === "string") {
+                        const s = correctLabel.trim().toUpperCase();
+                        if (/^[A-Z]$/.test(s)) {
+                            const idx = s.charCodeAt(0) - 65;
+                            if (idx >= 0 && idx < options.length)
+                                correctOpt = options[idx];
+                        }
+                    }
+                    answerJson = { correctOptionId: correctOpt ? correctOpt.id : null };
+                }
+                else if (type === "multichoice") {
+                    const correctArr = Array.isArray(p.correct)
+                        ? p.correct.map((s) => String(s))
+                        : [];
+                    const desiredSet = correctArr.map((s) => normalizeLabelForMatch(s));
+                    const correctIds = [];
+                    for (let i = 0; i < options.length; i++) {
+                        const o = options[i];
+                        const norm = normalizeLabelForMatch(o.label);
+                        if (desiredSet.includes(norm)) {
+                            correctIds.push(o.id);
+                        }
+                    }
+                    // Fallback: if no matches, try mapping letters in correctArr
+                    if (correctIds.length === 0) {
+                        for (const c of correctArr) {
+                            const s = String(c || "")
+                                .trim()
+                                .toUpperCase();
+                            if (/^[A-Z]$/.test(s)) {
+                                const idx = s.charCodeAt(0) - 65;
+                                if (idx >= 0 && idx < options.length)
+                                    correctIds.push(options[idx].id);
+                            }
+                        }
+                    }
+                    answerJson = { correctOptionIds: correctIds };
+                }
+                else {
+                    const accepted = Array.isArray(p.correct)
+                        ? p.correct.map((s) => String(s))
+                        : [];
+                    answerJson = { accepted };
+                }
+                payload.push({
+                    id: undefined,
+                    type: type === "multichoice"
+                        ? "multichoice"
+                        : type === "text"
+                            ? "text"
+                            : "mcq",
+                    prompt: promptText,
+                    optionsJson: options.length ? options : undefined,
+                    answerJson,
+                    explanation: typeof p.explanation === "string" ? p.explanation : null,
+                    points: Number(p.points || 1) || 1,
+                    sortOrder: 0,
+                });
+            }
+            // Persist generated exercises
+            await grammar_repository_1.GrammarRepository.upsertExercises(lessonId, payload);
+            return res.json({ ok: true, count: payload.length });
+        }
+        catch (err) {
+            console.error("Generate exercises error:", err?.message || err);
+            return res.status(500).json({ error: "failed to generate exercises" });
         }
     }
 }

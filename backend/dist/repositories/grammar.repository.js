@@ -53,6 +53,50 @@ class GrammarRepository {
           Type as type,
           Prompt as prompt,
           OptionsJson as optionsJson,
+          AnswerJson as answerJson,
+          Explanation as explanation,
+          Points as points,
+          SortOrder as sortOrder
+        FROM dbo.GrammarExercises
+        WHERE LessonId = @LessonId
+        ORDER BY SortOrder ASC, CreatedAt ASC
+      `);
+        return {
+            ...lesson,
+            exercises: exRes.recordset || [],
+        };
+    }
+    static async getLessonDetail(id) {
+        const pool = await (0, db_1.getPool)();
+        const lessonRes = await pool.request().input("Id", id).query(`
+        SELECT TOP 1
+          Id as id,
+          Title as title,
+          Level as level,
+          Topic as topic,
+          ContentMarkdown as contentMarkdown,
+          ResourcesJson as resourcesJson
+        FROM dbo.GrammarLessons
+        WHERE Id = @Id
+      `);
+        const lessonRaw = lessonRes.recordset?.[0];
+        if (!lessonRaw)
+            return null;
+        const lesson = { ...lessonRaw };
+        try {
+            lesson.resources = lessonRaw.resourcesJson
+                ? JSON.parse(lessonRaw.resourcesJson)
+                : [];
+        }
+        catch {
+            lesson.resources = [];
+        }
+        const exRes = await pool.request().input("LessonId", id).query(`
+        SELECT
+          Id as id,
+          Type as type,
+          Prompt as prompt,
+          OptionsJson as optionsJson,
           Explanation as explanation,
           Points as points,
           SortOrder as sortOrder

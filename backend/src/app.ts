@@ -20,6 +20,7 @@ import learningResourceRoutes from "./routes/learningResource.routes";
 import aiRoutes from "./routes/ai.routes";
 import grammarRoutes from "./routes/grammar.routes";
 import vtepRoutes from "./routes/vtep.routes";
+import vteptestRoutes from "./routes/vteptest.routes";
 import userLearningSessionRoutes from "./routes/userLearningSession.routes";
 import { authenticateJWT } from "./middleware/auth.middleware";
 import { config } from "./config";
@@ -109,6 +110,9 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/grammar", grammarRoutes);
 // VTEP document import and management
 app.use("/api/vtep", vtepRoutes);
+
+// VTEP tests (admin creates vteptest bundles; students can instantiate them)
+app.use("/api/vteptests", vteptestRoutes);
 
 // User learning sessions (client records of lessons / time)
 app.use("/api/sessions", userLearningSessionRoutes);

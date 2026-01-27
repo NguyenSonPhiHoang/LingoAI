@@ -18,11 +18,24 @@ router.post(
   VtepController.uploadPdf,
 );
 
+router.post(
+  "/documents/:id/audio",
+  requireAuth,
+  requireRole("Admin", "Teacher"),
+  tmp.single("file"),
+  VtepController.uploadAudio,
+);
+
 router.get(
   "/documents",
   requireAuth,
   requireRole("Admin", "Teacher"),
   VtepController.listDocuments,
+);
+router.get(
+  "/public/documents",
+  requireAuth,
+  VtepController.listDocumentsPublic,
 );
 router.get(
   "/documents/:id",
@@ -36,6 +49,11 @@ router.get(
   requireAuth,
   requireRole("Admin", "Teacher"),
   VtepController.listItems,
+);
+router.get(
+  "/public/documents/:id/items",
+  requireAuth,
+  VtepController.listItemsPublic,
 );
 
 router.post(
@@ -64,6 +82,20 @@ router.post(
   requireAuth,
   requireRole("Admin", "Teacher"),
   VtepController.createItemsForDocument,
+);
+
+router.put(
+  "/documents/:docId/items/:itemId",
+  requireAuth,
+  requireRole("Admin", "Teacher"),
+  VtepController.updateItem,
+);
+
+router.delete(
+  "/documents/:docId/items/:itemId",
+  requireAuth,
+  requireRole("Admin", "Teacher"),
+  VtepController.deleteItem,
 );
 
 export default router;

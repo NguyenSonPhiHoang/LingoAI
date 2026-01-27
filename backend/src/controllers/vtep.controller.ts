@@ -2,7 +2,7 @@ import { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware";
 import fs from "fs";
 import path from "path";
-import pdfParse from "pdf-parse";
+import * as pdfParse from "pdf-parse";
 import VtepRepository from "../repositories/vtep.repository";
 
 function getUserId(req: AuthRequest): string | null {
@@ -72,7 +72,8 @@ export class VtepController {
         }
 
         const dataBuffer = fs.readFileSync(destPath);
-        parsed = await pdfParse(dataBuffer, { max: 0 });
+        // pdf-parse exports a CommonJS callable; cast to any to call safely
+        parsed = await (pdfParse as any)(dataBuffer, { max: 0 });
       } catch (parseErr: any) {
         console.error("PDF parse failed", parseErr);
         return res.status(500).json({
@@ -122,12 +123,76 @@ export class VtepController {
     }
   }
 
+  static async uploadAudio(req: AuthRequest, res: Response) {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+      const documentId = req.params.id;
+      if (!documentId)
+        return res.status(400).json({ error: "document id required" });
+
+      const file = (req as any).file;
+      if (!file) return res.status(400).json({ error: "file required" });
+
+      const uploadsRoot = path.join(
+        __dirname,
+        "..",
+        "..",
+        "uploads",
+        "vtep",
+        "audio",
+      );
+      fs.mkdirSync(uploadsRoot, { recursive: true });
+
+      const destPath = path.join(uploadsRoot, file.filename);
+      try {
+        fs.renameSync(file.path, destPath);
+      } catch (moveErr: any) {
+        console.error("Failed to move uploaded audio file", moveErr, {
+          tmpPath: file.path,
+          destPath,
+        });
+        return res.status(500).json({ error: "failed to store uploaded file" });
+      }
+
+      const webPath = `/uploads/vtep/audio/${file.filename}`;
+      try {
+        await VtepRepository.setDocumentAudio(documentId, webPath);
+      } catch (repoErr: any) {
+        console.error("Failed to set document audio path", repoErr);
+        return res
+          .status(500)
+          .json({ error: "failed to update document audio" });
+      }
+
+      const doc = await VtepRepository.getDocument(documentId);
+      return res.json({ document: doc, audioPath: webPath });
+    } catch (err: any) {
+      console.error("VTEP uploadAudio error:", err?.message || err, {
+        stack: err?.stack,
+      });
+      return res.status(500).json({ error: "failed to upload audio" });
+    }
+  }
+
   static async listDocuments(req: AuthRequest, res: Response) {
     try {
       const rows = await VtepRepository.listDocuments();
       return res.json({ documents: rows });
     } catch (err: any) {
       console.error("VTEP list error:", err?.message || err);
+      return res.status(500).json({ error: "failed to list documents" });
+    }
+  }
+
+  // Public listing for authenticated (student) users
+  static async listDocumentsPublic(req: AuthRequest, res: Response) {
+    try {
+      const rows = await VtepRepository.listDocuments();
+      return res.json({ documents: rows });
+    } catch (err: any) {
+      console.error("VTEP public list error:", err?.message || err);
       return res.status(500).json({ error: "failed to list documents" });
     }
   }
@@ -214,6 +279,72 @@ export class VtepController {
     } catch (err: any) {
       console.error("VTEP listItems error:", err?.message || err);
       return res.status(500).json({ error: "failed to list items" });
+    }
+  }
+
+  // Public items listing for authenticated (student) users
+  static async listItemsPublic(req: AuthRequest, res: Response) {
+    try {
+      const id = req.params.id;
+      if (!id) return res.status(400).json({ error: "id required" });
+      const items = await VtepRepository.listItemsForDocument(id);
+      return res.json({ items });
+    } catch (err: any) {
+      console.error("VTEP listItemsPublic error:", err?.message || err);
+      return res.status(500).json({ error: "failed to list items" });
+    }
+  }
+
+  static async updateItem(req: AuthRequest, res: Response) {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+      const itemId = req.params.itemId;
+      if (!itemId) return res.status(400).json({ error: "item id required" });
+
+      const {
+        sectionKey,
+        skill,
+        part,
+        prompt,
+        optionsJson,
+        answerJson,
+        mediaUrl,
+        difficulty,
+      } = req.body;
+
+      await VtepRepository.updateItem(itemId, {
+        sectionKey: sectionKey ?? null,
+        skill: skill ?? null,
+        part: part ?? null,
+        prompt: prompt ?? null,
+        optionsJson: typeof optionsJson === "undefined" ? null : optionsJson,
+        answerJson: typeof answerJson === "undefined" ? null : answerJson,
+        mediaUrl: mediaUrl ?? null,
+        difficulty: typeof difficulty === "number" ? difficulty : null,
+      });
+
+      return res.json({ id: itemId });
+    } catch (err: any) {
+      console.error("VTEP updateItem error:", err?.message || err);
+      return res.status(500).json({ error: "failed to update item" });
+    }
+  }
+
+  static async deleteItem(req: AuthRequest, res: Response) {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+      const itemId = req.params.itemId;
+      if (!itemId) return res.status(400).json({ error: "item id required" });
+
+      await VtepRepository.deleteItem(itemId);
+      return res.json({ id: itemId });
+    } catch (err: any) {
+      console.error("VTEP deleteItem error:", err?.message || err);
+      return res.status(500).json({ error: "failed to delete item" });
     }
   }
 

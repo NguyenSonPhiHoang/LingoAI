@@ -138,6 +138,68 @@ body {
     overflow-x: auto;
   }
 
+  /* Make small-size prose render more compact (less vertical spacing) */
+  .prose.prose-sm {
+    --compact-pt: 0.125rem;
+    /* 2px */
+    --compact-pb: 0.125rem;
+  }
+
+  .prose.prose-sm p {
+    margin-top: var(--compact-pt);
+    margin-bottom: var(--compact-pb);
+  }
+
+  .prose.prose-sm ul,
+  .prose.prose-sm ol {
+    margin-top: 0.2rem;
+    margin-bottom: 0.2rem;
+    padding-left: 1rem;
+  }
+
+  .prose.prose-sm ul>li,
+  .prose.prose-sm ol>li {
+    margin-top: 0.125rem;
+    margin-bottom: 0.125rem;
+  }
+
+  .prose.prose-sm h1,
+  .prose.prose-sm h2,
+  .prose.prose-sm h3 {
+    margin-top: 0.25rem;
+    margin-bottom: 0.125rem;
+  }
+
+  .prose.prose-sm blockquote {
+    margin: 0.25rem 0;
+    padding: 0.25rem 0.75rem;
+  }
+
+  /* Also apply slightly more compact defaults for regular prose blocks */
+  .prose {
+    --compact-pt: 0.25rem;
+    /* 4px */
+    --compact-pb: 0.25rem;
+  }
+
+  .prose p {
+    margin-top: var(--compact-pt);
+    margin-bottom: var(--compact-pb);
+  }
+
+  .prose ul,
+  .prose ol {
+    margin-top: 0.35rem;
+    margin-bottom: 0.35rem;
+    padding-left: 1rem;
+  }
+
+  .prose ul>li,
+  .prose ol>li {
+    margin-top: 0.125rem;
+    margin-bottom: 0.125rem;
+  }
+
   img,
   video,
   svg,

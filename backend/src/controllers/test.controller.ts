@@ -4,6 +4,7 @@ import { TestItemRepository } from "../repositories/testItem.repository";
 import { getPool } from "../db";
 import { v4 as uuid } from "uuid";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { RoleRepository } from "../repositories/role.repository";
 
 // Use dynamic require to avoid TS declaration issues
 const mssql: any = require("mssql");
@@ -14,8 +15,17 @@ export class TestController {
     try {
       const userId = req.user?.sub;
       if (!userId) return res.status(401).json({ error: "unauthorized" });
-      const tests = await TestRepository.findByUser(userId);
-      res.json(tests);
+      const myTests = await TestRepository.findByUser(userId);
+      const publicTests = await TestRepository.findPublic();
+      // Merge: include public tests (UserId null) plus user's own tests.
+      // Avoid duplicates if any (by id).
+      const map: Record<string, any> = {};
+      for (const t of publicTests || []) map[t.id] = t;
+      for (const t of myTests || []) map[t.id] = t;
+      const merged = Object.values(map).sort((a: any, b: any) =>
+        (b.createdAt || "") > (a.createdAt || "") ? 1 : -1,
+      );
+      res.json(merged);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -60,7 +70,25 @@ export class TestController {
         completedAt,
         version,
       } = req.body;
-      const userId = req.user?.sub || null;
+      let userId = req.user?.sub || null;
+      const isPublic = !!req.body?.isPublic;
+      if (isPublic) {
+        // Only allow admins/teachers to create public tests
+        const roleId = req.user?.roleId;
+        if (!roleId)
+          return res.status(403).json({ error: "forbidden - no role" });
+        const role = await RoleRepository.findById(roleId);
+        if (!role)
+          return res.status(403).json({ error: "forbidden - role not found" });
+        const rn = (role.name || "").toLowerCase();
+        if (rn === "admin" || rn === "teacher") {
+          userId = null; // make test public
+        } else {
+          return res
+            .status(403)
+            .json({ error: "forbidden - insufficient permissions" });
+        }
+      }
       const id = uuid();
 
       const nowIso = new Date().toISOString();
@@ -97,7 +125,7 @@ export class TestController {
         const infra = await pool
           .request()
           .query(
-            "SELECT OBJECT_ID('dbo.TestItems') AS TestItemsTable, OBJECT_ID('sp_TestItems_Insert') AS TestItemsInsertProc"
+            "SELECT OBJECT_ID('dbo.TestItems') AS TestItemsTable, OBJECT_ID('sp_TestItems_Insert') AS TestItemsInsertProc",
           );
         const infraRow = infra.recordset?.[0] || {};
         const hasTestItems =
@@ -125,13 +153,13 @@ export class TestController {
                 "ClientCreatedAt",
                 testPayload.clientCreatedAt
                   ? new Date(testPayload.clientCreatedAt)
-                  : null
+                  : null,
               )
               .input(
                 "CompletedAt",
                 testPayload.completedAt
                   ? new Date(testPayload.completedAt)
-                  : null
+                  : null,
               )
               .input("Version", testPayload.version ?? null)
               .execute("sp_Tests_Insert");
@@ -232,7 +260,7 @@ export class TestController {
               score: itemScore,
               data: itemData,
             });
-          })
+          }),
         ).catch(() => {
           // ignore item persistence failures
         });
@@ -249,12 +277,21 @@ export class TestController {
     try {
       const userId = req.user?.sub;
       if (!userId) return res.status(401).json({ error: "unauthorized" });
+      console.debug("listItemsByTest called", {
+        userId,
+        testId: req.params.id,
+      });
       const test = await TestRepository.findById(req.params.id);
+      console.debug(
+        "found test",
+        test ? { id: test.id, userId: test.userId } : null,
+      );
       if (!test) return res.status(404).json({ error: "test not found" });
       if (test.userId && test.userId !== userId)
         return res.status(403).json({ error: "forbidden" });
 
       const items = await TestItemRepository.listByTest(req.params.id);
+      console.debug("test items count", { count: (items || []).length });
       res.json(items);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -262,8 +299,16 @@ export class TestController {
   }
 
   // PUT /api/tests/:id
-  static async update(req: Request, res: Response) {
+  static async update(req: AuthRequest, res: Response) {
     try {
+      const userId = req.user?.sub;
+      if (!userId) return res.status(401).json({ error: "unauthorized" });
+
+      const existing = await TestRepository.findById(req.params.id);
+      if (!existing) return res.status(404).json({ error: "test not found" });
+      if (existing.userId && existing.userId !== userId)
+        return res.status(403).json({ error: "forbidden" });
+
       const {
         data,
         score,
@@ -276,26 +321,114 @@ export class TestController {
         clientCreatedAt,
         completedAt,
         version,
+        items,
       } = req.body;
-      await TestRepository.update({
-        id: req.params.id,
-        data: typeof data === "string" ? data : JSON.stringify(data),
-        score,
 
-        contextType: contextType ?? null,
-        contextId: contextId ?? null,
-        skill: skill ?? null,
-        totalQuestions:
-          typeof totalQuestions === "number" ? totalQuestions : null,
-        correctAnswers:
-          typeof correctAnswers === "number" ? correctAnswers : null,
-        durationSeconds:
-          typeof durationSeconds === "number" ? durationSeconds : null,
-        clientCreatedAt:
-          typeof clientCreatedAt === "string" ? clientCreatedAt : null,
-        completedAt: typeof completedAt === "string" ? completedAt : null,
-        version: typeof version === "number" ? version : null,
-      });
+      const nextData =
+        typeof data === "undefined"
+          ? (existing.data ?? null)
+          : typeof data === "string"
+            ? data
+            : JSON.stringify(data);
+
+      const nextScore =
+        typeof score === "undefined" ? (existing.score ?? null) : score;
+
+      const pool = await getPool();
+      const tx = new mssql.Transaction(pool);
+      await tx.begin();
+      try {
+        // Update the test record
+        await new mssql.Request(tx)
+          .input("Id", req.params.id)
+          .input("Data", nextData)
+          .input("Score", nextScore)
+          .input(
+            "ContextType",
+            typeof contextType === "undefined" ? null : (contextType ?? null),
+          )
+          .input(
+            "ContextId",
+            typeof contextId === "undefined" ? null : (contextId ?? null),
+          )
+          .input("Skill", typeof skill === "undefined" ? null : (skill ?? null))
+          .input(
+            "TotalQuestions",
+            typeof totalQuestions === "number" ? totalQuestions : null,
+          )
+          .input(
+            "CorrectAnswers",
+            typeof correctAnswers === "number" ? correctAnswers : null,
+          )
+          .input(
+            "DurationSeconds",
+            typeof durationSeconds === "number" ? durationSeconds : null,
+          )
+          .input(
+            "ClientCreatedAt",
+            typeof clientCreatedAt === "string" && clientCreatedAt
+              ? new Date(clientCreatedAt)
+              : null,
+          )
+          .input(
+            "CompletedAt",
+            typeof completedAt === "string" && completedAt
+              ? new Date(completedAt)
+              : null,
+          )
+          .input("Version", typeof version === "number" ? version : null)
+          .execute("sp_Tests_Update");
+
+        // Optionally replace TestItems (used by VTEP instantiate -> save attempt)
+        if (Array.isArray(items)) {
+          await new mssql.Request(tx)
+            .input("TestId", req.params.id)
+            .execute("sp_TestItems_DeleteByTest");
+
+          const baseType = existing.type ?? null;
+          const baseSkill = existing.skill ?? null;
+
+          for (let idx = 0; idx < items.length; idx++) {
+            const it = items[idx] || {};
+            const itemId = uuid();
+            const itemKey =
+              typeof it.itemKey === "string" ? it.itemKey : `item-${idx}`;
+            const kind = typeof it.kind === "string" ? it.kind : null;
+            const itemSkill =
+              typeof it.skill === "string" ? it.skill : baseSkill;
+            const isCorrect =
+              typeof it.isCorrect === "boolean" ? it.isCorrect : null;
+            const itemScore = typeof it.score === "number" ? it.score : null;
+            const itemData =
+              typeof it.data === "string"
+                ? it.data
+                : JSON.stringify(it.data ?? it);
+
+            await new mssql.Request(tx)
+              .input("Id", itemId)
+              .input("TestId", req.params.id)
+              .input("UserId", existing.userId ?? userId)
+              .input("Type", baseType)
+              .input("Skill", itemSkill)
+              .input("Kind", kind)
+              .input("ItemKey", itemKey)
+              .input("IsCorrect", isCorrect)
+              .input("Score", itemScore)
+              .input("Data", itemData)
+              .input("CreatedAt", new Date())
+              .execute("sp_TestItems_Insert");
+          }
+        }
+
+        await tx.commit();
+      } catch (e) {
+        try {
+          await tx.rollback();
+        } catch {
+          // ignore
+        }
+        return res.status(500).json({ error: "Failed to update test" });
+      }
       res.json({ ok: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });

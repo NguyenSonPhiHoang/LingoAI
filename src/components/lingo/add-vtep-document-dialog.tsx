@@ -31,6 +31,7 @@ const AddVtepDocumentDialog: FC<{
   const { toast } = useToast();
 
   const [showPreview, setShowPreview] = useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const preview = description.trim();
 
@@ -62,12 +63,37 @@ const AddVtepDocumentDialog: FC<{
     }
   };
 
+  // Insert markdown at cursor position in the textarea
+  const insertMarkdown = (prefix: string, suffix: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      // fallback: append
+      setDescription((d) => d + prefix + suffix);
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? start;
+    const before = el.value.slice(0, start);
+    const selected = el.value.slice(start, end);
+    const after = el.value.slice(end);
+    const newVal = before + prefix + selected + suffix + after;
+    setDescription(newVal);
+
+    // Restore focus and move caret inside inserted area
+    requestAnimationFrame(() => {
+      const pos =
+        before.length + prefix.length + (selected ? selected.length : 0);
+      el.focus();
+      el.selectionStart = el.selectionEnd = pos;
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button disabled={disabled}>Create Document</Button>
       </DialogTrigger>
-      <DialogContent className="w-[90vw] max-w-4xl">
+      <DialogContent className="w-[90vw] max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create VTEP Document</DialogTitle>
           <DialogDescription>
@@ -75,8 +101,8 @@ const AddVtepDocumentDialog: FC<{
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleCreate} className="flex flex-col h-[60vh]">
-          <div className="overflow-auto space-y-4 pb-4">
+        <form onSubmit={handleCreate} className="flex-1 flex flex-col">
+          <div className="overflow-auto space-y-4 pb-4 px-1">
             <div>
               <label className="text-sm font-medium">Title</label>
               <Input
@@ -90,12 +116,79 @@ const AddVtepDocumentDialog: FC<{
               <label className="text-sm font-medium">
                 Description (Markdown)
               </label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter description (supports Markdown)"
-                className="min-h-[120px]"
-              />
+              <div className="flex flex-col space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    aria-label="Bold"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("**", "**")}
+                  >
+                    <span className="font-semibold">B</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Italic"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("*", "*")}
+                  >
+                    <span className="italic">I</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Heading"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("# ", "")}
+                  >
+                    <span className="font-semibold">#</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Code"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("``\n", "\n``")}
+                  >
+                    <span className="text-sm">&lt;&gt;</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="List"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("- ", "")}
+                  >
+                    <span className="text-lg">≡</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Quote"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("> ", "")}
+                  >
+                    <span className="text-lg">“</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Link"
+                    className="h-9 w-9 inline-flex items-center justify-center rounded-md border bg-background"
+                    onClick={() => insertMarkdown("[", "](url)")}
+                  >
+                    <span className="text-sm">🔗</span>
+                  </button>
+                </div>
+                <Textarea
+                  ref={textareaRef}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter description (supports Markdown)"
+                  className="min-h-[320px]"
+                />
+              </div>
             </div>
 
             <div>
@@ -110,9 +203,9 @@ const AddVtepDocumentDialog: FC<{
                 </button>
               </div>
               {showPreview ? (
-                <div className="mt-2 border rounded-md p-3 bg-background min-h-[80px]">
+                <div className="mt-2 border rounded-md p-3 bg-background min-h-[120px]">
                   {preview ? (
-                    <article className="prose dark:prose-invert max-w-none">
+                    <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {description}
                       </ReactMarkdown>
@@ -128,7 +221,7 @@ const AddVtepDocumentDialog: FC<{
           </div>
 
           <div className="flex-shrink-0">
-            <DialogFooter>
+            <DialogFooter className="sticky bottom-0 bg-background border-t py-3 px-4 flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"

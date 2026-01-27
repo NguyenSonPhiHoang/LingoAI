@@ -16,7 +16,7 @@ import {
 } from "./schemas";
 
 export async function generateLessonContent(
-  input: GenerateLessonContentInput
+  input: GenerateLessonContentInput,
 ): Promise<GenerateLessonContentOutput> {
   return generateLessonContentFlow(input);
 }
@@ -63,14 +63,14 @@ const generateLessonContentFlow = baseAi.defineFlow(
       console.log("[LingoAI] Using User's Gemini API Key.");
     } else {
       console.log(
-        "[LingoAI] User API key not found. Falling back to system default."
+        "[LingoAI] User API key not found. Falling back to system default.",
       );
     }
 
     const systemDefaultKey = process.env.GEMINI_API_KEY;
     if (!apiKey && !systemDefaultKey) {
       throw new Error(
-        "GEMINI_API_KEY is not configured and no user Gemini key was provided"
+        "GEMINI_API_KEY is not configured and no user Gemini key was provided",
       );
     }
 
@@ -84,7 +84,7 @@ const generateLessonContentFlow = baseAi.defineFlow(
     const withRetry = async <T>(
       fn: () => Promise<T>,
       retries = 3,
-      baseMs = 800
+      baseMs = 800,
     ): Promise<T> => {
       let attempt = 0;
       // eslint-disable-next-line no-constant-condition
@@ -114,14 +114,14 @@ const generateLessonContentFlow = baseAi.defineFlow(
           model: textModel,
           prompt: { text: lessonPrompt, input },
           output: { format: "json", schema: GenerateLessonContentOutputSchema },
-        })
+        } as any),
       );
       if (!primary.output) throw new Error("Primary model returned no output.");
       return primary.output;
     } catch (error) {
       console.warn(
         "Primary model failed. Retrying with fallback model.",
-        error
+        error,
       );
       const fallback = await withRetry(
         () =>
@@ -132,13 +132,13 @@ const generateLessonContentFlow = baseAi.defineFlow(
               format: "json",
               schema: GenerateLessonContentOutputSchema,
             },
-          }),
+          } as any),
         2,
-        1200
+        1200,
       );
       if (!fallback.output)
         throw new Error("Fallback model also returned no output.");
       return fallback.output;
     }
-  }
+  },
 );

@@ -25,13 +25,16 @@ export const getAllUsers = async (): Promise<User[]> => {
   const q = query(usersCollection);
   const snapshot = await getDocs(q);
   const users = snapshot.docs.map((doc) => {
-    const data = doc.data();
-    // Safely handle the createdAt field.
-    const createdAt =
+    const data = doc.data() as any;
+    // Safely handle the createdAt field and store as an ISO string to
+    // match the `User.createdAt?: string` type used in the app.
+    const createdAtDate =
       data.createdAt instanceof Timestamp
         ? data.createdAt.toDate()
         : new Date();
+    const createdAt = createdAtDate.toISOString();
     return {
+      id: data.uid ?? data.id ?? "",
       uid: data.uid,
       displayName: data.displayName,
       email: data.email,
@@ -44,15 +47,15 @@ export const getAllUsers = async (): Promise<User[]> => {
 
   // Sort the users by creation date in descending order on the client-side.
   return users.sort((a, b) => {
-    const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-    const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+    const dateA = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const dateB = b.createdAt ? Date.parse(b.createdAt) : 0;
     return dateB - dateA;
   });
 };
 
 export const updateUserStatus = async (
   uid: string,
-  status: "approved" | "rejected" | "pending"
+  status: "approved" | "rejected" | "pending",
 ) => {
   if (!firebaseEnabled) return;
   const userDoc = doc(db, "users", uid);
@@ -61,7 +64,7 @@ export const updateUserStatus = async (
 
 export const updateUserProfile = async (
   uid: string,
-  updates: { displayName?: string; photoURL?: string; geminiApiKey?: string }
+  updates: { displayName?: string; photoURL?: string; geminiApiKey?: string },
 ) => {
   if (!firebaseEnabled) return;
   const { currentUser } = auth;

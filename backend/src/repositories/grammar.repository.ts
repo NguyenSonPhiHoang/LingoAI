@@ -2,7 +2,7 @@ import { getPool } from "../db";
 import { v4 as uuidv4 } from "uuid";
 
 export type GrammarLevel = "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
-export type GrammarExerciseType = "mcq" | "text";
+export type GrammarExerciseType = "mcq" | "text" | "multichoice";
 
 export type GrammarLessonListItem = {
   id: string;
@@ -183,11 +183,7 @@ export class GrammarRepository {
     level: GrammarLevel;
     topic?: string | null;
     contentMarkdown: string;
-<<<<<<< HEAD
     resources?: Array<{ title: string; url: string }>;
-=======
-    resources:any[]|undefined;
->>>>>>> 764c0846ba2f391aa6dba98e2b009fe8f91149d3
     createdByUserId?: string | null;
     isPublished?: boolean;
   }): Promise<{ id: string }> {

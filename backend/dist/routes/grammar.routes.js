@@ -12,4 +12,5 @@ router.post("/lessons/:id/attempts", auth_middleware_1.requireAuth, grammar_cont
 router.post("/lessons", auth_middleware_1.requireAuth, (0, auth_middleware_1.authorizeRoles)("role_admin", "role_teacher"), grammar_controller_1.GrammarController.createLesson);
 router.put("/lessons/:id", auth_middleware_1.requireAuth, (0, auth_middleware_1.authorizeRoles)("role_admin", "role_teacher"), grammar_controller_1.GrammarController.updateLesson);
 router.post("/lessons/:id/exercises", auth_middleware_1.requireAuth, (0, auth_middleware_1.authorizeRoles)("role_admin", "role_teacher"), grammar_controller_1.GrammarController.upsertExercises);
+router.post("/lessons/:id/generate-exercises", auth_middleware_1.requireAuth, (0, auth_middleware_1.authorizeRoles)("role_admin", "role_teacher"), grammar_controller_1.GrammarController.generateExercises);
 exports.default = router;
