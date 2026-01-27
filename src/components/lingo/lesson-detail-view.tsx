@@ -145,7 +145,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
 
   // State for temporary, unsaved content and exercises
   const [tempContent, setTempContent] = useState<LessonContent[] | null>(
-    lesson.content || []
+    lesson.content || [],
   );
   const [tempExercises, setTempExercises] = useState<
     Lesson["exercises"] | null
@@ -341,7 +341,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
       const basePayload = { focusPoints: focusPoints || undefined };
 
       const passageContent = displayedContent.find(
-        (c) => c.type === "passage"
+        (c) => c.type === "passage",
       )?.value;
       const passageObject = passageContent ? JSON.parse(passageContent) : null;
       const passageText = passageObject?.body || "";
@@ -417,7 +417,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
       await updateLessonContent(
         currentLesson.docId,
         finalContent,
-        finalExercises
+        finalExercises,
       );
 
       // Commit temporary state to current state
@@ -460,7 +460,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
               onClick={() =>
                 playbackHook.playAudio(
                   customKey || translationKey,
-                  textToProcess
+                  textToProcess,
                 )
               }
               disabled={
@@ -480,7 +480,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
               onClick={() =>
                 playbackHook.toggleTranslation(
                   customKey || translationKey,
-                  textToProcess
+                  textToProcess,
                 )
               }
               disabled={playbackHook.isTranslating[customKey || translationKey]}
@@ -502,7 +502,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
                   {(data as LessonVocabularySuggestion[]).map((v, index) => {
                     const vocabAudioKey = `vocab-${v.word}-${index}`;
                     const existingWord = userVocabularyMap.get(
-                      v.word.toLowerCase()
+                      v.word.toLowerCase(),
                     );
                     const isSaving = isSavingWord[v.word];
 
@@ -525,7 +525,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
                               className="h-7 w-7"
                               onClick={() => {
                                 const w = userVocabularyMap.get(
-                                  v.word.toLowerCase()
+                                  v.word.toLowerCase(),
                                 );
 
                                 // If the word already exists in the user's vocabulary and has
@@ -534,7 +534,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
                                   return void playbackHook.playAudio(
                                     vocabAudioKey,
                                     v.word,
-                                    w.audioUrl
+                                    w.audioUrl,
                                   );
                                 }
 
@@ -547,7 +547,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
                                 // Not in user's vocabulary: browser TTS only (no AI tokens).
                                 return void playbackHook.playWithBrowserTTS(
                                   vocabAudioKey,
-                                  v.word
+                                  v.word,
                                 );
                               }}
                               disabled={
@@ -688,7 +688,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
         return null;
       }
     },
-    [playbackHook, vocabulary, userVocabularyMap, isSavingWord, handleAddWord]
+    [playbackHook, vocabulary, userVocabularyMap, isSavingWord, handleAddWord],
   );
 
   const renderPracticeZone = () => {
@@ -722,7 +722,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
     }
 
     const passageContent = displayedContent.find(
-      (c) => c.type === "passage"
+      (c) => c.type === "passage",
     )?.value;
     const passageObject = passageContent
       ? JSON.parse(passageContent)
@@ -805,8 +805,8 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
             onClick={() =>
               router.push(
                 `/storybook/generate?lessonId=${encodeURIComponent(
-                  currentLesson.docId
-                )}&level=${encodeURIComponent(currentLesson.level)}`
+                  currentLesson.docId,
+                )}&level=${encodeURIComponent(currentLesson.level)}`,
               )
             }
           >
@@ -1068,12 +1068,12 @@ const formatDialogueBody = (body: string): string => {
     .replace(
       /(^|\s)([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s/g,
       (_full, prefix: string, speaker: string) =>
-        prefix ? `\n\n${speaker}: ` : `${speaker}: `
+        prefix ? `\n\n${speaker}: ` : `${speaker}: `,
     );
 };
 
 const tryParseDialogueLines = (
-  body: string
+  body: string,
 ): Array<{ speaker: string; text: string }> | null => {
   const raw = (body || "").trim();
   if (!raw) return null;
@@ -1095,7 +1095,7 @@ const tryParseDialogueLines = (
   const withLineBreaks = normalized.replace(
     /\b([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s/g,
     (full: string, speaker: string, offset: number) =>
-      offset === 0 ? `${speaker}: ` : `\n${speaker}: `
+      offset === 0 ? `${speaker}: ` : `\n${speaker}: `,
   );
 
   const lines = withLineBreaks
@@ -1106,7 +1106,7 @@ const tryParseDialogueLines = (
   const parsed = lines
     .map((l) => {
       const m = l.match(
-        /^([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s*(.*)$/
+        /^([A-Z][A-Za-z0-9]{0,15}(?:\s+[A-Z0-9][A-Za-z0-9]{0,15}){0,2}):\s*(.*)$/,
       );
       if (!m) return null;
       const speaker = m[1];
@@ -1219,12 +1219,15 @@ const ReadingPractice: FC<
     });
 
     const results = await Promise.all(feedbackPromises);
-    const newFeedback = results.reduce((acc, result) => {
-      if (result) {
-        acc[result.index] = result.feedback;
-      }
-      return acc;
-    }, {} as Record<number, string>);
+    const newFeedback = results.reduce(
+      (acc, result) => {
+        if (result) {
+          acc[result.index] = result.feedback;
+        }
+        return acc;
+      },
+      {} as Record<number, string>,
+    );
 
     setFeedback(newFeedback);
     setIsChecking(false);
@@ -1337,7 +1340,7 @@ const ReadingPractice: FC<
                           onClick={() =>
                             playbackHook.playAudio(
                               `feedback-${qIndex}`,
-                              feedback[qIndex]!
+                              feedback[qIndex]!,
                             )
                           }
                           disabled={
@@ -1357,7 +1360,7 @@ const ReadingPractice: FC<
                           onClick={() =>
                             playbackHook.toggleTranslation(
                               `feedback-${qIndex}`,
-                              feedback[qIndex]!
+                              feedback[qIndex]!,
                             )
                           }
                           disabled={
@@ -1600,7 +1603,7 @@ const WritingPracticePrompt: FC<
                     onClick={() =>
                       playbackHook.toggleTranslation(
                         feedbackKey,
-                        feedback.feedback
+                        feedback.feedback,
                       )
                     }
                     disabled={playbackHook.isTranslating[feedbackKey]}
@@ -1635,7 +1638,7 @@ const WritingPracticePrompt: FC<
                     onClick={() =>
                       playbackHook.playAudio(
                         correctedKey,
-                        feedback.correctedText
+                        feedback.correctedText,
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[correctedKey]}
@@ -1653,7 +1656,7 @@ const WritingPracticePrompt: FC<
                     onClick={() =>
                       playbackHook.toggleTranslation(
                         correctedKey,
-                        feedback.correctedText
+                        feedback.correctedText,
                       )
                     }
                     disabled={playbackHook.isTranslating[correctedKey]}
@@ -2023,7 +2026,7 @@ const PronunciationPractice: FC<
 
   const handleSelectIntonation = (
     scenario: string,
-    choice: "rising" | "falling"
+    choice: "rising" | "falling",
   ) => {
     if (showIntonationResult) return;
     setSelectedIntonation((prev) => ({ ...prev, [scenario]: choice }));
@@ -2113,7 +2116,7 @@ const PronunciationPractice: FC<
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {exercise.wordExercise.map((pair, index) => (
+          {exercise.wordExercise.map((pair: any, index: number) => (
             <Card key={index} className="bg-muted/50">
               <CardContent className="p-4 grid grid-cols-2 divide-x divide-border">
                 <div className="flex items-center justify-center flex-col gap-1">
@@ -2173,7 +2176,7 @@ const PronunciationPractice: FC<
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {exercise.sentenceExercise.map((sentence, index) => (
+          {exercise.sentenceExercise.map((sentence: any, index: number) => (
             <Card key={index} className="bg-muted/50">
               <CardContent className="p-4 flex items-center gap-4">
                 <Button
@@ -2234,7 +2237,7 @@ const PronunciationPractice: FC<
                     className={cn(
                       "p-4",
                       showIntonationResult &&
-                        (isCorrect ? "border-green-400" : "border-red-400")
+                        (isCorrect ? "border-green-400" : "border-red-400"),
                     )}
                   >
                     <p className="font-medium">{scenario}</p>
@@ -2284,7 +2287,7 @@ const PronunciationPractice: FC<
                     </div>
                   </Card>
                 );
-              }
+              },
             )}
           </div>
           {!showIntonationResult && (

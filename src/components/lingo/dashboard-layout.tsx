@@ -127,6 +127,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       href: "/library",
     },
     {
+      id: "vtep-student",
+      label: "VTEP Practice",
+      icon: FileText,
+      role: ["role_student", "role_teacher", "role_admin"],
+      href: "/vtep-student",
+    },
+    {
       id: "grammar",
       label: "Grammar",
       icon: BookOpenText,
@@ -135,10 +142,17 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     },
     {
       id: "vtep",
-      label: "VTEP",
+      label: "VTEP Documents",
       icon: FileText,
       role: ["role_teacher", "role_admin"],
-      href: "/",
+      href: "/vtep",
+    },
+    {
+      id: "vteptests",
+      label: "VTEP Tests (Manage)",
+      icon: FileText,
+      role: ["role_teacher", "role_admin"],
+      href: "/vteptests",
     },
     {
       id: "vocabulary",

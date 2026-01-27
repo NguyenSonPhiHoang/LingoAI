@@ -64,7 +64,7 @@ const buildModelList = (preferred?: string, extra?: string[]) => {
  * success and ignoring NOT_FOUND errors for unsupported models.
  */
 export async function generateWithAutoModel<TOutput = any>(
-  params: GenerateParams<TOutput>
+  params: GenerateParams<TOutput>,
 ): Promise<{ output: TOutput; modelUsed: string }> {
   const models = buildModelList(params.preferredModel, params.candidates);
   let lastErr: any;
@@ -76,13 +76,13 @@ export async function generateWithAutoModel<TOutput = any>(
         prompt: params.prompt,
         output: params.output,
         ...(params.options || {}),
-      });
+      } as any);
       if (output) return { output, modelUsed: model };
     } catch (err: any) {
       lastErr = err;
       if (isApiKeyInvalidError(err)) {
         throw new Error(
-          "Gemini API key is missing/invalid. Set a valid GEMINI_API_KEY in the server environment or provide a valid per-user geminiApiKey in Settings."
+          "Gemini API key is missing/invalid. Set a valid GEMINI_API_KEY in the server environment or provide a valid per-user geminiApiKey in Settings.",
         );
       }
       if (!isNotFoundError(err)) throw err;

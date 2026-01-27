@@ -17,7 +17,7 @@ import {
 import { z } from "zod";
 
 export async function generateListeningExercise(
-  input: GenerateListeningExerciseInput
+  input: GenerateListeningExerciseInput,
 ): Promise<GenerateListeningExerciseOutput> {
   return generateListeningExerciseFlow(input);
 }
@@ -30,7 +30,7 @@ const DialogueSchema = z.object({
           .string()
           .describe("The name of the speaker (e.g., Speaker 1, Alex)."),
         line: z.string().describe("The line spoken by the speaker."),
-      })
+      }),
     )
     .describe("The dialogue script."),
 });
@@ -39,7 +39,7 @@ const toWav = async (
   pcmData: Buffer,
   channels = 1,
   rate = 24000,
-  sampleWidth = 2
+  sampleWidth = 2,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
@@ -57,7 +57,7 @@ const toWav = async (
 };
 
 const generateDialogueScript = async (
-  input: GenerateListeningExerciseInput
+  input: GenerateListeningExerciseInput,
 ) => {
   const model = getTextModel();
   const promptText = `Create a short dialogue between two speakers on the topic of "{{topic}}". The dialogue should be natural and easy to follow for an English learner.
@@ -71,23 +71,23 @@ const generateDialogueScript = async (
       model,
       prompt: { text: promptText, input },
       output: { schema: DialogueSchema, format: "json" },
-    });
+    } as any);
     if (!output)
       throw new Error("Primary model failed to generate dialogue script.");
     return output;
   } catch (error) {
     console.warn(
       "Primary model failed for dialogue script. Retrying with fallback.",
-      error
+      error,
     );
     const { output: fallbackOutput } = await ai.generate({
       model,
       prompt: { text: promptText, input },
       output: { schema: DialogueSchema, format: "json" },
-    });
+    } as any);
     if (!fallbackOutput)
       throw new Error(
-        "Fallback model also failed to generate dialogue script."
+        "Fallback model also failed to generate dialogue script.",
       );
     return fallbackOutput;
   }
@@ -110,19 +110,19 @@ Dialogue:
       model,
       prompt: { text: promptText, input },
       output: { schema: outputSchema, format: "json" },
-    });
+    } as any);
     if (!output) throw new Error("Primary model failed to generate questions.");
     return output;
   } catch (error) {
     console.warn(
       "Primary model failed for listening questions. Retrying with fallback.",
-      error
+      error,
     );
     const { output: fallbackOutput } = await ai.generate({
       model,
       prompt: { text: promptText, input },
       output: { schema: outputSchema, format: "json" },
-    });
+    } as any);
     if (!fallbackOutput)
       throw new Error("Fallback model also failed to generate questions.");
     return fallbackOutput;
@@ -141,7 +141,7 @@ const generateListeningExerciseFlow = ai.defineFlow(
     if (!dialogueOutput) throw new Error("Failed to generate dialogue script.");
 
     const dialogueText = dialogueOutput.dialogue
-      .map((d) => `${d.speaker}: ${d.line}`)
+      .map((d: any) => `${d.speaker}: ${d.line}`)
       .join("\n");
 
     // 2. Generate Audio from Script
@@ -165,12 +165,12 @@ const generateListeningExerciseFlow = ai.defineFlow(
         },
       },
       prompt: { text: dialogueText },
-    });
+    } as any);
     if (!media) throw new Error("Audio generation failed.");
 
     const audioBuffer = Buffer.from(
       media.url.substring(media.url.indexOf(",") + 1),
-      "base64"
+      "base64",
     );
     const audioUrl = "data:audio/wav;base64," + (await toWav(audioBuffer));
 
@@ -184,5 +184,5 @@ const generateListeningExerciseFlow = ai.defineFlow(
       audioUrl,
       questions: questionsOutput.questions,
     };
-  }
+  },
 );

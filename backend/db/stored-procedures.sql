@@ -1159,7 +1159,7 @@ CREATE   PROCEDURE sp_Tests_Insert
   @Type NVARCHAR(100),
   @Data NVARCHAR(MAX),
   @Score FLOAT,
-  @CreatedAt DATETIMEOFFSET,
+  @CreatedAt DATETIMEOFFSET = NULL,
   @ContextType NVARCHAR(50) = NULL,
   @ContextId NVARCHAR(100) = NULL,
   @Skill NVARCHAR(50) = NULL,
@@ -1172,10 +1172,20 @@ CREATE   PROCEDURE sp_Tests_Insert
 AS
 BEGIN
   SET NOCOUNT ON;
+
+  -- Normalize all stored timestamps to UTC+7 (Vietnam).
+  DECLARE @NowLocal DATETIMEOFFSET = (SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time');
+  DECLARE @CreatedAtLocal DATETIMEOFFSET =
+    CASE WHEN @CreatedAt IS NULL THEN @NowLocal ELSE SWITCHOFFSET(@CreatedAt, '+07:00') END;
+  DECLARE @ClientCreatedAtLocal DATETIMEOFFSET =
+    CASE WHEN @ClientCreatedAt IS NULL THEN NULL ELSE SWITCHOFFSET(@ClientCreatedAt, '+07:00') END;
+  DECLARE @CompletedAtLocal DATETIMEOFFSET =
+    CASE WHEN @CompletedAt IS NULL THEN NULL ELSE SWITCHOFFSET(@CompletedAt, '+07:00') END;
+
   INSERT INTO Tests
     (Id, UserId, Type, Data, Score, CreatedAt, ContextType, ContextId, Skill, TotalQuestions, CorrectAnswers, DurationSeconds, ClientCreatedAt, CompletedAt, Version)
   VALUES
-    (@Id, @UserId, @Type, @Data, @Score, @CreatedAt, @ContextType, @ContextId, @Skill, @TotalQuestions, @CorrectAnswers, @DurationSeconds, @ClientCreatedAt, @CompletedAt, ISNULL(@Version, 1));
+    (@Id, @UserId, @Type, @Data, @Score, @CreatedAtLocal, @ContextType, @ContextId, @Skill, @TotalQuestions, @CorrectAnswers, @DurationSeconds, @ClientCreatedAtLocal, @CompletedAtLocal, ISNULL(@Version, 1));
 END
 GO
 
@@ -1198,6 +1208,13 @@ CREATE   PROCEDURE sp_Tests_Update
 AS
 BEGIN
   SET NOCOUNT ON;
+
+  -- Normalize all stored timestamps to UTC+7 (Vietnam).
+  DECLARE @ClientCreatedAtLocal DATETIMEOFFSET =
+    CASE WHEN @ClientCreatedAt IS NULL THEN NULL ELSE SWITCHOFFSET(@ClientCreatedAt, '+07:00') END;
+  DECLARE @CompletedAtLocal DATETIMEOFFSET =
+    CASE WHEN @CompletedAt IS NULL THEN NULL ELSE SWITCHOFFSET(@CompletedAt, '+07:00') END;
+
   UPDATE Tests
   SET
     Data = @Data,
@@ -1208,8 +1225,8 @@ BEGIN
     TotalQuestions = COALESCE(@TotalQuestions, TotalQuestions),
     CorrectAnswers = COALESCE(@CorrectAnswers, CorrectAnswers),
     DurationSeconds = COALESCE(@DurationSeconds, DurationSeconds),
-    ClientCreatedAt = COALESCE(@ClientCreatedAt, ClientCreatedAt),
-    CompletedAt = COALESCE(@CompletedAt, CompletedAt),
+    ClientCreatedAt = COALESCE(@ClientCreatedAtLocal, ClientCreatedAt),
+    CompletedAt = COALESCE(@CompletedAtLocal, CompletedAt),
     Version = COALESCE(@Version, Version)
   WHERE Id = @Id;
 END
@@ -1403,14 +1420,20 @@ CREATE PROCEDURE sp_TestItems_Insert
   @IsCorrect BIT = NULL,
   @Score FLOAT = NULL,
   @Data NVARCHAR(MAX) = NULL,
-  @CreatedAt DATETIMEOFFSET
+  @CreatedAt DATETIMEOFFSET = NULL
 AS
 BEGIN
   SET NOCOUNT ON;
+
+  -- Normalize all stored timestamps to UTC+7 (Vietnam).
+  DECLARE @NowLocal DATETIMEOFFSET = (SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time');
+  DECLARE @CreatedAtLocal DATETIMEOFFSET =
+    CASE WHEN @CreatedAt IS NULL THEN @NowLocal ELSE SWITCHOFFSET(@CreatedAt, '+07:00') END;
+
   INSERT INTO TestItems
     (Id, TestId, UserId, Type, Skill, Kind, ItemKey, IsCorrect, Score, Data, CreatedAt)
   VALUES
-    (@Id, @TestId, @UserId, @Type, @Skill, @Kind, @ItemKey, @IsCorrect, @Score, @Data, @CreatedAt);
+    (@Id, @TestId, @UserId, @Type, @Skill, @Kind, @ItemKey, @IsCorrect, @Score, @Data, @CreatedAtLocal);
 END
 GO
 

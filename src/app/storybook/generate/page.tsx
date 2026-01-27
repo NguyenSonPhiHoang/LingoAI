@@ -77,7 +77,7 @@ const formSchema = z
     {
       message: "Please provide a topic or select at least one vocabulary word.",
       path: ["topic"],
-    }
+    },
   );
 
 const GenerateStorybookPage: FC = () => {
@@ -151,7 +151,7 @@ const GenerateStorybookPage: FC = () => {
           form.setValue("generationType", "vocabulary");
           form.setValue(
             "vocabulary",
-            vocab.map((v) => v.id)
+            vocab.map((v) => v.id),
           );
         })
         .catch(() => {
@@ -227,7 +227,7 @@ const GenerateStorybookPage: FC = () => {
         generatedStory,
         level,
         format,
-        lessonId || undefined
+        lessonId || undefined,
       );
       toast({
         title: "Success!",
@@ -331,7 +331,7 @@ const GenerateStorybookPage: FC = () => {
                   onValueChange={(value) =>
                     form.setValue(
                       "generationType",
-                      value as "topic" | "vocabulary"
+                      value as "topic" | "vocabulary",
                     )
                   }
                   className="w-full"
@@ -393,7 +393,7 @@ const GenerateStorybookPage: FC = () => {
                                             <FormControl>
                                               <Checkbox
                                                 checked={field.value?.includes(
-                                                  word.id
+                                                  word.id,
                                                 )}
                                                 onCheckedChange={(checked) => {
                                                   return checked
@@ -404,8 +404,8 @@ const GenerateStorybookPage: FC = () => {
                                                     : field.onChange(
                                                         field.value?.filter(
                                                           (value) =>
-                                                            value !== word.id
-                                                        )
+                                                            value !== word.id,
+                                                        ),
                                                       );
                                                 }}
                                               />
@@ -505,7 +505,7 @@ const GenerateStorybookPage: FC = () => {
                   </CardContent>
                 </Card>
 
-                <article className="prose dark:prose-invert max-w-none">
+                <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {generatedStory.englishStory ||
                       generatedStory.interspersedStory ||

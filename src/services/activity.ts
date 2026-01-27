@@ -130,7 +130,7 @@ export const endUserSession = (userId: string) => {
           completed: false,
           ipAddress: null,
         };
-        apiPost("/sessions", payload).catch(() => {
+        apiPost("/api/sessions", payload).catch(() => {
           // ignore network errors; data stays in localStorage for retry
         });
       }

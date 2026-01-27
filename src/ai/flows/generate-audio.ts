@@ -17,7 +17,7 @@ import {
 } from "./schemas";
 
 export async function generateAudio(
-  input: GenerateAudioInput
+  input: GenerateAudioInput,
 ): Promise<GenerateAudioOutput> {
   return generateAudioFlow(input);
 }
@@ -50,7 +50,7 @@ async function toWav(
   pcmData: Buffer,
   channels = 1,
   rate = 24000,
-  sampleWidth = 2
+  sampleWidth = 2,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
@@ -129,14 +129,14 @@ const generateAudioFlow = baseAi.defineFlow(
           },
         },
         prompt: { text },
-      });
+      } as any);
 
       const mediaUrl = pickMediaUrl(result);
       if (!mediaUrl) {
         throw new Error(
           `Audio generation failed. No media was returned. Model: ${ttsModel}. Response text: ${String(
-            result?.text ?? ""
-          )}`
+            result?.text ?? "",
+          )}`,
         );
       }
 
@@ -165,7 +165,7 @@ const generateAudioFlow = baseAi.defineFlow(
 
       const audioBuffer = Buffer.from(
         mediaUrl.substring(mediaUrl.indexOf(",") + 1),
-        "base64"
+        "base64",
       );
       return {
         audioUrl: "data:audio/wav;base64," + (await toWav(audioBuffer)),
@@ -173,10 +173,10 @@ const generateAudioFlow = baseAi.defineFlow(
     } catch (error) {
       console.warn(
         `AI audio generation failed for text "${text}". Will use browser TTS fallback. Error:`,
-        error
+        error,
       );
       // Return an empty URL to signal fallback to the client
       return { audioUrl: "" };
     }
-  }
+  },
 );

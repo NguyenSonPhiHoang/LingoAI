@@ -7,6 +7,7 @@ import {
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 import UserSettingsRepository from "../repositories/userSettings.repository";
+import { RoleRepository } from "../repositories/role.repository";
 
 function getUserId(req: AuthRequest): string | null {
   const sub = req.user?.sub;
@@ -413,12 +414,10 @@ Return the JSON array.`;
                     "AI returned invalid JSON (parse failures). Raw output:\n",
                     raw,
                   );
-                  return res
-                    .status(500)
-                    .json({
-                      error: "AI returned invalid JSON",
-                      raw: String(raw).slice(0, 2000),
-                    });
+                  return res.status(500).json({
+                    error: "AI returned invalid JSON",
+                    raw: String(raw).slice(0, 2000),
+                  });
                 }
               }
             } else {
@@ -431,12 +430,10 @@ Return the JSON array.`;
                   "AI returned invalid JSON (could not extract array). Raw output:\n",
                   raw,
                 );
-                return res
-                  .status(500)
-                  .json({
-                    error: "AI returned invalid JSON",
-                    raw: String(raw).slice(0, 2000),
-                  });
+                return res.status(500).json({
+                  error: "AI returned invalid JSON",
+                  raw: String(raw).slice(0, 2000),
+                });
               }
             }
           }
@@ -455,12 +452,10 @@ Return the JSON array.`;
                   "AI returned invalid JSON (regex extract failed). Raw output:\n",
                   raw,
                 );
-                return res
-                  .status(500)
-                  .json({
-                    error: "AI returned invalid JSON",
-                    raw: String(raw).slice(0, 2000),
-                  });
+                return res.status(500).json({
+                  error: "AI returned invalid JSON",
+                  raw: String(raw).slice(0, 2000),
+                });
               }
             }
           } else {
@@ -469,12 +464,10 @@ Return the JSON array.`;
               parsed = JSON.parse(san);
             } catch (e8) {
               console.error("AI returned invalid format. Raw output:\n", raw);
-              return res
-                .status(500)
-                .json({
-                  error: "AI returned invalid format",
-                  raw: String(raw).slice(0, 2000),
-                });
+              return res.status(500).json({
+                error: "AI returned invalid format",
+                raw: String(raw).slice(0, 2000),
+              });
             }
           }
         }

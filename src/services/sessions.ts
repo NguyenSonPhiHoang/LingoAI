@@ -17,7 +17,7 @@ export const getMySessions = async (
 ): Promise<SessionDto[]> => {
   try {
     const res = await apiGet<{ ok: boolean; sessions: SessionDto[] }>(
-      "/sessions/me",
+      "/api/sessions/me",
       token || null,
     );
     return res.sessions || [];

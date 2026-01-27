@@ -30,6 +30,10 @@ export interface TestResult {
   // Optional context to support lesson/practice linkage
   lessonId?: string;
   skill?: string;
+  // If test was created as public (UserId IS NULL in DB)
+  isPublic?: boolean;
+  // Original owner id (null for public tests)
+  ownerUserId?: string | null;
 }
 
 export interface NewTestResultPayload {
@@ -90,7 +94,7 @@ const tryParseJson = (raw: string | null | undefined): any => {
 
 export const addTestResult = async (
   userId: string,
-  result: NewTestResultPayload
+  result: NewTestResultPayload,
 ) => {
   if (!firebaseEnabled) {
     const type = normalizeType(result.testType);
@@ -158,57 +162,59 @@ export const getTestResults = async (userId: string): Promise<TestResult[]> => {
           type === "placement"
             ? "Placement Test"
             : type === "review"
-            ? "Review Test"
-            : type === "lesson"
-            ? "Lesson Test"
-            : "Practice";
+              ? "Review Test"
+              : type === "lesson"
+                ? "Lesson Test"
+                : "Practice";
 
         return {
           id: r.id,
           userId: String(r.userId || userId),
+          isPublic: r.userId == null,
+          ownerUserId: r.userId ?? null,
           takenAt: r.completedAt
             ? new Date(r.completedAt)
             : r.clientCreatedAt
-            ? new Date(r.clientCreatedAt)
-            : r.createdAt
-            ? new Date(r.createdAt)
-            : new Date(),
+              ? new Date(r.clientCreatedAt)
+              : r.createdAt
+                ? new Date(r.createdAt)
+                : new Date(),
           correctAnswers: Number(
             (typeof r.correctAnswers === "number" ? r.correctAnswers : null) ??
               parsed.correctAnswers ??
-              0
+              0,
           ),
           totalQuestions: Number(
             (typeof r.totalQuestions === "number" ? r.totalQuestions : null) ??
               parsed.totalQuestions ??
-              0
+              0,
           ),
           percentage:
             typeof parsed.percentage === "number"
               ? parsed.percentage
               : typeof r.score === "number"
-              ? r.score
-              : 0,
+                ? r.score
+                : 0,
           recommendedLevel: parsed.recommendedLevel,
           testType,
           durationSeconds:
             typeof r.durationSeconds === "number"
               ? r.durationSeconds
               : typeof parsed.durationSeconds === "number"
-              ? parsed.durationSeconds
-              : undefined,
+                ? parsed.durationSeconds
+                : undefined,
           lessonId:
             typeof r.contextId === "string"
               ? r.contextId
               : typeof parsed.lessonId === "string"
-              ? parsed.lessonId
-              : undefined,
+                ? parsed.lessonId
+                : undefined,
           skill:
             typeof r.skill === "string"
               ? r.skill
               : typeof parsed.skill === "string"
-              ? parsed.skill
-              : undefined,
+                ? parsed.skill
+                : undefined,
         } as TestResult;
       })
       .sort((a, b) => +new Date(b.takenAt) - +new Date(a.takenAt));
@@ -216,7 +222,7 @@ export const getTestResults = async (userId: string): Promise<TestResult[]> => {
   const q = query(
     testResultsCollection,
     where("userId", "==", userId),
-    orderBy("takenAt", "desc")
+    orderBy("takenAt", "desc"),
   );
 
   const snapshot = await getDocs(q);

@@ -14,7 +14,7 @@ import {
 } from "./schemas";
 
 export async function generateSpeakingExercise(
-  input: GenerateSpeakingExerciseInput
+  input: GenerateSpeakingExerciseInput,
 ): Promise<GenerateSpeakingExerciseOutput> {
   return generateSpeakingExerciseFlow(input);
 }
@@ -48,13 +48,13 @@ const generateSpeakingExerciseFlow = ai.defineFlow(
           schema: GenerateSpeakingExerciseOutputSchema,
           format: "json",
         },
-      });
+      } as any);
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
       console.warn(
         "Primary model failed for speaking exercise. Retrying with fallback model.",
-        error
+        error,
       );
       const { output: fallbackOutput } = await ai.generate({
         model,
@@ -63,12 +63,12 @@ const generateSpeakingExerciseFlow = ai.defineFlow(
           schema: GenerateSpeakingExerciseOutputSchema,
           format: "json",
         },
-      });
+      } as any);
       if (!fallbackOutput)
         throw new Error(
-          "Fallback model also returned no output for speaking exercise."
+          "Fallback model also returned no output for speaking exercise.",
         );
       return fallbackOutput;
     }
-  }
+  },
 );

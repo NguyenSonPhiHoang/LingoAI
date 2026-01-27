@@ -23,6 +23,18 @@ export interface TestResult {
 export class TestRepository {
   // Insert via sp_Tests_Insert
   static async create(test: TestResult): Promise<TestResult> {
+    // Debug: log when Tests are created to trace unexpected inserts
+    try {
+      console.debug("TestRepository.create called", {
+        id: test.id,
+        userId: test.userId,
+        type: test.type,
+      });
+      console.debug(new Error("stack").stack);
+    } catch (e) {
+      // ignore logging errors
+    }
+
     const pool = await getPool();
     const now = new Date();
     await pool
@@ -41,11 +53,11 @@ export class TestRepository {
       .input("DurationSeconds", test.durationSeconds ?? null)
       .input(
         "ClientCreatedAt",
-        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null
+        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null,
       )
       .input(
         "CompletedAt",
-        test.completedAt ? new Date(test.completedAt) : null
+        test.completedAt ? new Date(test.completedAt) : null,
       )
       .input("Version", test.version ?? null)
       .execute("sp_Tests_Insert");
@@ -54,7 +66,7 @@ export class TestRepository {
 
   // Update via sp_Tests_Update
   static async update(
-    test: Partial<TestResult> & { id: string }
+    test: Partial<TestResult> & { id: string },
   ): Promise<void> {
     const pool = await getPool();
     await pool
@@ -70,11 +82,11 @@ export class TestRepository {
       .input("DurationSeconds", test.durationSeconds ?? null)
       .input(
         "ClientCreatedAt",
-        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null
+        test.clientCreatedAt ? new Date(test.clientCreatedAt) : null,
       )
       .input(
         "CompletedAt",
-        test.completedAt ? new Date(test.completedAt) : null
+        test.completedAt ? new Date(test.completedAt) : null,
       )
       .input("Version", test.version ?? null)
       .execute("sp_Tests_Update");
@@ -116,6 +128,17 @@ export class TestRepository {
       .execute("sp_Tests_GetByUser");
     return res.recordset.map(mapRow);
   }
+
+  // Public tests (created by admins/teachers with no UserId)
+  static async findPublic(): Promise<TestResult[]> {
+    const pool = await getPool();
+    const res = await pool
+      .request()
+      .query(
+        `SELECT * FROM Tests WHERE UserId IS NULL ORDER BY CreatedAt DESC`,
+      );
+    return res.recordset.map(mapRow);
+  }
 }
 
 function mapRow(r: any): TestResult {
@@ -133,19 +156,19 @@ function mapRow(r: any): TestResult {
     totalQuestions:
       typeof r.TotalQuestions === "number"
         ? r.TotalQuestions
-        : r.TotalQuestions ?? null,
+        : (r.TotalQuestions ?? null),
     correctAnswers:
       typeof r.CorrectAnswers === "number"
         ? r.CorrectAnswers
-        : r.CorrectAnswers ?? null,
+        : (r.CorrectAnswers ?? null),
     durationSeconds:
       typeof r.DurationSeconds === "number"
         ? r.DurationSeconds
-        : r.DurationSeconds ?? null,
+        : (r.DurationSeconds ?? null),
     clientCreatedAt: r.ClientCreatedAt
       ? new Date(r.ClientCreatedAt).toISOString()
       : null,
     completedAt: r.CompletedAt ? new Date(r.CompletedAt).toISOString() : null,
-    version: typeof r.Version === "number" ? r.Version : r.Version ?? null,
+    version: typeof r.Version === "number" ? r.Version : (r.Version ?? null),
   };
 }

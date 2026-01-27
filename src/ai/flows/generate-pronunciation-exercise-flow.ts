@@ -14,7 +14,7 @@ import {
 } from "./schemas";
 
 export async function generatePronunciationExercise(
-  input: GeneratePronunciationExerciseInput
+  input: GeneratePronunciationExerciseInput,
 ): Promise<GeneratePronunciationExerciseOutput> {
   return generatePronunciationExerciseFlow(input);
 }
@@ -53,13 +53,13 @@ const generatePronunciationExerciseFlow = ai.defineFlow(
           schema: GeneratePronunciationExerciseOutputSchema,
           format: "json",
         },
-      });
+      } as any);
       if (!output) throw new Error("Primary model returned no output.");
       return output;
     } catch (error) {
       console.warn(
         "Primary model failed for pronunciation exercise. Retrying with fallback model.",
-        error
+        error,
       );
       const { output: fallbackOutput } = await ai.generate({
         model,
@@ -71,9 +71,9 @@ const generatePronunciationExerciseFlow = ai.defineFlow(
       });
       if (!fallbackOutput)
         throw new Error(
-          "Fallback model also returned no output for pronunciation exercise."
+          "Fallback model also returned no output for pronunciation exercise.",
         );
       return fallbackOutput;
     }
-  }
+  },
 );

@@ -180,7 +180,7 @@ const StorybookDetailPage: FC = () => {
 
   const playAndCacheStoryAudio = async (
     key: "title" | "englishContent" | "vietnameseContent",
-    text: string
+    text: string,
   ) => {
     if (!storybook || !text) return;
 
@@ -239,7 +239,7 @@ const StorybookDetailPage: FC = () => {
       toast({ title: "Status Updated" });
     } catch (error) {
       setStorybook((prev) =>
-        prev ? { ...prev, status: previousStatus } : null
+        prev ? { ...prev, status: previousStatus } : null,
       ); // Revert on failure
       toast({
         variant: "destructive",
@@ -252,7 +252,7 @@ const StorybookDetailPage: FC = () => {
   const highlightKeywords = (
     text: string,
     keywords: { word: string; vietnameseWord?: string }[],
-    language: "en" | "vi"
+    language: "en" | "vi",
   ) => {
     if (!text || !keywords || keywords.length === 0) return text;
 
@@ -267,7 +267,7 @@ const StorybookDetailPage: FC = () => {
           }
           return null;
         })
-        .filter(Boolean) as [string, string][]
+        .filter(Boolean) as [string, string][],
     );
 
     if (keywordMap.size === 0) return text;
@@ -276,7 +276,7 @@ const StorybookDetailPage: FC = () => {
       `\\b(${Array.from(keywordMap.keys())
         .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
         .join("|")})\\b`,
-      "gi"
+      "gi",
     );
 
     return text.replace(regex, (match) => {
@@ -327,7 +327,7 @@ const StorybookDetailPage: FC = () => {
       ? highlightKeywords(
           storybook.englishStory || "",
           storybook.keyVocabulary,
-          "en"
+          "en",
         )
       : storybook.englishStory || "";
   const highlightedVietnameseStory =
@@ -335,7 +335,7 @@ const StorybookDetailPage: FC = () => {
       ? highlightKeywords(
           storybook.vietnameseStory || "",
           storybook.keyVocabulary,
-          "vi"
+          "vi",
         )
       : storybook.vietnameseStory || "";
 
@@ -414,7 +414,7 @@ const StorybookDetailPage: FC = () => {
                     onClick={() =>
                       playAndCacheStoryAudio(
                         "englishContent",
-                        storybook.interspersedStory
+                        storybook.interspersedStory,
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[englishAudioKey]}
@@ -450,7 +450,7 @@ const StorybookDetailPage: FC = () => {
                     playbackHook.isTranslating[definitionTranslationKey];
                   const isSaving = isSavingWord[v.word];
                   const existingWord = userVocabularyMap.get(
-                    v.word.toLowerCase()
+                    v.word.toLowerCase(),
                   );
                   const hasAudio = !!existingWord?.audioUrl;
 
@@ -475,7 +475,7 @@ const StorybookDetailPage: FC = () => {
                             if (existingWord) {
                               playbackHook.playExistingVocabularyWordAndSentence(
                                 existingWord,
-                                vocabAudioKey
+                                vocabAudioKey,
                               );
                               return;
                             }
@@ -483,7 +483,7 @@ const StorybookDetailPage: FC = () => {
                             // Not in user's vocabulary yet -> browser TTS only (no AI, no DB writes)
                             playbackHook.playWithBrowserTTS(
                               vocabAudioKey,
-                              v.word
+                              v.word,
                             );
                           }}
                           disabled={isVocabAudioLoading}
@@ -494,7 +494,7 @@ const StorybookDetailPage: FC = () => {
                             <Volume2
                               className={cn(
                                 "h-4 w-4",
-                                hasAudio && "text-primary"
+                                hasAudio && "text-primary",
                               )}
                             />
                           )}
@@ -509,7 +509,7 @@ const StorybookDetailPage: FC = () => {
                           onClick={() =>
                             playbackHook.playAudio(
                               definitionAudioKey,
-                              v.definition
+                              v.definition,
                             )
                           }
                           disabled={isDefinitionAudioLoading}
@@ -535,7 +535,7 @@ const StorybookDetailPage: FC = () => {
                           onClick={() =>
                             playbackHook.toggleTranslation(
                               definitionTranslationKey,
-                              v.definition
+                              v.definition,
                             )
                           }
                           disabled={isTranslating}
@@ -582,7 +582,7 @@ const StorybookDetailPage: FC = () => {
                     onClick={() =>
                       playAndCacheStoryAudio(
                         "englishContent",
-                        storybook.englishStory || ""
+                        storybook.englishStory || "",
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[englishAudioKey]}
@@ -595,7 +595,7 @@ const StorybookDetailPage: FC = () => {
                     <span className="sr-only">Read English Story</span>
                   </Button>
                 </div>
-                <article className="prose dark:prose-invert max-w-none">
+                <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                   <InteractiveText
                     text={highlightedEnglishStory}
                     vocabulary={[]}
@@ -613,7 +613,7 @@ const StorybookDetailPage: FC = () => {
                     onClick={() =>
                       playAndCacheStoryAudio(
                         "vietnameseContent",
-                        storybook.vietnameseStory || ""
+                        storybook.vietnameseStory || "",
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[vietnameseAudioKey]}
@@ -626,7 +626,7 @@ const StorybookDetailPage: FC = () => {
                     <span className="sr-only">Read Vietnamese Story</span>
                   </Button>
                 </div>
-                <article className="prose dark:prose-invert max-w-none">
+                <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                   <InteractiveText
                     text={highlightedVietnameseStory}
                     vocabulary={[]}
@@ -640,7 +640,7 @@ const StorybookDetailPage: FC = () => {
 
           {storybook.format === "interspersed" &&
             storybook.interspersedStory && (
-              <article className="prose dark:prose-invert max-w-none">
+              <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {storybook.interspersedStory}
                 </ReactMarkdown>
@@ -662,7 +662,7 @@ const StorybookDetailPage: FC = () => {
                       <CardTitle>Full English Version</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <article className="prose dark:prose-invert max-w-none">
+                      <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-2 [&_h2]:mb-1">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {storybook.fullEnglishStory}
                         </ReactMarkdown>
