@@ -56,6 +56,8 @@ import {
 
 type GrammarLevel = "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
 
+const GRAMMAR_FILTER_KEY = "grammar_lesson_filters";
+
 const GrammarPage: FC = () => {
   const { user, loading: authLoading, isAdmin, isTeacher } = useAuth();
   const router = useRouter();
@@ -66,15 +68,19 @@ const GrammarPage: FC = () => {
 
   const canManage = isAdmin() || isTeacher();
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchQuery, setSearchQuery] = useState("");
   const ALL_SENTINEL = "__all__";
+
+  // Initialize filter state from localStorage
+  const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>(ALL_SENTINEL);
   const [levelFilter, setLevelFilter] = useState<string>(ALL_SENTINEL);
   const [sortOption, setSortOption] = useState<"newest" | "oldest" | "title">(
     "newest",
   );
+  const [isFilterLoaded, setIsFilterLoaded] = useState(false);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addTitle, setAddTitle] = useState("");
   const [addLevel, setAddLevel] = useState<GrammarLevel>("a1");
@@ -97,6 +103,48 @@ const GrammarPage: FC = () => {
     setAddResources([]);
     setEditingId(null);
   }, []);
+
+  // Load filters from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(GRAMMAR_FILTER_KEY);
+        if (saved) {
+          const filters = JSON.parse(saved);
+          if (filters.searchQuery !== undefined)
+            setSearchQuery(filters.searchQuery);
+          if (filters.topicFilter !== undefined)
+            setTopicFilter(filters.topicFilter);
+          if (filters.levelFilter !== undefined)
+            setLevelFilter(filters.levelFilter);
+          if (filters.sortOption !== undefined)
+            setSortOption(filters.sortOption);
+        }
+      } catch (err) {
+        console.error("Failed to load grammar filters", err);
+      }
+      setIsFilterLoaded(true);
+    }
+  }, []);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    if (isFilterLoaded && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(
+          GRAMMAR_FILTER_KEY,
+          JSON.stringify({
+            searchQuery,
+            topicFilter,
+            levelFilter,
+            sortOption,
+          }),
+        );
+      } catch (err) {
+        console.error("Failed to save grammar filters", err);
+      }
+    }
+  }, [searchQuery, topicFilter, levelFilter, sortOption, isFilterLoaded]);
 
   const loadLessons = useCallback(async () => {
     const res = await listGrammarLessons();
@@ -378,6 +426,10 @@ const GrammarPage: FC = () => {
               setSearchQuery("");
               setTopicFilter(ALL_SENTINEL);
               setLevelFilter(ALL_SENTINEL);
+              // Also clear from localStorage
+              if (typeof window !== "undefined") {
+                localStorage.removeItem(GRAMMAR_FILTER_KEY);
+              }
             }}
           >
             Clear
