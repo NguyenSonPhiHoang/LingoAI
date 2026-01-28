@@ -310,6 +310,7 @@ const GrammarLessonPage: FC = () => {
 
   const saveLessonEdits = async () => {
     if (!lesson) return;
+    console.log("Saving lesson edits...", { editTitle, editLevel, editContent });
     setIsSavingLesson(true);
     try {
       await updateGrammarLesson({
@@ -688,7 +689,10 @@ const GrammarLessonPage: FC = () => {
           </Button>
           {canManage ? (
             <>
-              <Button variant="ghost" onClick={() => setEditOpen(true)}>
+              <Button variant="ghost" onClick={() => {
+                console.log("Edit button clicked, canManage:", canManage);
+                setEditOpen(true);
+              }}>
                 Edit
               </Button>
               <Button variant="outline" onClick={() => setEditorOpen(true)}>

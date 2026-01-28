@@ -183,11 +183,7 @@ export class GrammarRepository {
     level: GrammarLevel;
     topic?: string | null;
     contentMarkdown: string;
-<<<<<<< HEAD
     resources?: Array<{ title: string; url: string }>;
-=======
-    resources:any[]|undefined;
->>>>>>> 764c0846ba2f391aa6dba98e2b009fe8f91149d3
     createdByUserId?: string | null;
     isPublished?: boolean;
   }): Promise<{ id: string }> {
