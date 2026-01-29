@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Sparkles,
   Mic,
@@ -33,6 +34,17 @@ import {
   type AiChatMessage,
   type AiConversationMode,
 } from "@/services/ai-chat";
+import type { AvatarViewerRef } from "./avatar-viewer";
+
+// Dynamic import to avoid SSR issues with Three.js
+const AvatarViewer = dynamic(() => import("./avatar-viewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-[200px] w-full bg-muted/30 rounded-lg">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  ),
+});
 
 type SpeechRecognitionCtor = new () => any;
 
@@ -90,9 +102,11 @@ export default function AiAssistant() {
   const [listening, setListening] = useState(false);
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
   const [continuousVoice, setContinuousVoice] = useState(true);
+  const [hasAutoEnabledVoice, setHasAutoEnabledVoice] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<any>(null);
+  const avatarRef = useRef<AvatarViewerRef>(null);
 
   const messagesRef = useRef<AiChatMessage[]>([]);
   const openRef = useRef(false);
@@ -109,6 +123,256 @@ export default function AiAssistant() {
   const lastInterimRef = useRef<string>("");
 
   const userId = user?.uid || user?.id || null;
+
+
+
+
+  // Load wake word script once on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if script already loaded
+    const existingScript = document.querySelector('script[src="/web-speech-wakeword.js"]');
+    if (existingScript) {
+      console.log('⚠️ Wake word script already loaded');
+      return;
+    }
+
+    // Load WebSpeechWakeWord script
+    const wakeWordScript = document.createElement('script');
+    wakeWordScript.src = '/web-speech-wakeword.js';
+    wakeWordScript.async = true;
+    document.body.appendChild(wakeWordScript);
+
+    wakeWordScript.onload = () => {
+      console.log('✅ Wake word script loaded');
+    };
+
+    // Load WebGazer for eye tracking (from local)
+    const webGazerScript = document.createElement('script');
+    webGazerScript.src = '/webgazer.js';
+    webGazerScript.async = true;
+    document.body.appendChild(webGazerScript);
+
+    webGazerScript.onload = () => {
+      console.log('✅ WebGazer loaded');
+
+      // Load eye contact detector after WebGazer
+      const eyeContactScript = document.createElement('script');
+      eyeContactScript.src = '/eye-contact-detector.js';
+      eyeContactScript.async = true;
+      document.body.appendChild(eyeContactScript);
+
+      eyeContactScript.onload = () => {
+        console.log('✅ Eye contact detector loaded');
+      };
+    };
+
+    return () => {
+      // Don't remove script on unmount to avoid re-loading
+    };
+  }, []); // Empty deps - only run once
+
+
+
+  // Start/stop wake word based on mic state (NOT dialog state)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    console.log('🔍 Wake word effect triggered:', {
+      open,
+      listening,
+      voiceInputEnabled,
+      hasWakeWordClass: !!(window as any).WebSpeechWakeWord,
+      hasInstance: !!(window as any).wakeWordInstance
+    });
+
+    if (!(window as any).WebSpeechWakeWord) {
+      console.warn('⚠️ WebSpeechWakeWord class not loaded yet');
+      return;
+    }
+    if (!open) return; // Only run when dialog is open
+
+    // Wake word should ONLY run when mic is OFF (listening = false)
+    if (!listening) {
+      // Start wake word when mic is off
+      if (!(window as any).wakeWordInstance) {
+        console.log('🎤 Creating new wake word instance...');
+        const wakeWord = new (window as any).WebSpeechWakeWord();
+        wakeWord.init();
+        wakeWord.setCallback(() => {
+          console.log('🎤 Wake word detected! Auto-greeting...');
+
+          // Don't add messages to history - just display greeting
+          // Adding model message first will cause API error
+          const botGreeting = "Hello! How can I help you today?";
+
+          // Speak the greeting if voice output is enabled
+          if (voiceOutputEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance(botGreeting);
+            utterance.lang = "en-US";
+
+            // Start avatar lip-sync
+            utterance.onstart = () => {
+              avatarRef.current?.startSpeaking(botGreeting.length);
+            };
+
+            utterance.onend = () => {
+              avatarRef.current?.stopSpeaking();
+
+              // Check if Continuous mode is enabled
+              if (continuousVoice) {
+                // Enable main mic after greeting
+                console.log('✅ Continuous enabled - enabling main mic');
+                setTimeout(() => {
+                  setVoiceInputEnabled(true);
+                  // Trigger mic button to start listening
+                  const micButton = document.querySelector('[aria-label="Voice input"]') as HTMLButtonElement;
+                  if (micButton && !listening) {
+                    micButton.click();
+                  }
+                }, 500);
+              } else {
+                // Restart wake word to keep listening
+                console.log('⏸️ Continuous disabled - restarting wake word');
+                setTimeout(() => {
+                  if ((window as any).wakeWordInstance) {
+                    (window as any).wakeWordInstance.start();
+                    console.log('🎤 Wake word restarted');
+                  }
+                }, 500);
+              }
+            };
+
+            window.speechSynthesis.speak(utterance);
+          } else {
+            // If no voice output, check continuous mode immediately
+            if (continuousVoice) {
+              setTimeout(() => {
+                setVoiceInputEnabled(true);
+                const micButton = document.querySelector('[aria-label="Voice input"]') as HTMLButtonElement;
+                if (micButton && !listening) {
+                  micButton.click();
+                }
+              }, 500);
+            } else {
+              // Restart wake word immediately
+              setTimeout(() => {
+                if ((window as any).wakeWordInstance) {
+                  (window as any).wakeWordInstance.start();
+                  console.log('🎤 Wake word restarted (no voice output)');
+                }
+              }, 500);
+            }
+          }
+        });
+        wakeWord.start();
+        (window as any).wakeWordInstance = wakeWord;
+        console.log('🎤 Wake word detection started');
+      } else {
+        console.log('⚠️ Wake word instance already exists');
+      }
+    } else {
+      // Stop wake word when mic is enabled (main voice input active)
+      if ((window as any).wakeWordInstance) {
+        (window as any).wakeWordInstance.stop();
+        (window as any).wakeWordInstance = null;
+        console.log('🛑 Wake word stopped - main mic active');
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount
+      if ((window as any).wakeWordInstance) {
+        (window as any).wakeWordInstance.stop();
+        (window as any).wakeWordInstance = null;
+      }
+    };
+  }, [open, listening, continuousVoice, voiceOutputEnabled]);
+
+  // Initialize eye contact detector when dialog opens
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+
+    // Wait for scripts to load
+    const initEyeContact = async () => {
+      // Check if EyeContactDetector is available
+      if (!(window as any).EyeContactDetector) {
+        console.log('⏳ Waiting for EyeContactDetector to load...');
+        return;
+      }
+
+      // Get avatar container bounds
+      const avatarContainer = document.querySelector('[data-avatar-container]');
+      if (!avatarContainer) {
+        console.warn('⚠️ Avatar container not found');
+        return;
+      }
+
+      const rect = avatarContainer.getBoundingClientRect();
+      const avatarBounds = {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height
+      };
+
+      // Create greeting callback
+      const greetingCallback = (result: any) => {
+        console.log('👋 Eye contact greeting triggered:', result);
+
+        // Speak greeting
+        if (voiceOutputEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+          const greeting = "Hello! I noticed you looking at me. How can I help you today?";
+          const utterance = new SpeechSynthesisUtterance(greeting);
+          utterance.lang = "en-US";
+
+          utterance.onstart = () => {
+            avatarRef.current?.startSpeaking(greeting.length);
+          };
+
+          utterance.onend = () => {
+            avatarRef.current?.stopSpeaking();
+          };
+
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
+      // Initialize detector (non-blocking - runs in background)
+      const detector = new (window as any).EyeContactDetector(avatarBounds, greetingCallback);
+
+      // Init in background - don't block UI
+      detector.init().then(() => {
+        (window as any).eyeContactDetector = detector;
+
+        // Expose isBotSpeaking function for detector
+        (window as any).isBotSpeaking = () => isSpeakingRef.current;
+
+        // Expose conversation length to prevent interrupting
+        (window as any).getConversationLength = () => messages.length;
+
+        console.log('✅ Eye contact detector initialized');
+      }).catch((err: any) => {
+        console.warn('⚠️ Eye contact detector init failed:', err);
+        // Don't block UI - just log error
+      });
+    };
+
+    // Delay to ensure scripts are loaded
+    const timer = setTimeout(initEyeContact, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      // Stop detector when dialog closes
+      if ((window as any).eyeContactDetector) {
+        (window as any).eyeContactDetector.stop();
+        (window as any).eyeContactDetector = null;
+      }
+    };
+  }, [open, voiceOutputEnabled]);
+
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -271,8 +535,20 @@ export default function AiAssistant() {
               window.speechSynthesis.cancel();
               const utter = new SpeechSynthesisUtterance(reply);
               utter.lang = "en-US";
+
+              // Start avatar lip-sync when speech actually begins
+              utter.onstart = () => {
+                isSpeakingRef.current = true;
+                // Force stop recognition to prevent capturing bot's voice
+                safeStop();
+                avatarRef.current?.startSpeaking(reply.length);
+              };
+
               utter.onend = () => {
                 isSpeakingRef.current = false;
+                // Stop avatar lip-sync
+                avatarRef.current?.stopSpeaking();
+
                 // Resume listening if continuous mode is enabled.
                 if (continuousVoiceRef.current) {
                   shouldBeListeningRef.current = true;
@@ -281,6 +557,9 @@ export default function AiAssistant() {
               };
               utter.onerror = () => {
                 isSpeakingRef.current = false;
+                // Stop avatar lip-sync on error
+                avatarRef.current?.stopSpeaking();
+
                 if (continuousVoiceRef.current) {
                   shouldBeListeningRef.current = true;
                   safeStart();
@@ -290,6 +569,7 @@ export default function AiAssistant() {
             }
           } catch {
             isSpeakingRef.current = false;
+            avatarRef.current?.stopSpeaking();
           }
         } else {
           // No voice output; resume immediately in continuous mode.
@@ -402,20 +682,29 @@ export default function AiAssistant() {
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
       setListening(false);
 
-      // Stop any auto-restart attempts if the browser blocks mic/recognition.
+      // Many browsers fire an error event when we intentionally stop.
+      // Do not disable everything for these programmatic stops.
+      if (suppressNextVoiceErrorToastRef.current) {
+        console.log('⚠️ Recognition error (intentional stop):', event.error);
+        return;
+      }
+
+      // Only disable on real errors (not 'aborted' or 'no-speech')
+      const errorType = event.error;
+      if (errorType === 'aborted' || errorType === 'no-speech') {
+        console.log('⚠️ Recognition error (non-critical):', errorType);
+        return;
+      }
+
+      // Real error - disable everything
+      console.error('❌ Recognition error (critical):', errorType);
       shouldBeListeningRef.current = false;
       setVoiceInputEnabled(false);
       if (continuousVoiceRef.current) {
         setContinuousVoice(false);
-      }
-
-      // Many browsers fire an error event when we intentionally stop.
-      // Do not show toast for these programmatic stops.
-      if (suppressNextVoiceErrorToastRef.current) {
-        return;
       }
 
       // User requested: do not show voice input error notifications.
@@ -580,6 +869,17 @@ export default function AiAssistant() {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = "en-US";
+
+      // Start avatar lip-sync
+      avatarRef.current?.startSpeaking(text.length);
+
+      utter.onend = () => {
+        avatarRef.current?.stopSpeaking();
+      };
+      utter.onerror = () => {
+        avatarRef.current?.stopSpeaking();
+      };
+
       window.speechSynthesis.speak(utter);
     } catch {
       // ignore
@@ -623,6 +923,8 @@ export default function AiAssistant() {
   }, [open, continuousVoice, canUseSpeechRecognition, userId]);
 
   const handleContinuousModeChange = (checked: boolean) => {
+    console.log('🔄 Continuous mode changed:', checked);
+    console.trace('Called from:');
     setContinuousVoice(checked);
 
     if (!checked) {
@@ -661,20 +963,23 @@ export default function AiAssistant() {
     }
 
     if (listening) {
+      // Stop recognition to allow wake word to take over
+      shouldBeListeningRef.current = false;
+      setListening(false);
       try {
         suppressNextVoiceErrorToastRef.current = true;
         recognition.stop();
       } catch {
         // ignore
       }
-      shouldBeListeningRef.current = false;
-      setListening(false);
+      console.log('🔇 Main mic disabled - wake word will take over');
       return;
     }
 
     try {
       shouldBeListeningRef.current = true;
       recognition.start();
+      console.log('🎤 Main mic enabled');
     } catch {
       setListening(false);
       // User requested: do not show voice input error notifications.
@@ -756,45 +1061,49 @@ export default function AiAssistant() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg p-0">
-          <div className="flex items-center justify-between border-b p-4">
-            <DialogHeader className="p-0">
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" /> AI Assistant
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="conversation-mode"
-                  className="text-xs text-muted-foreground"
-                >
-                  {conversationMode === "guided" ? "Guided" : "Natural"}
-                </Label>
-                <Switch
-                  id="conversation-mode"
-                  checked={conversationMode === "guided"}
-                  onCheckedChange={(checked) =>
-                    setConversationMode(checked ? "guided" : "natural")
-                  }
-                  aria-label="Conversation mode"
-                />
+          {/* Header + Avatar Section with yellow background */}
+          <div style={{ backgroundColor: '#FFF9E6' }}>
+            <div className="flex items-center justify-between p-4">
+              <DialogHeader className="p-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" /> AI Assistant
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex items-center gap-3 mr-8">
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="conversation-mode"
+                    className="text-xs text-muted-foreground"
+                  >
+                    {conversationMode === "guided" ? "Guided" : "Natural"}
+                  </Label>
+                  <Switch
+                    id="conversation-mode"
+                    checked={conversationMode === "guided"}
+                    onCheckedChange={(checked) =>
+                      setConversationMode(checked ? "guided" : "natural")
+                    }
+                    aria-label="Conversation mode"
+                  />
+                </div>
               </div>
+            </div>
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+
+            {/* 3D Avatar */}
+            <div className="flex justify-center items-center pb-2" data-avatar-container>
+              <AvatarViewer
+                ref={avatarRef}
+                width={240}
+                height={240}
+              />
             </div>
           </div>
 
           <div
             ref={listRef}
-            className="max-h-[60vh] min-h-[320px] overflow-y-auto p-4 space-y-3"
+            className="max-h-[30vh] min-h-[200px] overflow-y-auto px-4 pb-4 space-y-3"
+            style={{ marginTop: 0 }}
           >
             {messages.length === 0 ? (
               <div className="text-sm text-muted-foreground">
@@ -862,8 +1171,8 @@ export default function AiAssistant() {
                   </div>
 
                   {conversationMode === "guided" &&
-                  m.role === "model" &&
-                  suggestions[idx]?.open ? (
+                    m.role === "model" &&
+                    suggestions[idx]?.open ? (
                     <div className="mt-2 rounded-lg border bg-background px-3 py-2 text-sm">
                       {suggestions[idx].loading ? (
                         <div className="flex items-center gap-2 text-muted-foreground">
