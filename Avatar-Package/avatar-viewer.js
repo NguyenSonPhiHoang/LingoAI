@@ -87,6 +87,34 @@ class AvatarViewer {
 
         // Start random blinking
         this.startBlinking();
+
+        // Listen for tab visibility changes
+        // When user returns to tab, reset blend shapes to prevent deformation
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this.model) {
+                console.log('👁️ Tab became visible - resetting blend shapes');
+                this.resetAllBlendShapes();
+            }
+        });
+    }
+
+    resetAllBlendShapes() {
+        if (!this.model) return;
+
+        this.model.traverse((child) => {
+            if (child.isMesh && child.morphTargetInfluences) {
+                for (let i = 0; i < child.morphTargetInfluences.length; i++) {
+                    child.morphTargetInfluences[i] = 0;
+                }
+            }
+        });
+
+        // Also reset smile state
+        this.isSmiling = false;
+        this.targetSmile = 0;
+        this.currentSmile = 0;
+
+        console.log('✅ All blend shapes reset');
     }
 
     loadModel() {
@@ -403,12 +431,14 @@ class AvatarViewer {
             this.jawBone.rotation.x = 0;
         }
 
-        // Reset blend shapes
-        if (this.mouthMorphs) {
-            this.mouthMorphs.forEach(({ mesh, name }) => {
-                const index = mesh.morphTargetDictionary[name];
-                if (index !== undefined) {
-                    mesh.morphTargetInfluences[index] = 0;
+        // Reset ALL blend shapes to prevent face deformation
+        if (this.model) {
+            this.model.traverse((child) => {
+                if (child.isMesh && child.morphTargetInfluences) {
+                    // Reset ALL morph targets to 0
+                    for (let i = 0; i < child.morphTargetInfluences.length; i++) {
+                        child.morphTargetInfluences[i] = 0;
+                    }
                 }
             });
         }

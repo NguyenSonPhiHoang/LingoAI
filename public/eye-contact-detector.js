@@ -241,6 +241,12 @@ class EyeContactDetector {
             return;
         }
 
+        // KIỂM TRA: Không chào khi bot đang xử lý (waiting for response)
+        if (window.isBotProcessing && window.isBotProcessing()) {
+            console.log('⏸️ Bot is processing - skipping eye contact greeting');
+            return;
+        }
+
         // KIỂM TRA: Chỉ chào khi conversation còn trống (chưa có message)
         // Tránh interrupt khi bot đang trả lời
         if (window.getConversationLength && window.getConversationLength() > 0) {
@@ -425,6 +431,29 @@ class EyeContactDetector {
         await this.faceRecognition.clearDatabase();
         this.switchToEyeContactMode();
         console.log('🗑️ Face database cleared, reset to Eye Contact Mode');
+    }
+
+    // Stop detector and release camera
+    stop() {
+        console.log('🛑 Stopping eye contact detector...');
+
+        // Stop WebGazer
+        if (window.webgazer) {
+            try {
+                window.webgazer.end();
+                console.log('✅ WebGazer stopped');
+            } catch (e) {
+                console.warn('⚠️ Error stopping WebGazer:', e);
+            }
+        }
+
+        // Remove video element
+        if (this.videoElement && this.videoElement.parentNode) {
+            this.videoElement.parentNode.removeChild(this.videoElement);
+            this.videoElement = null;
+        }
+
+        console.log('✅ Eye contact detector stopped');
     }
 }
 

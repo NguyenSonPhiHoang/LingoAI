@@ -214,11 +214,20 @@ export default function AiAssistant() {
 
             // Start avatar lip-sync
             utterance.onstart = () => {
+              // PAUSE main mic to prevent capturing bot speech
+              if ((window as any).pauseMainMic) {
+                (window as any).pauseMainMic();
+              }
               avatarRef.current?.startSpeaking(botGreeting.length);
             };
 
             utterance.onend = () => {
               avatarRef.current?.stopSpeaking();
+
+              // RESUME main mic after bot finishes speaking
+              if ((window as any).resumeMainMic) {
+                (window as any).resumeMainMic();
+              }
 
               // Check if Continuous mode is enabled
               if (continuousVoice) {
@@ -328,11 +337,19 @@ export default function AiAssistant() {
           utterance.lang = "en-US";
 
           utterance.onstart = () => {
+            // PAUSE main mic to prevent capturing bot speech
+            if ((window as any).pauseMainMic) {
+              (window as any).pauseMainMic();
+            }
             avatarRef.current?.startSpeaking(greeting.length);
           };
 
           utterance.onend = () => {
             avatarRef.current?.stopSpeaking();
+            // RESUME main mic after bot finishes speaking
+            if ((window as any).resumeMainMic) {
+              (window as any).resumeMainMic();
+            }
           };
 
           window.speechSynthesis.speak(utterance);
@@ -349,8 +366,44 @@ export default function AiAssistant() {
         // Expose isBotSpeaking function for detector
         (window as any).isBotSpeaking = () => isSpeakingRef.current;
 
+        // Expose bot processing state (waiting for API response)
+        (window as any).isBotProcessing = () => isSendingRef.current;
+
         // Expose conversation length to prevent interrupting
         (window as any).getConversationLength = () => messages.length;
+
+        // Expose mic control for secondary threads (wake word, eye contact)
+        // When secondary threads speak, they should pause main mic to avoid capturing their own speech
+        (window as any).pauseMainMic = () => {
+          console.log('⏸️ Pausing main mic (secondary thread speaking)');
+          isSpeakingRef.current = true; // Mark as speaking to block safeStart
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.stop();
+              setListening(false);
+            } catch (e) {
+              // Ignore
+            }
+          }
+        };
+
+        (window as any).resumeMainMic = () => {
+          console.log('▶️ Resuming main mic (secondary thread finished)');
+          isSpeakingRef.current = false;
+          // Only resume if continuous mode is on
+          if (continuousVoiceRef.current && shouldBeListeningRef.current) {
+            setTimeout(() => {
+              if (recognitionRef.current && !isSpeakingRef.current) {
+                try {
+                  recognitionRef.current.start();
+                  setListening(true);
+                } catch (e) {
+                  // Ignore if already started
+                }
+              }
+            }, 500); // Small delay to ensure speech synthesis is fully done
+          }
+        };
 
         console.log('✅ Eye contact detector initialized');
       }).catch((err: any) => {
@@ -472,15 +525,41 @@ export default function AiAssistant() {
     };
 
     const safeStart = () => {
-      if (startingRecognitionRef.current) return;
-      if (!openRef.current) return;
-      if (!shouldBeListeningRef.current) return;
-      if (!continuousVoiceRef.current && !voiceInputEnabled) return;
-      if (isSpeakingRef.current) return;
+      console.log('🎤 safeStart called:', {
+        startingRecognition: startingRecognitionRef.current,
+        open: openRef.current,
+        shouldBeListen: shouldBeListeningRef.current,
+        continuousVoice: continuousVoiceRef.current,
+        voiceInputEnabled,
+        isSpeaking: isSpeakingRef.current
+      });
 
+      if (startingRecognitionRef.current) {
+        console.log('⏭️ Already starting recognition');
+        return;
+      }
+      if (!openRef.current) {
+        console.log('⏭️ Dialog not open');
+        return;
+      }
+      if (!shouldBeListeningRef.current) {
+        console.log('⏭️ Should not be listening');
+        return;
+      }
+      if (!continuousVoiceRef.current && !voiceInputEnabled) {
+        console.log('⏭️ Voice input disabled');
+        return;
+      }
+      if (isSpeakingRef.current) {
+        console.log('⏭️ Bot is speaking');
+        return;
+      }
+
+      console.log('✅ Starting recognition...');
       startingRecognitionRef.current = true;
       try {
         recognition.start();
+        setListening(true);
       } catch {
         // start can throw if already started; ignore.
       } finally {

@@ -94,13 +94,18 @@ class WebSpeechWakeWord {
                 return;
             }
 
-            console.error('❌ Wake word error:', event.error);
+            // Network errors are temporary - just warn and retry
+            if (event.error === 'network') {
+                console.warn('⚠️ Wake word network error (will auto-retry)');
+            } else {
+                console.error('❌ Wake word error:', event.error);
+            }
 
             // Auto-restart on network errors
             if (this.isListening && event.error === 'network') {
                 setTimeout(() => {
                     if (this.isListening) {
-                        console.log('🔄 Restarting wake word after error...');
+                        console.log('🔄 Restarting wake word after network error...');
                         this.start();
                     }
                 }, 500);
