@@ -362,7 +362,7 @@ const StorybookDetailPage: FC = () => {
                 </Badge>
                 <Badge variant="secondary" className="capitalize">
                   {storybook.format === "interspersed"
-                    ? "Truyện Chêm"
+                    ? "Interspersed"
                     : "Bilingual"}
                 </Badge>
               </div>

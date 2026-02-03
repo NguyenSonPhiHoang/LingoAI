@@ -38,6 +38,11 @@ router.get(
   VtepController.listDocumentsPublic,
 );
 router.get(
+  "/public/documents/:id",
+  requireAuth,
+  VtepController.getDocumentPublic,
+);
+router.get(
   "/documents/:id",
   requireAuth,
   requireRole("Admin", "Teacher"),

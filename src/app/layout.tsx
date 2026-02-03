@@ -69,7 +69,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={cn("font-body antialiased")}>
+      <body className={cn("font-body antialiased overflow-x-hidden max-w-[100vw]")}>
         <AuthProvider>
           <ActivityTracker>
             <SettingsProvider>
