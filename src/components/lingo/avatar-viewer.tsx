@@ -66,7 +66,7 @@ const AvatarViewerComponent = forwardRef<AvatarViewerRef, AvatarViewerProps>(
                 const avatar = new AvatarViewer(containerId);
                 avatarInstanceRef.current = avatar;
 
-                // Expose to window for eye contact detector
+                // Expose to window for face detector
                 if (typeof window !== 'undefined') {
                     (window as any).avatarViewer = avatar;
                 }

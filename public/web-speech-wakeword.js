@@ -1,6 +1,15 @@
 // Web Speech API Wake Word Detection
 // Optimized for "hi lingo" / "hey lingo" detection
 
+// Debug mode - set to false in production
+const DEBUG_MODE = false;
+
+// Debug logging helper
+const debug = {
+    log: (...args) => DEBUG_MODE && console.log(...args),
+    error: (...args) => DEBUG_MODE && console.error(...args)
+};
+
 class WebSpeechWakeWord {
     constructor() {
         this.recognition = null;
@@ -12,7 +21,7 @@ class WebSpeechWakeWord {
 
     init() {
         if (!('webkitSpeechRecognition' in window)) {
-            console.error('❌ Web Speech API not supported');
+            debug.error('❌ Web Speech API not supported');
             return false;
         }
 
@@ -33,15 +42,22 @@ class WebSpeechWakeWord {
 
         this.recognition.onresult = (event) => {
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript.toLowerCase().trim();
-                const confidence = event.results[i][0].confidence;
-                const isFinal = event.results[i].isFinal;
+                const result = event.results[i];
+                const transcript = result[0].transcript.toLowerCase().trim();
+                const confidence = result[0].confidence;
+                const isFinal = result.isFinal;
+
+                // CRITICAL: Ignore if bot is speaking (prevent echo/feedback loop)
+                if (window.isBotSpeaking && window.isBotSpeaking()) {
+                    debug.log('🔇 Ignoring wake word - bot is speaking');
+                    continue;
+                }
 
                 // Log ALL results for debugging (both interim and final)
                 if (isFinal) {
-                    console.log(`🎤 Wake word FINAL: "${transcript}" (${(confidence * 100).toFixed(0)}%)`);
+                    debug.log(`🎤 Wake word FINAL: "${transcript}" (${(confidence * 100).toFixed(0)}%)`);
                 } else {
-                    console.log(`🎤 Wake word interim: "${transcript}"`);
+                    debug.log(`🎤 Wake word interim: "${transcript}"`);
                 }
 
                 // Normalize transcript
@@ -62,7 +78,7 @@ class WebSpeechWakeWord {
 
                     // If similarity > 70%, consider it a match
                     if (similarity > 0.7) {
-                        console.log(`✅ Fuzzy match: "${normalized}" ~ "${target}" (${(similarity * 100).toFixed(0)}% similar)`);
+                        debug.log(`✅ Fuzzy match: "${normalized}" ~ "${target}" (${(similarity * 100).toFixed(0)}% similar)`);
                         isWakeWord = true;
                         break;
                     }
@@ -72,12 +88,12 @@ class WebSpeechWakeWord {
                     // Debounce: prevent multiple detections within 2 seconds
                     const now = Date.now();
                     if (now - this.lastDetectionTime < this.debounceMs) {
-                        console.log('⏭️ Skipping duplicate detection (debounce)');
+                        debug.log('⏭️ Skipping duplicate detection (debounce)');
                         continue;
                     }
 
                     this.lastDetectionTime = now;
-                    console.log(`⚡ Wake word detected: "${transcript}"`);
+                    debug.log(`⚡ Wake word detected: "${transcript}"`);
                     this.stop();
                     if (this.onWakeWordDetected) {
                         this.onWakeWordDetected();
@@ -96,16 +112,16 @@ class WebSpeechWakeWord {
 
             // Network errors are temporary - just warn and retry
             if (event.error === 'network') {
-                console.warn('⚠️ Wake word network error (will auto-retry)');
+                debug.log('⚠️ Wake word network error (will auto-retry)');
             } else {
-                console.error('❌ Wake word error:', event.error);
+                debug.error('❌ Wake word error:', event.error);
             }
 
             // Auto-restart on network errors
             if (this.isListening && event.error === 'network') {
                 setTimeout(() => {
                     if (this.isListening) {
-                        console.log('🔄 Restarting wake word after network error...');
+                        debug.log('🔄 Restarting wake word after network error...');
                         this.start();
                     }
                 }, 500);
@@ -127,34 +143,34 @@ class WebSpeechWakeWord {
             }
         };
 
-        console.log('✅ Web Speech API wake word initialized');
+        debug.log('✅ Web Speech API wake word initialized');
         return true;
     }
 
     start() {
         if (!this.recognition) {
-            console.error('❌ Wake word not initialized');
+            debug.error('❌ Wake word not initialized');
             return false;
         }
 
         if (this.isListening) {
-            console.log('⚠️ Already listening for wake word');
+            debug.log('⚠️ Already listening for wake word');
             return true;
         }
 
         try {
-            console.log('👂 Starting wake word listening...');
+            debug.log('👂 Starting wake word listening...');
             this.isListening = true;
             this.recognition.start();
-            console.log('✅ Wake word listening started');
+            debug.log('✅ Wake word listening started');
             return true;
         } catch (error) {
             if (error.message && error.message.includes('already started')) {
-                console.log('⚠️ Wake word already running');
+                debug.log('⚠️ Wake word already running');
                 this.isListening = true;
                 return true;
             }
-            console.error('❌ Error starting wake word:', error);
+            debug.error('❌ Error starting wake word:', error);
             this.isListening = false;
             return false;
         }
@@ -164,13 +180,13 @@ class WebSpeechWakeWord {
         if (!this.isListening) return;
 
         try {
-            console.log('🛑 Stopping wake word listening');
+            debug.log('🛑 Stopping wake word listening');
             this.isListening = false;
             if (this.recognition) {
                 this.recognition.stop();
             }
         } catch (error) {
-            console.warn('Error stopping wake word:', error);
+            debug.log('Error stopping wake word:', error);
         }
     }
 

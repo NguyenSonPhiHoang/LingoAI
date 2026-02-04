@@ -6,6 +6,16 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+// Debug mode - set to false in production
+const DEBUG_MODE = false;
+
+// Debug logging helper
+const debug = {
+    log: (...args) => DEBUG_MODE && debug.log(...args),
+    error: (...args) => DEBUG_MODE && debug.error(...args),
+    warn: (...args) => DEBUG_MODE && debug.warn(...args)
+};
+
 class AvatarViewer {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -92,7 +102,7 @@ class AvatarViewer {
         // When user returns to tab, reset blend shapes to prevent deformation
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && this.model) {
-                console.log('👁️ Tab became visible - resetting blend shapes');
+                debug.log('👁️ Tab became visible - resetting blend shapes');
                 this.resetAllBlendShapes();
             }
         });
@@ -114,7 +124,7 @@ class AvatarViewer {
         this.targetSmile = 0;
         this.currentSmile = 0;
 
-        console.log('✅ All blend shapes reset');
+        debug.log('✅ All blend shapes reset');
     }
 
     loadModel() {
@@ -138,14 +148,14 @@ class AvatarViewer {
                 // Find bones for animation
                 this.findBones();
 
-                console.log('✅ Avatar model loaded successfully');
+                debug.log('✅ Avatar model loaded successfully');
             },
             (progress) => {
                 const percent = (progress.loaded / progress.total) * 100;
-                console.log(`Loading avatar: ${percent.toFixed(0)}%`);
+                debug.log(`Loading avatar: ${percent.toFixed(0)}%`);
             },
             (error) => {
-                console.error('❌ Error loading avatar model:', error);
+                debug.error('❌ Error loading avatar model:', error);
             }
         );
     }
@@ -153,7 +163,7 @@ class AvatarViewer {
     findBones() {
         if (!this.model) return;
 
-        console.log('🔍 Searching for bones and blend shapes in model...');
+        debug.log('🔍 Searching for bones and blend shapes in model...');
         let allBones = [];
         let allMorphTargets = [];
 
@@ -177,14 +187,14 @@ class AvatarViewer {
                         lowerName.includes('open')) {
                         if (!this.mouthMorphs) this.mouthMorphs = [];
                         this.mouthMorphs.push({ mesh: child, name: name });
-                        console.log('✅ Found mouth blend shape:', name);
+                        debug.log('✅ Found mouth blend shape:', name);
                     }
 
                     // Look for smile blend shapes
                     if (lowerName.includes('smile') || lowerName.includes('mouthsmile')) {
                         if (!this.smileMorphs) this.smileMorphs = [];
                         this.smileMorphs.push({ mesh: child, name: name });
-                        console.log('✅ Found smile blend shape:', name);
+                        debug.log('✅ Found smile blend shape:', name);
                     }
                 });
             }
@@ -196,26 +206,26 @@ class AvatarViewer {
                 if (name.includes('jaw') || name.includes('chin') ||
                     name.includes('mouth') || name.includes('lower')) {
                     this.jawBone = child;
-                    console.log('✅ Found jaw bone:', child.name);
+                    debug.log('✅ Found jaw bone:', child.name);
                 }
 
                 // Find Head bone as fallback
                 if (name === 'head') {
                     this.headBone = child;
-                    console.log('✅ Found head bone:', child.name);
+                    debug.log('✅ Found head bone:', child.name);
                 }
 
                 // Find eye bones
                 if (name.includes('eye') || name.includes('eyelid')) {
                     if (!this.eyeBones) this.eyeBones = [];
                     this.eyeBones.push(child);
-                    console.log('✅ Found eye bone:', child.name);
+                    debug.log('✅ Found eye bone:', child.name);
                 }
             }
         });
 
-        console.log('📋 All bones in model:', allBones);
-        console.log('📋 All morph targets:', allMorphTargets);
+        debug.log('📋 All bones in model:', allBones);
+        debug.log('📋 All morph targets:', allMorphTargets);
 
         // Find eye look blend shapes
         this.model.traverse((child) => {
@@ -234,17 +244,17 @@ class AvatarViewer {
                         outLeft: dict['eyeLookOutLeft'],
                         outRight: dict['eyeLookOutRight']
                     };
-                    console.log('✅ Found eye look blend shapes');
+                    debug.log('✅ Found eye look blend shapes');
                 }
             }
         });
 
         if (!this.jawBone && !this.mouthMorphs && !this.headBone) {
-            console.error('❌ No jaw bone, blend shapes, or head bone found! Lip-sync will not work.');
+            debug.error('❌ No jaw bone, blend shapes, or head bone found! Lip-sync will not work.');
         } else if (!this.jawBone && this.mouthMorphs) {
-            console.log('💡 Using blend shapes for lip-sync');
+            debug.log('💡 Using blend shapes for lip-sync');
         } else if (!this.jawBone && this.headBone) {
-            console.log('💡 Using head bone rotation for speech animation');
+            debug.log('💡 Using head bone rotation for speech animation');
         }
     }
 
@@ -286,7 +296,7 @@ class AvatarViewer {
 
     smile(duration = 10000) {
         // Trigger smile animation
-        console.log(`😊 Avatar smiling for ${duration / 1000}s`);
+        debug.log(`😊 Avatar smiling for ${duration / 1000}s`);
         this.isSmiling = true;
         this.targetSmile = 0.25; // Cười nhẹ (25%)
         this.smileEndTime = Date.now() + duration;
@@ -320,11 +330,11 @@ class AvatarViewer {
 
     // Simple lip-sync without audio analysis (for Web Speech API)
     startSpeakingSimple(textLength) {
-        console.log('🎤 Starting simple lip-sync, text length:', textLength);
-        console.log('Jaw bone:', !!this.jawBone, '| Blend shapes:', !!this.mouthMorphs, '| Head bone:', !!this.headBone);
+        debug.log('🎤 Starting simple lip-sync, text length:', textLength);
+        debug.log('Jaw bone:', !!this.jawBone, '| Blend shapes:', !!this.mouthMorphs, '| Head bone:', !!this.headBone);
 
         if (!this.jawBone && !this.mouthMorphs && !this.headBone) {
-            console.error('❌ Cannot start lip-sync: No animation method available!');
+            debug.error('❌ Cannot start lip-sync: No animation method available!');
             return;
         }
 
@@ -343,7 +353,7 @@ class AvatarViewer {
 
     animateSimpleLipSync() {
         if (!this.isSpeaking) {
-            console.log('⏹️ Stopped speaking');
+            debug.log('⏹️ Stopped speaking');
             return;
         }
 
@@ -362,7 +372,7 @@ class AvatarViewer {
                 0.3
             );
             if (Math.random() < 0.1) {
-                console.log('👄 Jaw rotation:', this.jawBone.rotation.x.toFixed(3));
+                debug.log('👄 Jaw rotation:', this.jawBone.rotation.x.toFixed(3));
             }
         }
         // Method 2: Use blend shapes (morph targets)
@@ -380,7 +390,7 @@ class AvatarViewer {
                 }
             });
             if (Math.random() < 0.1) {
-                console.log('👄 Blend shape:', shouldOpen ? 'OPEN' : 'CLOSED', (shouldOpen ? randomOpen * 0.4 : 0).toFixed(3));
+                debug.log('👄 Blend shape:', shouldOpen ? 'OPEN' : 'CLOSED', (shouldOpen ? randomOpen * 0.4 : 0).toFixed(3));
             }
         }
         // Method 3: Head bone rotation - DISABLED (user doesn't want head movement)
@@ -423,7 +433,7 @@ class AvatarViewer {
     }
 
     stopSpeaking() {
-        console.log('🛑 Stopping lip-sync');
+        debug.log('🛑 Stopping lip-sync');
         this.isSpeaking = false;
 
         // Close mouth - jaw bone
@@ -488,7 +498,7 @@ class AvatarViewer {
 
             // Check if smile should end
             if (this.isSmiling && now >= this.smileEndTime) {
-                console.log('😐 Smile ended');
+                debug.log('😐 Smile ended');
                 this.isSmiling = false;
                 this.targetSmile = 0; // Về mặt bình thường
             }
@@ -512,11 +522,11 @@ class AvatarViewer {
 
     smile(duration = 5000) {
         if (!this.smileMorphs) {
-            console.warn('⚠️ No smile morphs available');
+            debug.warn('⚠️ No smile morphs available');
             return;
         }
 
-        console.log(`😊 Starting smile for ${duration}ms`);
+        debug.log(`😊 Starting smile for ${duration}ms`);
         this.isSmiling = true;
         this.targetSmile = 0.25; // Smile intensity (0-1) - subtle smile
         this.smileEndTime = Date.now() + duration;

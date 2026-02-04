@@ -36,6 +36,16 @@ import {
 } from "@/services/ai-chat";
 import type { AvatarViewerRef } from "./avatar-viewer";
 
+// Debug mode - set to false in production
+const DEBUG_MODE = false;
+
+// Debug logging helper
+const debug = {
+  log: (...args: any[]) => DEBUG_MODE && console.log(...args),
+  error: (...args: any[]) => DEBUG_MODE && console.error(...args),
+  warn: (...args: any[]) => DEBUG_MODE && console.warn(...args)
+};
+
 // Dynamic import to avoid SSR issues with Three.js
 const AvatarViewer = dynamic(() => import("./avatar-viewer"), {
   ssr: false,
@@ -134,7 +144,7 @@ export default function AiAssistant() {
     // Check if script already loaded
     const existingScript = document.querySelector('script[src="/web-speech-wakeword.js"]');
     if (existingScript) {
-      console.log('⚠️ Wake word script already loaded');
+      debug.log('⚠️ Wake word script already loaded');
       return;
     }
 
@@ -145,27 +155,18 @@ export default function AiAssistant() {
     document.body.appendChild(wakeWordScript);
 
     wakeWordScript.onload = () => {
-      console.log('✅ Wake word script loaded');
+      debug.log('✅ Wake word script loaded');
     };
 
-    // Load WebGazer for eye tracking (from local)
-    const webGazerScript = document.createElement('script');
-    webGazerScript.src = '/webgazer.js';
-    webGazerScript.async = true;
-    document.body.appendChild(webGazerScript);
+    // Load Face Detector (MediaPipe-based)
+    const faceDetectorScript = document.createElement('script');
+    faceDetectorScript.src = '/face-detector.js';
+    faceDetectorScript.type = 'module'; // ES6 module for dynamic imports
+    faceDetectorScript.async = true;
+    document.body.appendChild(faceDetectorScript);
 
-    webGazerScript.onload = () => {
-      console.log('✅ WebGazer loaded');
-
-      // Load eye contact detector after WebGazer
-      const eyeContactScript = document.createElement('script');
-      eyeContactScript.src = '/eye-contact-detector.js';
-      eyeContactScript.async = true;
-      document.body.appendChild(eyeContactScript);
-
-      eyeContactScript.onload = () => {
-        console.log('✅ Eye contact detector loaded');
-      };
+    faceDetectorScript.onload = () => {
+      debug.log('✅ Face detector script loaded');
     };
 
     return () => {
@@ -179,7 +180,7 @@ export default function AiAssistant() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    console.log('🔍 Wake word effect triggered:', {
+    debug.log('🔍 Wake word effect triggered:', {
       open,
       listening,
       voiceInputEnabled,
@@ -188,7 +189,7 @@ export default function AiAssistant() {
     });
 
     if (!(window as any).WebSpeechWakeWord) {
-      console.warn('⚠️ WebSpeechWakeWord class not loaded yet');
+      debug.warn('⚠️ WebSpeechWakeWord class not loaded yet');
       return;
     }
     if (!open) return; // Only run when dialog is open
@@ -197,11 +198,11 @@ export default function AiAssistant() {
     if (!listening) {
       // Start wake word when mic is off
       if (!(window as any).wakeWordInstance) {
-        console.log('🎤 Creating new wake word instance...');
+        debug.log('🎤 Creating new wake word instance...');
         const wakeWord = new (window as any).WebSpeechWakeWord();
         wakeWord.init();
         wakeWord.setCallback(() => {
-          console.log('🎤 Wake word detected! Auto-greeting...');
+          debug.log('🎤 Wake word detected! Auto-greeting...');
 
           // Don't add messages to history - just display greeting
           // Adding model message first will cause API error
@@ -232,7 +233,7 @@ export default function AiAssistant() {
               // Check if Continuous mode is enabled
               if (continuousVoice) {
                 // Enable main mic after greeting
-                console.log('✅ Continuous enabled - enabling main mic');
+                debug.log('✅ Continuous enabled - enabling main mic');
                 setTimeout(() => {
                   setVoiceInputEnabled(true);
                   // Trigger mic button to start listening
@@ -243,11 +244,11 @@ export default function AiAssistant() {
                 }, 500);
               } else {
                 // Restart wake word to keep listening
-                console.log('⏸️ Continuous disabled - restarting wake word');
+                debug.log('⏸️ Continuous disabled - restarting wake word');
                 setTimeout(() => {
                   if ((window as any).wakeWordInstance) {
                     (window as any).wakeWordInstance.start();
-                    console.log('🎤 Wake word restarted');
+                    debug.log('🎤 Wake word restarted');
                   }
                 }, 500);
               }
@@ -269,7 +270,7 @@ export default function AiAssistant() {
               setTimeout(() => {
                 if ((window as any).wakeWordInstance) {
                   (window as any).wakeWordInstance.start();
-                  console.log('🎤 Wake word restarted (no voice output)');
+                  debug.log('🎤 Wake word restarted (no voice output)');
                 }
               }, 500);
             }
@@ -277,16 +278,16 @@ export default function AiAssistant() {
         });
         wakeWord.start();
         (window as any).wakeWordInstance = wakeWord;
-        console.log('🎤 Wake word detection started');
+        debug.log('🎤 Wake word detection started');
       } else {
-        console.log('⚠️ Wake word instance already exists');
+        debug.log('⚠️ Wake word instance already exists');
       }
     } else {
       // Stop wake word when mic is enabled (main voice input active)
       if ((window as any).wakeWordInstance) {
         (window as any).wakeWordInstance.stop();
         (window as any).wakeWordInstance = null;
-        console.log('🛑 Wake word stopped - main mic active');
+        debug.log('🛑 Wake word stopped - main mic active');
       }
     }
 
@@ -299,36 +300,23 @@ export default function AiAssistant() {
     };
   }, [open, listening, continuousVoice, voiceOutputEnabled]);
 
-  // Initialize eye contact detector when dialog opens
+  // Initialize face detector when dialog opens
   useEffect(() => {
     if (!open || typeof window === 'undefined') return;
 
     // Wait for scripts to load
-    const initEyeContact = async () => {
-      // Check if EyeContactDetector is available
-      if (!(window as any).EyeContactDetector) {
-        console.log('⏳ Waiting for EyeContactDetector to load...');
+    const initFaceDetection = async () => {
+      // Check if FaceDetector is available
+      if (!(window as any).FaceDetector) {
+        debug.log('⏳ Waiting for FaceDetector to load...');
         return;
       }
 
-      // Get avatar container bounds
-      const avatarContainer = document.querySelector('[data-avatar-container]');
-      if (!avatarContainer) {
-        console.warn('⚠️ Avatar container not found');
-        return;
-      }
-
-      const rect = avatarContainer.getBoundingClientRect();
-      const avatarBounds = {
-        x: rect.left,
-        y: rect.top,
-        width: rect.width,
-        height: rect.height
-      };
+      debug.log('👤 Initializing face detection...');
 
       // Create greeting callback
       const greetingCallback = (result: any) => {
-        console.log('👋 Eye contact greeting triggered:', result);
+        debug.log('👋 Face detection greeting triggered:', result);
 
         // Speak greeting
         if (voiceOutputEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
@@ -356,12 +344,12 @@ export default function AiAssistant() {
         }
       };
 
-      // Initialize detector (non-blocking - runs in background)
-      const detector = new (window as any).EyeContactDetector(avatarBounds, greetingCallback);
+      // Initialize Face Detector (MediaPipe-based)
+      const detector = new (window as any).FaceDetector(greetingCallback);
 
       // Init in background - don't block UI
       detector.init().then(() => {
-        (window as any).eyeContactDetector = detector;
+        (window as any).faceDetector = detector;
 
         // Expose isBotSpeaking function for detector
         (window as any).isBotSpeaking = () => isSpeakingRef.current;
@@ -372,10 +360,10 @@ export default function AiAssistant() {
         // Expose conversation length to prevent interrupting
         (window as any).getConversationLength = () => messages.length;
 
-        // Expose mic control for secondary threads (wake word, eye contact)
+        // Expose mic control for secondary threads (wake word, face detection)
         // When secondary threads speak, they should pause main mic to avoid capturing their own speech
         (window as any).pauseMainMic = () => {
-          console.log('⏸️ Pausing main mic (secondary thread speaking)');
+          debug.log('⏸️ Pausing main mic (secondary thread speaking)');
           isSpeakingRef.current = true; // Mark as speaking to block safeStart
           if (recognitionRef.current) {
             try {
@@ -388,7 +376,7 @@ export default function AiAssistant() {
         };
 
         (window as any).resumeMainMic = () => {
-          console.log('▶️ Resuming main mic (secondary thread finished)');
+          debug.log('▶️ Resuming main mic (secondary thread finished)');
           isSpeakingRef.current = false;
           // Only resume if continuous mode is on
           if (continuousVoiceRef.current && shouldBeListeningRef.current) {
@@ -405,22 +393,29 @@ export default function AiAssistant() {
           }
         };
 
-        console.log('✅ Eye contact detector initialized');
+        // Expose avatar smile trigger
+        (window as any).triggerAvatarSmile = () => {
+          if (avatarRef.current) {
+            avatarRef.current.smile(10000); // 10 second smile
+          }
+        };
+
+        debug.log('✅ Face detector initialized');
       }).catch((err: any) => {
-        console.warn('⚠️ Eye contact detector init failed:', err);
+        debug.warn('⚠️ Face detector init failed:', err);
         // Don't block UI - just log error
       });
     };
 
     // Delay to ensure scripts are loaded
-    const timer = setTimeout(initEyeContact, 3000);
+    const timer = setTimeout(initFaceDetection, 3000);
 
     return () => {
       clearTimeout(timer);
       // Stop detector when dialog closes
-      if ((window as any).eyeContactDetector) {
-        (window as any).eyeContactDetector.stop();
-        (window as any).eyeContactDetector = null;
+      if ((window as any).faceDetector) {
+        (window as any).faceDetector.stop();
+        (window as any).faceDetector = null;
       }
     };
   }, [open, voiceOutputEnabled]);
@@ -525,7 +520,7 @@ export default function AiAssistant() {
     };
 
     const safeStart = () => {
-      console.log('🎤 safeStart called:', {
+      debug.log('🎤 safeStart called:', {
         startingRecognition: startingRecognitionRef.current,
         open: openRef.current,
         shouldBeListen: shouldBeListeningRef.current,
@@ -535,27 +530,27 @@ export default function AiAssistant() {
       });
 
       if (startingRecognitionRef.current) {
-        console.log('⏭️ Already starting recognition');
+        debug.log('⏭️ Already starting recognition');
         return;
       }
       if (!openRef.current) {
-        console.log('⏭️ Dialog not open');
+        debug.log('⏭️ Dialog not open');
         return;
       }
       if (!shouldBeListeningRef.current) {
-        console.log('⏭️ Should not be listening');
+        debug.log('⏭️ Should not be listening');
         return;
       }
       if (!continuousVoiceRef.current && !voiceInputEnabled) {
-        console.log('⏭️ Voice input disabled');
+        debug.log('⏭️ Voice input disabled');
         return;
       }
       if (isSpeakingRef.current) {
-        console.log('⏭️ Bot is speaking');
+        debug.log('⏭️ Bot is speaking');
         return;
       }
 
-      console.log('✅ Starting recognition...');
+      debug.log('✅ Starting recognition...');
       startingRecognitionRef.current = true;
       try {
         recognition.start();
@@ -767,19 +762,19 @@ export default function AiAssistant() {
       // Many browsers fire an error event when we intentionally stop.
       // Do not disable everything for these programmatic stops.
       if (suppressNextVoiceErrorToastRef.current) {
-        console.log('⚠️ Recognition error (intentional stop):', event.error);
+        debug.log('⚠️ Recognition error (intentional stop):', event.error);
         return;
       }
 
       // Only disable on real errors (not 'aborted' or 'no-speech')
       const errorType = event.error;
       if (errorType === 'aborted' || errorType === 'no-speech') {
-        console.log('⚠️ Recognition error (non-critical):', errorType);
+        debug.log('⚠️ Recognition error (non-critical):', errorType);
         return;
       }
 
       // Real error - disable everything
-      console.error('❌ Recognition error (critical):', errorType);
+      debug.error('❌ Recognition error (critical):', errorType);
       shouldBeListeningRef.current = false;
       setVoiceInputEnabled(false);
       if (continuousVoiceRef.current) {
@@ -1002,7 +997,7 @@ export default function AiAssistant() {
   }, [open, continuousVoice, canUseSpeechRecognition, userId]);
 
   const handleContinuousModeChange = (checked: boolean) => {
-    console.log('🔄 Continuous mode changed:', checked);
+    debug.log('🔄 Continuous mode changed:', checked);
     console.trace('Called from:');
     setContinuousVoice(checked);
 
@@ -1051,14 +1046,14 @@ export default function AiAssistant() {
       } catch {
         // ignore
       }
-      console.log('🔇 Main mic disabled - wake word will take over');
+      debug.log('🔇 Main mic disabled - wake word will take over');
       return;
     }
 
     try {
       shouldBeListeningRef.current = true;
       recognition.start();
-      console.log('🎤 Main mic enabled');
+      debug.log('🎤 Main mic enabled');
     } catch {
       setListening(false);
       // User requested: do not show voice input error notifications.
