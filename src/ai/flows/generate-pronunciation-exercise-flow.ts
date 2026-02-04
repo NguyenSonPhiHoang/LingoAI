@@ -68,7 +68,7 @@ const generatePronunciationExerciseFlow = ai.defineFlow(
           schema: GeneratePronunciationExerciseOutputSchema,
           format: "json",
         },
-      });
+      } as any);
       if (!fallbackOutput)
         throw new Error(
           "Fallback model also returned no output for pronunciation exercise.",

@@ -1,6 +1,12 @@
 "use client";
 
-import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
+import React, {
+  useState,
+  type Dispatch,
+  type FC,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +27,7 @@ import {
   BookImage,
   Library,
   HelpCircle,
+  ChevronDown,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,6 +49,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -55,6 +65,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -190,6 +201,11 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     return item.role.includes(roleIdNormalized);
   });
 
+  const vtepIds = ["vtep-student", "vtep", "vteptests"];
+  const [vtepOpen, setVtepOpen] = useState<boolean>(() =>
+    vtepIds.includes(activeView as string) ? true : false,
+  );
+
   const handleViewChange = (view: View | "guide") => {
     setActiveView(view);
     setOpenMobile(false);
@@ -226,22 +242,83 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         <SidebarContent>
           <SidebarMenu>
             {user?.status === "approved" &&
-              availableMenuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    onClick={() => handleMenuClick(item.id as View, item.href)}
-                    isActive={
-                      activeView === item.id ||
-                      (activeView === "lesson-detail" &&
-                        item.id === "my-lessons")
-                    }
-                    tooltip={item.label}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              (() => {
+                const vtepItems = availableMenuItems.filter((it) =>
+                  vtepIds.includes(it.id),
+                );
+                const otherItems = availableMenuItems.filter(
+                  (it) => !vtepIds.includes(it.id),
+                );
+
+                return (
+                  <>
+                    {otherItems.map((item) => (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          onClick={() =>
+                            handleMenuClick(item.id as View, item.href)
+                          }
+                          isActive={
+                            activeView === item.id ||
+                            (activeView === "lesson-detail" &&
+                              item.id === "my-lessons")
+                          }
+                          tooltip={item.label}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+
+                    {vtepItems.length > 0 && (
+                      <SidebarMenuItem key="vtep-group">
+                        <SidebarMenuButton
+                          onClick={() => setVtepOpen((s) => !s)}
+                          isActive={
+                            vtepOpen ||
+                            vtepItems.some((it) => activeView === it.id)
+                          }
+                          tooltip="VTEP"
+                          aria-expanded={vtepOpen}
+                        >
+                          <FileText />
+                          <span>VTEP</span>
+                          <ChevronDown
+                            className={cn(
+                              "ml-auto transition-transform duration-200",
+                              vtepOpen ? "rotate-180" : "rotate-0",
+                            )}
+                          />
+                        </SidebarMenuButton>
+
+                        {vtepOpen && (
+                          <SidebarMenuSub>
+                            {vtepItems.map((it) => (
+                              <SidebarMenuSubItem key={it.id}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={activeView === it.id}
+                                >
+                                  <Link
+                                    href={it.href}
+                                    onClick={() =>
+                                      handleMenuClick(it.id as View, it.href)
+                                    }
+                                  >
+                                    <it.icon />
+                                    <span>{it.label}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        )}
+                      </SidebarMenuItem>
+                    )}
+                  </>
+                );
+              })()}
             {user?.status === "approved" && (
               <SidebarMenuItem>
                 <AddWordDialog
@@ -279,8 +356,8 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       </Sidebar>
       <SidebarInset>
         <DashboardHeader
-          activeView={activeView as View | "guide"}
-          setActiveView={setActiveView as (view: View | "guide") => void}
+          activeView={activeView}
+          setActiveView={setActiveView}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>

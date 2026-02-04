@@ -26,7 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Eye, PlusCircle, Plus, Edit3, Trash2, FileText, Info } from "lucide-react";
+import {
+  Eye,
+  PlusCircle,
+  Plus,
+  Edit3,
+  Trash2,
+  FileText,
+  Info,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAudioPlayback } from "@/hooks/use-audio-playback";
@@ -75,9 +83,13 @@ export default function VtepAdminPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<any | null>(null);
   const [detailItems, setDetailItems] = useState<any[] | null>(null);
-  const [detailWritingPrompts, setDetailWritingPrompts] = useState<any[] | null>(null);
+  const [detailWritingPrompts, setDetailWritingPrompts] = useState<
+    any[] | null
+  >(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [promptTaskTypeFilter, setPromptTaskTypeFilter] = useState<"all" | "task1" | "task2">("all");
+  const [promptTaskTypeFilter, setPromptTaskTypeFilter] = useState<
+    "all" | "task1" | "task2"
+  >("all");
   const [promptLevelFilter, setPromptLevelFilter] = useState("");
   const [promptCategoryFilter, setPromptCategoryFilter] = useState("");
   const [promptSearchQuery, setPromptSearchQuery] = useState("");
@@ -125,17 +137,30 @@ export default function VtepAdminPage() {
   };
 
   const [parsedReadingMeta, setParsedReadingMeta] = useState<any | null>(null);
-  const [pendingReadingMeta, setPendingReadingMeta] = useState<any | null>(null);
+  const [pendingReadingMeta, setPendingReadingMeta] = useState<any | null>(
+    null,
+  );
   const [readingPassageInput, setReadingPassageInput] = useState<string>("");
-  const [readingQuestionsInput, setReadingQuestionsInput] = useState<string>("");
+  const [readingQuestionsInput, setReadingQuestionsInput] =
+    useState<string>("");
   const [readingReplaceExisting, setReadingReplaceExisting] = useState(true);
-  const [docItemCounts, setDocItemCounts] = useState<{ [docId: string]: number }>({});
+  const [docItemCounts, setDocItemCounts] = useState<{
+    [docId: string]: number;
+  }>({});
   const [writingDialogOpen, setWritingDialogOpen] = useState(false);
-  const [writingDialogMode, setWritingDialogMode] = useState<'create' | 'manage'>('manage');
+  const [writingDialogMode, setWritingDialogMode] = useState<
+    "create" | "manage"
+  >("manage");
   const [speakingDialogOpen, setSpeakingDialogOpen] = useState(false);
-  const [speakingDialogMode, setSpeakingDialogMode] = useState<'create' | 'manage'>('manage');
-  const [detailSpeakingPrompts, setDetailSpeakingPrompts] = useState<any[] | null>(null);
-  const [speakingPartFilter, setSpeakingPartFilter] = useState<"all" | "1" | "2" | "3">("all");
+  const [speakingDialogMode, setSpeakingDialogMode] = useState<
+    "create" | "manage"
+  >("manage");
+  const [detailSpeakingPrompts, setDetailSpeakingPrompts] = useState<
+    any[] | null
+  >(null);
+  const [speakingPartFilter, setSpeakingPartFilter] = useState<
+    "all" | "1" | "2" | "3"
+  >("all");
   const [speakingLevelFilter, setSpeakingLevelFilter] = useState("");
   const [speakingCategoryFilter, setSpeakingCategoryFilter] = useState("");
   const [speakingSearchQuery, setSpeakingSearchQuery] = useState("");
@@ -151,7 +176,9 @@ export default function VtepAdminPage() {
   const sortedDocs = useMemo(() => {
     const safeString = (v: any) => (v == null ? "" : String(v));
     const getTitleKey = (d: any) =>
-      safeString(d?.title || d?.fileName).trim().toLowerCase();
+      safeString(d?.title || d?.fileName)
+        .trim()
+        .toLowerCase();
     const getCreatedKey = (d: any) => {
       const raw =
         d?.createdAt ?? d?.created_at ?? d?.createdOn ?? d?.created_on ?? null;
@@ -240,32 +267,34 @@ export default function VtepAdminPage() {
       });
       setDocs(res.documents || []);
       setTotalDocs(res.total || 0);
-      
+
       // Load item counts for each document
       const counts: { [docId: string]: number } = {};
-      
+
       // Get total prompts count for Writing documents (prompts are shared across all Writing docs)
       let totalWritingPrompts = 0;
       try {
-        const prompts = await apiGet<any[]>('/api/vtep-writing/prompts');
+        const prompts = await apiGet<any[]>("/api/vtep-writing/prompts");
         totalWritingPrompts = Array.isArray(prompts) ? prompts.length : 0;
       } catch (err) {
         console.error("Failed to load writing prompts count:", err);
       }
-      
+
       // Get total prompts count for Speaking documents (prompts are shared across all Speaking docs)
       let totalSpeakingPrompts = 0;
       try {
-        console.log('🎤 Fetching speaking prompts from API...');
-        const response = await apiGet<{ data: any[] }>('/api/vtep-speaking/prompts');
-        console.log('🎤 Speaking API response:', response);
+        console.log("🎤 Fetching speaking prompts from API...");
+        const response = await apiGet<{ data: any[] }>(
+          "/api/vtep-speaking/prompts",
+        );
+        console.log("🎤 Speaking API response:", response);
         const prompts = response.data || response;
         totalSpeakingPrompts = Array.isArray(prompts) ? prompts.length : 0;
-        console.log('🎤 Total speaking prompts:', totalSpeakingPrompts);
+        console.log("🎤 Total speaking prompts:", totalSpeakingPrompts);
       } catch (err) {
         console.error("Failed to load speaking prompts count:", err);
       }
-      
+
       await Promise.all(
         (res.documents || []).map(async (doc) => {
           try {
@@ -284,7 +313,7 @@ export default function VtepAdminPage() {
           } catch {
             counts[doc.id] = 0;
           }
-        })
+        }),
       );
       setDocItemCounts(counts);
     } catch (err) {
@@ -381,7 +410,7 @@ export default function VtepAdminPage() {
       optionsCopy &&
       !optionsCopy.some((o) => (o as any).selected)
     ) {
-      optionsCopy[0].selected = true;
+      (optionsCopy[0] as any).selected = true;
     }
     optionsJson = optionsCopy ? optionsCopy : null;
     if (itemType === "mcq") {
@@ -447,7 +476,10 @@ export default function VtepAdminPage() {
     out = out.replace(/_([^_]+)_/g, '<span class="vstep-em">$1</span>');
     out = out.replace(/\*([^*]+)\*/g, '<span class="vstep-em">$1</span>');
     out = out.replace(/`([^`]+)`/g, '<span class="vstep-hl">$1</span>');
-    out = out.replace(/&lt;&lt;([^&]+)&gt;&gt;/g, '<span class="vstep-hl">$1</span>');
+    out = out.replace(
+      /&lt;&lt;([^&]+)&gt;&gt;/g,
+      '<span class="vstep-hl">$1</span>',
+    );
 
     // Preserve line breaks.
     out = out.replace(/\r?\n/g, "<br />");
@@ -467,18 +499,27 @@ export default function VtepAdminPage() {
     const raw = String(readingPassageInput || "").trim();
     if (!raw) return null;
     return {
-      passages: [{
-        index: 1,
-        raw: raw,
-        html: formatReadingPassageHtml(raw),
-      }],
+      passages: [
+        {
+          index: 1,
+          raw: raw,
+          html: formatReadingPassageHtml(raw),
+        },
+      ],
       totalQuestions: pendingItems.length,
     };
   }
 
-  function mergeReadingMeta(existing: any | null | undefined, incoming: any | null | undefined) {
-    const existingPassages: any[] = Array.isArray(existing?.passages) ? existing.passages : [];
-    const incomingPassages: any[] = Array.isArray(incoming?.passages) ? incoming.passages : [];
+  function mergeReadingMeta(
+    existing: any | null | undefined,
+    incoming: any | null | undefined,
+  ) {
+    const existingPassages: any[] = Array.isArray(existing?.passages)
+      ? existing.passages
+      : [];
+    const incomingPassages: any[] = Array.isArray(incoming?.passages)
+      ? incoming.passages
+      : [];
 
     const byIndex = new Map<number, any>();
     for (const p of existingPassages) {
@@ -493,7 +534,9 @@ export default function VtepAdminPage() {
     return {
       ...(existing && typeof existing === "object" ? existing : {}),
       ...(incoming && typeof incoming === "object" ? incoming : {}),
-      passages: Array.from(byIndex.values()).sort((a, b) => Number(a.index) - Number(b.index)),
+      passages: Array.from(byIndex.values()).sort(
+        (a, b) => Number(a.index) - Number(b.index),
+      ),
     };
   }
 
@@ -510,7 +553,10 @@ export default function VtepAdminPage() {
       .filter(Boolean);
 
     if (lines.length < 3) {
-      return { item: null, errors: [`Passage ${passageIndex}: invalid question block`] };
+      return {
+        item: null,
+        errors: [`Passage ${passageIndex}: invalid question block`],
+      };
     }
 
     let prompt = lines[0];
@@ -555,7 +601,9 @@ export default function VtepAdminPage() {
       errors.push(`Passage ${passageIndex}: missing answer (last line)`);
     }
     if (options.length !== 4) {
-      errors.push(`Passage ${passageIndex}: expected 4 options, got ${options.length}`);
+      errors.push(
+        `Passage ${passageIndex}: expected 4 options, got ${options.length}`,
+      );
     }
 
     const optionsJson = options.map((o, idx) => ({
@@ -572,7 +620,9 @@ export default function VtepAdminPage() {
       item: {
         prompt,
         optionsJson,
-        answerJson: answerLetter ? { correctOptionId: correct?.id ?? null } : null,
+        answerJson: answerLetter
+          ? { correctOptionId: correct?.id ?? null }
+          : null,
         skill: "Reading",
         part: `Passage ${passageIndex}`,
         difficulty: null,
@@ -587,8 +637,11 @@ export default function VtepAdminPage() {
   ): { items: any[]; errors: string[] } {
     const errors: string[] = [];
     const items: any[] = [];
-    const src = String(text || "").replace(/\r\n/g, "\n").trim();
-    if (!src) return { items, errors: [`Passage ${passageIndex}: empty questions`] };
+    const src = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .trim();
+    if (!src)
+      return { items, errors: [`Passage ${passageIndex}: empty questions`] };
 
     const isLikelyQuestionBlock = (b: string) => {
       // Must contain at least one A-D option line and an answer line.
@@ -597,8 +650,7 @@ export default function VtepAdminPage() {
       const hasAnswer =
         /\b(?:Answer|Đáp\s*án|Correct(?:\s*answer)?)\b\s*[:\-]?\s*(?:\(|\[)?\s*[A-D]\s*(?:\)|\])?\b/i.test(
           b,
-        ) ||
-        /^\s*(?:\(|\[)?\s*[A-D]\s*(?:\)|\])?\b/m.test(b);
+        ) || /^\s*(?:\(|\[)?\s*[A-D]\s*(?:\)|\])?\b/m.test(b);
       return hasOption && hasAnswer;
     };
 
@@ -645,7 +697,9 @@ export default function VtepAdminPage() {
             options.push({ letter: opt[1], text: opt[2].trim() });
             continue;
           }
-          const ans = /^(?:Answer|Đáp\s*án|Correct)\s*[:\-]?\s*([A-D])\b/i.exec(line);
+          const ans = /^(?:Answer|Đáp\s*án|Correct)\s*[:\-]?\s*([A-D])\b/i.exec(
+            line,
+          );
           if (ans) {
             answerLetter = ans[1].toUpperCase();
             continue;
@@ -657,7 +711,10 @@ export default function VtepAdminPage() {
             `Passage ${passageIndex} Q${start.n}: expected 4 options, got ${options.length}`,
           );
         }
-        if (!answerLetter) legacyErrors.push(`Passage ${passageIndex} Q${start.n}: missing answer`);
+        if (!answerLetter)
+          legacyErrors.push(
+            `Passage ${passageIndex} Q${start.n}: missing answer`,
+          );
 
         const optionsJson = options.map((o, idx) => ({
           id: `${Date.now()}_${passageIndex}_${start.n}_${idx}_${Math.random()
@@ -671,7 +728,9 @@ export default function VtepAdminPage() {
         legacyItems.push({
           prompt: promptLines.join("\n").trim() || start.header.trim(),
           optionsJson,
-          answerJson: answerLetter ? { correctOptionId: correct?.id ?? null } : null,
+          answerJson: answerLetter
+            ? { correctOptionId: correct?.id ?? null }
+            : null,
           skill: "Reading",
           part: `Passage ${passageIndex}`,
           difficulty: null,
@@ -689,7 +748,11 @@ export default function VtepAdminPage() {
         continue;
       }
       qIdx++;
-      const { item, errors: e } = parseReadingQuestionBlockV2(b, passageIndex, qIdx);
+      const { item, errors: e } = parseReadingQuestionBlockV2(
+        b,
+        passageIndex,
+        qIdx,
+      );
       errors.push(...e);
       if (item) items.push(item);
     }
@@ -704,7 +767,7 @@ export default function VtepAdminPage() {
     const errors: string[] = [];
     const items: any[] = [];
     const raw = String(input || "").trim();
-    
+
     if (!raw) {
       errors.push("No questions input provided");
       return { items, errors };
@@ -791,7 +854,9 @@ export default function VtepAdminPage() {
       items.push({
         prompt: promptLines.join("\n").trim() || start.header.trim(),
         optionsJson,
-        answerJson: answerLetter ? { correctOptionId: correct?.id ?? null } : null,
+        answerJson: answerLetter
+          ? { correctOptionId: correct?.id ?? null }
+          : null,
         skill: "Reading",
         part: `Passage ${passageIndex}`,
         difficulty: null,
@@ -844,19 +909,29 @@ export default function VtepAdminPage() {
         const body = chunkLines.slice(1).join("\n").trim();
 
         // New preferred format: passage text + 1 blank line + question blocks.
-        const parts = body.split(/\n\s*\n+/).map((s) => s.trim()).filter(Boolean);
+        const parts = body
+          .split(/\n\s*\n+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
         // Heuristic: find first block that looks like a question block.
         let firstQuestionIdx = -1;
         for (let bi = 0; bi < parts.length; bi++) {
           const b = parts[bi];
-          if (/\n\s*(?:\[)?[A-D](?:\])?\s*[\.)\:]/.test(b) && /\b(?:Answer|Đáp\s*án|Correct)\b|^\s*[A-D]\b/m.test(b)) {
+          if (
+            /\n\s*(?:\[)?[A-D](?:\])?\s*[\.)\:]/.test(b) &&
+            /\b(?:Answer|Đáp\s*án|Correct)\b|^\s*[A-D]\b/m.test(b)
+          ) {
             firstQuestionIdx = bi;
             break;
           }
         }
 
-        const passageText = firstQuestionIdx === -1 ? body : parts.slice(0, firstQuestionIdx).join("\n\n");
-        const questionsBlocks = firstQuestionIdx === -1 ? [] : parts.slice(firstQuestionIdx);
+        const passageText =
+          firstQuestionIdx === -1
+            ? body
+            : parts.slice(0, firstQuestionIdx).join("\n\n");
+        const questionsBlocks =
+          firstQuestionIdx === -1 ? [] : parts.slice(firstQuestionIdx);
 
         passages.push({
           index: passageIndex,
@@ -865,12 +940,17 @@ export default function VtepAdminPage() {
         });
 
         if (questionsBlocks.length === 0) {
-          errors.push(`PASSAGE ${passageIndex}: could not find questions blocks`);
+          errors.push(
+            `PASSAGE ${passageIndex}: could not find questions blocks`,
+          );
           continue;
         }
 
         const qText = questionsBlocks.join("\n\n");
-        const { items, errors: qErrors } = parseReadingQuestionsTextV2(qText, passageIndex);
+        const { items, errors: qErrors } = parseReadingQuestionsTextV2(
+          qText,
+          passageIndex,
+        );
         errors.push(...qErrors);
         allItems.push(...items);
       }
@@ -881,24 +961,36 @@ export default function VtepAdminPage() {
         .map((c) => c.trim())
         .filter(Boolean);
       if (chunks.length > 4) {
-        errors.push(`Expected at most 4 passages separated by 2 blank lines, found ${chunks.length}`);
+        errors.push(
+          `Expected at most 4 passages separated by 2 blank lines, found ${chunks.length}`,
+        );
       }
 
       for (let i = 0; i < Math.min(4, chunks.length); i++) {
         const passageIndex = i + 1;
         const chunk = chunks[i];
-        const blocks = chunk.split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean);
+        const blocks = chunk
+          .split(/\n\s*\n+/)
+          .map((b) => b.trim())
+          .filter(Boolean);
         // Determine where questions start.
         let firstQuestionIdx = -1;
         for (let bi = 0; bi < blocks.length; bi++) {
           const b = blocks[bi];
-          if (/\n\s*(?:\[)?[A-D](?:\])?\s*[\.)\:]/.test(b) && /\b(?:Answer|Đáp\s*án|Correct)\b|^\s*[A-D]\b/m.test(b)) {
+          if (
+            /\n\s*(?:\[)?[A-D](?:\])?\s*[\.)\:]/.test(b) &&
+            /\b(?:Answer|Đáp\s*án|Correct)\b|^\s*[A-D]\b/m.test(b)
+          ) {
             firstQuestionIdx = bi;
             break;
           }
         }
-        const passageText = firstQuestionIdx === -1 ? chunk : blocks.slice(0, firstQuestionIdx).join("\n\n");
-        const questionBlocks = firstQuestionIdx === -1 ? [] : blocks.slice(firstQuestionIdx);
+        const passageText =
+          firstQuestionIdx === -1
+            ? chunk
+            : blocks.slice(0, firstQuestionIdx).join("\n\n");
+        const questionBlocks =
+          firstQuestionIdx === -1 ? [] : blocks.slice(firstQuestionIdx);
         passages.push({
           index: passageIndex,
           raw: passageText.trim(),
@@ -909,7 +1001,10 @@ export default function VtepAdminPage() {
           continue;
         }
         const qText = questionBlocks.join("\n\n");
-        const { items, errors: qErrors } = parseReadingQuestionsTextV2(qText, passageIndex);
+        const { items, errors: qErrors } = parseReadingQuestionsTextV2(
+          qText,
+          passageIndex,
+        );
         errors.push(...qErrors);
         allItems.push(...items);
       }
@@ -982,7 +1077,9 @@ export default function VtepAdminPage() {
         }
       }
 
-      const answerJson = { correctOptionId: null };
+      const answerJson: { correctOptionId: string | null } = {
+        correctOptionId: null,
+      };
       if (correctFound) {
         const sel = optionsJson.find((o: any) => o.selected);
         answerJson.correctOptionId = sel?.id ?? null;
@@ -1067,14 +1164,20 @@ export default function VtepAdminPage() {
             pendingMissingPassage.push(1);
             continue;
           }
-          pendingPassageCounts.set(idx, (pendingPassageCounts.get(idx) || 0) + 1);
+          pendingPassageCounts.set(
+            idx,
+            (pendingPassageCounts.get(idx) || 0) + 1,
+          );
           if (readingReplaceExisting) passagesToReplace.add(idx);
         }
 
         for (const ex of existingItemsForValidation) {
           const idx = parsePassageIndexFromPart(ex?.part);
           if (!idx) continue;
-          existingPassageCounts.set(idx, (existingPassageCounts.get(idx) || 0) + 1);
+          existingPassageCounts.set(
+            idx,
+            (existingPassageCounts.get(idx) || 0) + 1,
+          );
         }
 
         if (pendingMissingPassage.length > 0) {
@@ -1091,12 +1194,17 @@ export default function VtepAdminPage() {
         let totalAfter = 0;
         for (let p = 1; p <= 4; p++) {
           const existingCount = existingPassageCounts.get(p) || 0;
-          const baseCount = readingReplaceExisting && passagesToReplace.has(p) ? 0 : existingCount;
+          const baseCount =
+            readingReplaceExisting && passagesToReplace.has(p)
+              ? 0
+              : existingCount;
           const addCount = pendingPassageCounts.get(p) || 0;
           const nextCount = baseCount + addCount;
           totalAfter += nextCount;
           if (nextCount > 10) {
-            violations.push(`Passage ${p}: would have ${nextCount} questions (max 10)`);
+            violations.push(
+              `Passage ${p}: would have ${nextCount} questions (max 10)`,
+            );
           }
         }
 
@@ -1123,7 +1231,9 @@ export default function VtepAdminPage() {
         }
 
         if (passageSet.size > 0 && selectedDocId) {
-          const passageList = Array.from(passageSet.values()).sort((a, b) => a - b);
+          const passageList = Array.from(passageSet.values()).sort(
+            (a, b) => a - b,
+          );
           toast({
             title: `Replacing existing questions for ${passageList.map((p) => `Passage ${p}`).join(", ")}`,
             duration: 2500,
@@ -1145,11 +1255,17 @@ export default function VtepAdminPage() {
         const latest = await vtepService.getVtepDocument(selectedDocId);
         const currentToc = latest?.document?.tocJson || null;
         const existingMeta =
-          currentToc && typeof currentToc === "object" ? (currentToc as any).reading : null;
+          currentToc && typeof currentToc === "object"
+            ? (currentToc as any).reading
+            : null;
         const metaFromInputs = buildReadingMetaFromInputs();
         const metaRaw = pendingReadingMeta || metaFromInputs || existingMeta;
         const meta = mergeReadingMeta(existingMeta, metaRaw);
-        if (!meta || !Array.isArray(meta.passages) || meta.passages.length === 0) {
+        if (
+          !meta ||
+          !Array.isArray(meta.passages) ||
+          meta.passages.length === 0
+        ) {
           toast({
             variant: "destructive",
             title: "Missing Reading passages",
@@ -1242,10 +1358,22 @@ export default function VtepAdminPage() {
       console.warn("No document ID provided for fetchDetailItems");
       return;
     }
-    
-    console.log("🔍 Fetching detail items for document:", id, "skill:", getDocSkill(detailDoc));
-    console.log("👤 User role check - isAdmin:", isAdmin(), "isTeacher:", isTeacher(), "canManage:", canManage);
-    
+
+    console.log(
+      "🔍 Fetching detail items for document:",
+      id,
+      "skill:",
+      getDocSkill(detailDoc),
+    );
+    console.log(
+      "👤 User role check - isAdmin:",
+      isAdmin(),
+      "isTeacher:",
+      isTeacher(),
+      "canManage:",
+      canManage,
+    );
+
     try {
       setDetailLoading(true);
       // Ensure we have the latest tocJson for passage display.
@@ -1271,7 +1399,7 @@ export default function VtepAdminPage() {
         res = await vtepService.listVtepDocumentItemsPublic(id);
       }
       console.log("📋 Received items response:", res);
-      
+
       // Log document metadata for debugging
       if (detailDoc) {
         console.log("📄 Document metadata:", {
@@ -1279,60 +1407,68 @@ export default function VtepAdminPage() {
           skill: getDocSkill(detailDoc),
           hasTocJson: !!detailDoc.tocJson,
           tocJsonKeys: detailDoc.tocJson ? Object.keys(detailDoc.tocJson) : [],
-          descriptionLength: detailDoc.description?.length || 0
+          descriptionLength: detailDoc.description?.length || 0,
         });
-        
+
         if (detailDoc.tocJson?.writing) {
-          console.log("✍️  Writing metadata found in tocJson:", detailDoc.tocJson.writing);
+          console.log(
+            "✍️  Writing metadata found in tocJson:",
+            detailDoc.tocJson.writing,
+          );
         }
       }
-      
+
       const items = res.items || [];
       console.log("📋 Total items found:", items.length);
-      
+
       // Debug prompt content
       items.forEach((item, index) => {
         console.log(`📝 Item ${index + 1}:`, {
           id: item.id,
           promptLength: item.prompt?.length || 0,
-          promptPreview: item.prompt?.substring(0, 100) || '(no prompt)',
+          promptPreview: item.prompt?.substring(0, 100) || "(no prompt)",
           hasOptions: !!item.optionsJson,
-          hasAnswer: !!item.answerJson
+          hasAnswer: !!item.answerJson,
         });
       });
-      
+
       setDetailItems(items);
-      
+
       // For Writing documents, also fetch writing prompts from VtepWritingPrompts table
       const docSkill = getDocSkill(detailDoc);
       if (docSkill === "Writing") {
-        console.log("✍️  Fetching writing prompts from VtepWritingPrompts table...");
+        console.log(
+          "✍️  Fetching writing prompts from VtepWritingPrompts table...",
+        );
         try {
           const filters: any = {};
-          if (promptTaskTypeFilter && promptTaskTypeFilter !== "all") filters.taskType = promptTaskTypeFilter;
+          if (promptTaskTypeFilter && promptTaskTypeFilter !== "all")
+            filters.taskType = promptTaskTypeFilter;
           if (promptLevelFilter) filters.level = promptLevelFilter;
           if (promptCategoryFilter) filters.category = promptCategoryFilter;
           if (promptSearchQuery) filters.search = promptSearchQuery;
-          
+
           const promptsRes = await vtepService.listWritingPrompts(filters);
           console.log("✍️  Writing prompts response:", promptsRes);
           const prompts = Array.isArray(promptsRes) ? promptsRes : [];
           console.log(`✍️  Total writing prompts found: ${prompts.length}`);
           setDetailWritingPrompts(prompts);
-          
         } catch (err) {
           console.error("❌ Failed to load writing prompts:", err);
           setDetailWritingPrompts([]);
         }
       } else if (docSkill === "Speaking") {
-        console.log("🎤  Fetching speaking prompts from VtepSpeakingPrompts table...");
+        console.log(
+          "🎤  Fetching speaking prompts from VtepSpeakingPrompts table...",
+        );
         try {
           const filters: any = {};
-          if (speakingPartFilter && speakingPartFilter !== "all") filters.partNumber = parseInt(speakingPartFilter);
+          if (speakingPartFilter && speakingPartFilter !== "all")
+            filters.partNumber = parseInt(speakingPartFilter);
           if (speakingLevelFilter) filters.level = speakingLevelFilter;
           if (speakingCategoryFilter) filters.category = speakingCategoryFilter;
           if (speakingSearchQuery) filters.search = speakingSearchQuery;
-          
+
           console.log("🎤  Calling listSpeakingPrompts with filters:", filters);
           const speakingService = await import("@/services/vtep-speaking");
           const promptsRes = await speakingService.listSpeakingPrompts(filters);
@@ -1342,7 +1478,6 @@ export default function VtepAdminPage() {
           const prompts = Array.isArray(promptsRes) ? promptsRes : [];
           console.log(`🎤  Total speaking prompts found: ${prompts.length}`);
           setDetailSpeakingPrompts(prompts);
-          
         } catch (err) {
           console.error("❌ Failed to load speaking prompts:", err);
           console.error("❌ Error details:", err);
@@ -1352,7 +1487,7 @@ export default function VtepAdminPage() {
         setDetailWritingPrompts(null);
         setDetailSpeakingPrompts(null);
       }
-      
+
       // Only show toast for non-writing/speaking documents or when no items found
       if (items.length === 0) {
         const skill = getDocSkill(detailDoc);
@@ -1368,23 +1503,31 @@ export default function VtepAdminPage() {
     } catch (err) {
       console.error("❌ Failed to load items for document:", id, err);
       setDetailItems([]);
-      
+
       const errorMessage = (err as any)?.message || "Failed to list items";
       console.error("Error details:", errorMessage);
-      
+
       // Check for common error types
-      if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.includes("Unauthorized")
+      ) {
         toast({
           variant: "destructive",
           title: "Authentication Error",
-          description: "You may not have permission to view items for this document. Check your role permissions.",
+          description:
+            "You may not have permission to view items for this document. Check your role permissions.",
           duration: 6000,
         });
-      } else if (errorMessage.includes("403") || errorMessage.includes("Forbidden")) {
+      } else if (
+        errorMessage.includes("403") ||
+        errorMessage.includes("Forbidden")
+      ) {
         toast({
-          variant: "destructive", 
+          variant: "destructive",
           title: "Permission Denied",
-          description: "You don't have permission to access items for this document. Admin or Teacher role required.",
+          description:
+            "You don't have permission to access items for this document. Admin or Teacher role required.",
           duration: 6000,
         });
       } else if (errorMessage.includes("404")) {
@@ -1418,7 +1561,9 @@ export default function VtepAdminPage() {
       const latest = await vtepService.getVtepDocument(selectedDocId);
       const currentToc = latest?.document?.tocJson || null;
       const existingMeta =
-        currentToc && typeof currentToc === "object" ? (currentToc as any).reading : null;
+        currentToc && typeof currentToc === "object"
+          ? (currentToc as any).reading
+          : null;
       const metaFromInputs = buildReadingMetaFromInputs();
       if (!metaFromInputs) {
         toast({
@@ -1435,7 +1580,12 @@ export default function VtepAdminPage() {
         skill: "Reading",
         reading: merged,
       };
-      await vtepService.updateVtepDocument(selectedDocId, undefined, undefined, nextToc);
+      await vtepService.updateVtepDocument(
+        selectedDocId,
+        undefined,
+        undefined,
+        nextToc,
+      );
       toast({ title: "Passages saved", duration: 2500 });
       await load();
       if (selectedDocId) await showDoc(selectedDocId);
@@ -1660,33 +1810,38 @@ export default function VtepAdminPage() {
     try {
       setLoading(true);
       const allItems: any[] = [];
-      
+
       // Sort practiceSelections by passage number to ensure correct order
       const sortedSelections = [...practiceSelections].sort((a, b) => {
-        const docA = sortedDocs.find(d => d.id === a.docId);
-        const docB = sortedDocs.find(d => d.id === b.docId);
-        
+        const docA = sortedDocs.find((d) => d.id === a.docId);
+        const docB = sortedDocs.find((d) => d.id === b.docId);
+
         // Extract passage numbers from titles
         const getPassageNum = (title: string) => {
           const match = title?.match(/passage\s*(\d+)/i);
           return match ? parseInt(match[1], 10) : 999;
         };
-        
-        const numA = getPassageNum(docA?.title || '');
-        const numB = getPassageNum(docB?.title || '');
-        
+
+        const numA = getPassageNum(docA?.title || "");
+        const numB = getPassageNum(docB?.title || "");
+
         return numA - numB;
       });
-      
+
       for (const sel of sortedSelections) {
         const res = await vtepService.listVtepDocumentItems(sel.docId);
         const items = res.items || [];
-        
+
         // Check if this is a reading document with passages
-        const doc = sortedDocs.find(d => d.id === sel.docId);
-        const isReading = doc?.tocJson?.skill === 'Reading' || 
-                         items.some(it => String(it.part || '').toLowerCase().includes('passage'));
-        
+        const doc = sortedDocs.find((d) => d.id === sel.docId);
+        const isReading =
+          doc?.tocJson?.skill === "Reading" ||
+          items.some((it) =>
+            String(it.part || "")
+              .toLowerCase()
+              .includes("passage"),
+          );
+
         let sampled: any[];
         if (isReading) {
           // Extract passage number from document title (e.g., "VSTEP READING PRACTICE TEST 1 - Passage 2")
@@ -1697,7 +1852,7 @@ export default function VtepAdminPage() {
               basePassageNum = parseInt(match[1], 10);
             }
           }
-          
+
           // For reading documents, assign part based on document title or TOC
           // If document has multiple passages, assign sequentially
           const itemsWithPart = items.map((it, idx) => {
@@ -1706,49 +1861,59 @@ export default function VtepAdminPage() {
             return {
               ...it,
               part: `Passage ${passageNum}`,
-              skill: 'Reading'
+              skill: "Reading",
             };
           });
-          
+
           // Group by passage
           const passageGroups = new Map<string, any[]>();
-          itemsWithPart.forEach(it => {
+          itemsWithPart.forEach((it) => {
             const passageKey = it.part.toLowerCase();
             if (!passageGroups.has(passageKey)) {
               passageGroups.set(passageKey, []);
             }
             passageGroups.get(passageKey)!.push(it);
           });
-          
+
           // Take complete passages only (all 10 questions per passage)
           // Never split a passage - always take full passages
           sampled = [];
           const passageKeys = Array.from(passageGroups.keys()).sort(); // Sort to maintain consistent order
           const passagesToTake = Math.ceil(sel.count / 10); // Calculate how many passages needed
-          
-          for (let i = 0; i < Math.min(passagesToTake, passageKeys.length); i++) {
+
+          for (
+            let i = 0;
+            i < Math.min(passagesToTake, passageKeys.length);
+            i++
+          ) {
             const passageItems = passageGroups.get(passageKeys[i]) || [];
             // Add all questions from this passage without shuffling
             sampled.push(...passageItems);
           }
-          
+
           // DO NOT shuffle or slice reading items - keep complete passages intact
         } else {
           // For non-reading, random sample
           sampled = shuffleArray(items).slice(0, sel.count);
         }
-        
+
         allItems.push(
-          ...sampled.map((it) => ({ ...it, sourceDocId: sel.docId, sourceDocumentId: sel.docId })),
+          ...sampled.map((it) => ({
+            ...it,
+            sourceDocId: sel.docId,
+            sourceDocumentId: sel.docId,
+          })),
         );
       }
-      
+
       // Don't shuffle reading items to keep passage order
-      const hasReading = allItems.some(it => 
-        String(it.part || '').toLowerCase().includes('passage')
+      const hasReading = allItems.some((it) =>
+        String(it.part || "")
+          .toLowerCase()
+          .includes("passage"),
       );
       const final = hasReading ? allItems : shuffleArray(allItems);
-      
+
       setPracticeSet(final);
       setPracticePreviewOpen(true);
     } catch (err) {
@@ -1807,24 +1972,25 @@ export default function VtepAdminPage() {
     }
     try {
       setLoading(true);
-      
+
       // Collect unique document IDs that have audio
       const docIdsWithAudio = new Set<string>();
       const audioPathMap = new Map<string, string>();
-      
+
       // Get audio paths from documents in practiceSelections
-      console.log('🎵 Practice selections:', practiceSelections);
+      console.log("🎵 Practice selections:", practiceSelections);
       for (const sel of practiceSelections) {
         if (sel.audioPath) {
-          console.log('🎵 Found audio:', sel.audioPath, 'for doc:', sel.docId);
+          console.log("🎵 Found audio:", sel.audioPath, "for doc:", sel.docId);
           docIdsWithAudio.add(sel.docId);
           audioPathMap.set(sel.docId, sel.audioPath);
         }
       }
-      console.log('🎵 Audio path map:', Object.fromEntries(audioPathMap));
-      
+      console.log("🎵 Audio path map:", Object.fromEntries(audioPathMap));
+
       const itemsForVtep = (practiceSet || []).map((it: any) => {
-        const sourceDocId = it.sourceDocumentId || it.sourceDocId || it.documentId || null;
+        const sourceDocId =
+          it.sourceDocumentId || it.sourceDocId || it.documentId || null;
         return {
           prompt: it.prompt || null,
           optionsJson: it.optionsJson ?? null,
@@ -1835,10 +2001,13 @@ export default function VtepAdminPage() {
           skill: it.skill || null,
           part: it.part || null,
           // Include audio as mediaUrl if this item's source document has audio
-          mediaUrl: sourceDocId && audioPathMap.has(sourceDocId) ? audioPathMap.get(sourceDocId) : null,
+          mediaUrl:
+            sourceDocId && audioPathMap.has(sourceDocId)
+              ? audioPathMap.get(sourceDocId)
+              : null,
         };
       });
-      
+
       const { apiPost } = await import("@/services/api");
       const title = `VTEP test: ${practiceSelections.map((s) => s.title).join(", ")}`;
       const payload = {
@@ -1991,7 +2160,10 @@ export default function VtepAdminPage() {
               className="w-full"
             />
           </div>
-          <Select value={skillFilter || "all"} onValueChange={(v) => setSkillFilter(v === "all" ? "" : v)}>
+          <Select
+            value={skillFilter || "all"}
+            onValueChange={(v) => setSkillFilter(v === "all" ? "" : v)}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by skill" />
             </SelectTrigger>
@@ -2003,8 +2175,8 @@ export default function VtepAdminPage() {
               <SelectItem value="Speaking">Speaking</SelectItem>
             </SelectContent>
           </Select>
-          <Select 
-            value={pageSize.toString()} 
+          <Select
+            value={pageSize.toString()}
             onValueChange={(v) => setPageSize(parseInt(v, 10))}
           >
             <SelectTrigger className="w-[120px]">
@@ -2058,8 +2230,9 @@ export default function VtepAdminPage() {
                     <div className="text-xs text-muted-foreground mt-2 flex items-center justify-between">
                       <span>Pages: {d.pageCount || "-"}</span>
                       <span className="font-medium text-primary">
-                        {docItemCounts[d.id] !== undefined 
-                          ? (getDocSkill(d) === "Writing" || getDocSkill(d) === "Speaking")
+                        {docItemCounts[d.id] !== undefined
+                          ? getDocSkill(d) === "Writing" ||
+                            getDocSkill(d) === "Speaking"
                             ? `${docItemCounts[d.id]} prompts`
                             : `${docItemCounts[d.id]} items`
                           : "..."}
@@ -2087,7 +2260,7 @@ export default function VtepAdminPage() {
                           if (skill === "Speaking") {
                             setSelectedDocId(d.id);
                             setPreview(d);
-                            setSpeakingDialogMode('create');
+                            setSpeakingDialogMode("create");
                             setSpeakingDialogOpen(true);
                             return;
                           }
@@ -2140,7 +2313,9 @@ export default function VtepAdminPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <div className="font-medium">{d.title || d.fileName}</div>
+                          <div className="font-medium">
+                            {d.title || d.fileName}
+                          </div>
                           <div className="text-xs px-2 py-0.5 rounded border bg-background">
                             {getDocSkill(d)}
                           </div>
@@ -2159,8 +2334,9 @@ export default function VtepAdminPage() {
                         <div className="text-xs text-muted-foreground mt-2 flex items-center justify-between gap-4">
                           <span>Pages: {d.pageCount || "-"}</span>
                           <span className="font-medium text-primary">
-                            {docItemCounts[d.id] !== undefined 
-                              ? (getDocSkill(d) === "Writing" || getDocSkill(d) === "Speaking")
+                            {docItemCounts[d.id] !== undefined
+                              ? getDocSkill(d) === "Writing" ||
+                                getDocSkill(d) === "Speaking"
                                 ? `${docItemCounts[d.id]} prompts`
                                 : `${docItemCounts[d.id]} items`
                               : "..."}
@@ -2185,7 +2361,7 @@ export default function VtepAdminPage() {
                               if (skill === "Writing") {
                                 setSelectedDocId(d.id);
                                 setPreview(d);
-                                setWritingDialogMode('create');
+                                setWritingDialogMode("create");
                                 setWritingDialogOpen(true);
                                 return;
                               }
@@ -2193,11 +2369,14 @@ export default function VtepAdminPage() {
                               if (skill === "Speaking") {
                                 setSelectedDocId(d.id);
                                 setPreview(d);
-                                setSpeakingDialogMode('create');
+                                setSpeakingDialogMode("create");
                                 setSpeakingDialogOpen(true);
                                 return;
                               }
-                              if (skill !== "Listening" && skill !== "Reading") {
+                              if (
+                                skill !== "Listening" &&
+                                skill !== "Reading"
+                              ) {
                                 toast({
                                   title: "Skill not supported yet",
                                   description:
@@ -2245,25 +2424,33 @@ export default function VtepAdminPage() {
                           </Button>
                           <Button
                             size="sm"
-                            title={getDocSkill(d) === "Writing" || getDocSkill(d) === "Speaking" ? "Prompts" : "Items"}
+                            title={
+                              getDocSkill(d) === "Writing" ||
+                              getDocSkill(d) === "Speaking"
+                                ? "Prompts"
+                                : "Items"
+                            }
                             onClick={() => {
                               const skill = getDocSkill(d);
                               if (skill === "Writing") {
                                 setPreview(d);
                                 setSelectedDocId(d.id);
-                                setWritingDialogMode('manage');
+                                setWritingDialogMode("manage");
                                 setWritingDialogOpen(true);
                               } else if (skill === "Speaking") {
                                 setPreview(d);
                                 setSelectedDocId(d.id);
-                                setSpeakingDialogMode('manage');
+                                setSpeakingDialogMode("manage");
                                 setSpeakingDialogOpen(true);
                               } else {
                                 openDetails(d, true);
                               }
                             }}
                           >
-                            {getDocSkill(d) === "Writing" || getDocSkill(d) === "Speaking" ? "Prompts" : "Items"}
+                            {getDocSkill(d) === "Writing" ||
+                            getDocSkill(d) === "Speaking"
+                              ? "Prompts"
+                              : "Items"}
                           </Button>
                           <a href={d.filePath} target="_blank" rel="noreferrer">
                             <Button
@@ -2313,7 +2500,9 @@ export default function VtepAdminPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage >= Math.ceil(totalDocs / pageSize) || loading}
+                disabled={
+                  currentPage >= Math.ceil(totalDocs / pageSize) || loading
+                }
                 onClick={() => setCurrentPage(currentPage + 1)}
               >
                 Next
@@ -2321,7 +2510,9 @@ export default function VtepAdminPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage >= Math.ceil(totalDocs / pageSize) || loading}
+                disabled={
+                  currentPage >= Math.ceil(totalDocs / pageSize) || loading
+                }
                 onClick={() => setCurrentPage(Math.ceil(totalDocs / pageSize))}
               >
                 Last
@@ -2366,11 +2557,17 @@ export default function VtepAdminPage() {
                   Skill: {getDocSkill(detailDoc)}
                 </div>
                 <div className="text-sm font-medium text-primary">
-                  {getDocSkill(detailDoc) === "Writing" 
-                    ? (detailWritingPrompts !== null ? `${detailWritingPrompts.length} prompts` : "Prompts not loaded")
+                  {getDocSkill(detailDoc) === "Writing"
+                    ? detailWritingPrompts !== null
+                      ? `${detailWritingPrompts.length} prompts`
+                      : "Prompts not loaded"
                     : getDocSkill(detailDoc) === "Speaking"
-                    ? (detailSpeakingPrompts !== null ? `${detailSpeakingPrompts.length} prompts` : "Prompts not loaded")
-                    : (detailItems !== null ? `${detailItems.length} items` : "Items not loaded")}
+                      ? detailSpeakingPrompts !== null
+                        ? `${detailSpeakingPrompts.length} prompts`
+                        : "Prompts not loaded"
+                      : detailItems !== null
+                        ? `${detailItems.length} items`
+                        : "Items not loaded"}
                 </div>
               </div>
             ) : null}
@@ -2392,11 +2589,16 @@ export default function VtepAdminPage() {
             <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between gap-2 flex-shrink-0 mb-2">
                 <h4 className="font-medium">
-                  {getDocSkill(detailDoc) === "Writing" ? "Writing Prompts" : getDocSkill(detailDoc) === "Speaking" ? "Speaking Prompts" : "Items"}
+                  {getDocSkill(detailDoc) === "Writing"
+                    ? "Writing Prompts"
+                    : getDocSkill(detailDoc) === "Speaking"
+                      ? "Speaking Prompts"
+                      : "Items"}
                 </h4>
-                {(getDocSkill(detailDoc) === "Writing" || getDocSkill(detailDoc) === "Speaking") && (
-                  <Button 
-                    size="sm" 
+                {(getDocSkill(detailDoc) === "Writing" ||
+                  getDocSkill(detailDoc) === "Speaking") && (
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => {
                       if (getDocSkill(detailDoc) === "Writing") {
@@ -2417,140 +2619,208 @@ export default function VtepAdminPage() {
                   </Button>
                 )}
               </div>
-              
+
               {/* Filter controls for writing prompts */}
-              {getDocSkill(detailDoc) === "Writing" && detailWritingPrompts !== null && (
-                <div className="flex-shrink-0 mb-3 space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Task Type</label>
-                      <Select value={promptTaskTypeFilter} onValueChange={(val: any) => { setPromptTaskTypeFilter(val); }}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="All tasks" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All tasks</SelectItem>
-                          <SelectItem value="task1">Task 1</SelectItem>
-                          <SelectItem value="task2">Task 2</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {getDocSkill(detailDoc) === "Writing" &&
+                detailWritingPrompts !== null && (
+                  <div className="flex-shrink-0 mb-3 space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Task Type
+                        </label>
+                        <Select
+                          value={promptTaskTypeFilter}
+                          onValueChange={(val: any) => {
+                            setPromptTaskTypeFilter(val);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="All tasks" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All tasks</SelectItem>
+                            <SelectItem value="task1">Task 1</SelectItem>
+                            <SelectItem value="task2">Task 2</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Level
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="e.g. B1, B2"
+                          value={promptLevelFilter}
+                          onChange={(e) => setPromptLevelFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Category
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Category"
+                          value={promptCategoryFilter}
+                          onChange={(e) =>
+                            setPromptCategoryFilter(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Search
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Search prompts..."
+                          value={promptSearchQuery}
+                          onChange={(e) => setPromptSearchQuery(e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Level</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="e.g. B1, B2"
-                        value={promptLevelFilter}
-                        onChange={(e) => setPromptLevelFilter(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Category</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="Category"
-                        value={promptCategoryFilter}
-                        onChange={(e) => setPromptCategoryFilter(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Search</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="Search prompts..."
-                        value={promptSearchQuery}
-                        onChange={(e) => setPromptSearchQuery(e.target.value)}
-                      />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => fetchDetailItems()}
+                        className="h-7 text-xs"
+                      >
+                        Apply Filters
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <Button size="sm" onClick={() => fetchDetailItems()} className="h-7 text-xs">
-                      Apply Filters
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
+                )}
+
               {/* Filter controls for speaking prompts */}
-              {getDocSkill(detailDoc) === "Speaking" && detailSpeakingPrompts !== null && (
-                <div className="flex-shrink-0 mb-3 space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Part</label>
-                      <Select value={speakingPartFilter} onValueChange={(val: any) => { setSpeakingPartFilter(val); }}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="All parts" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All parts</SelectItem>
-                          <SelectItem value="1">Part 1</SelectItem>
-                          <SelectItem value="2">Part 2</SelectItem>
-                          <SelectItem value="3">Part 3</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {getDocSkill(detailDoc) === "Speaking" &&
+                detailSpeakingPrompts !== null && (
+                  <div className="flex-shrink-0 mb-3 space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Part
+                        </label>
+                        <Select
+                          value={speakingPartFilter}
+                          onValueChange={(val: any) => {
+                            setSpeakingPartFilter(val);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="All parts" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All parts</SelectItem>
+                            <SelectItem value="1">Part 1</SelectItem>
+                            <SelectItem value="2">Part 2</SelectItem>
+                            <SelectItem value="3">Part 3</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Level
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="e.g. B1, B2"
+                          value={speakingLevelFilter}
+                          onChange={(e) =>
+                            setSpeakingLevelFilter(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Category
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Category"
+                          value={speakingCategoryFilter}
+                          onChange={(e) =>
+                            setSpeakingCategoryFilter(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">
+                          Search
+                        </label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Search prompts..."
+                          value={speakingSearchQuery}
+                          onChange={(e) =>
+                            setSpeakingSearchQuery(e.target.value)
+                          }
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Level</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="e.g. B1, B2"
-                        value={speakingLevelFilter}
-                        onChange={(e) => setSpeakingLevelFilter(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Category</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="Category"
-                        value={speakingCategoryFilter}
-                        onChange={(e) => setSpeakingCategoryFilter(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Search</label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="Search prompts..."
-                        value={speakingSearchQuery}
-                        onChange={(e) => setSpeakingSearchQuery(e.target.value)}
-                      />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={() => fetchDetailItems()}
+                        className="h-7 text-xs"
+                      >
+                        Apply Filters
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <Button size="sm" onClick={() => fetchDetailItems()} className="h-7 text-xs">
-                      Apply Filters
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
+                )}
+
               <div className="flex-1 min-h-0 overflow-y-auto pr-2">
                 <div className="space-y-3">
                   {detailItems === null ? (
                     <div className="flex items-center gap-2">
                       <div className="text-sm text-muted-foreground">
-                        {getDocSkill(detailDoc) === "Writing" ? "Prompts not loaded." : "Details not loaded."}
+                        {getDocSkill(detailDoc) === "Writing"
+                          ? "Prompts not loaded."
+                          : "Details not loaded."}
                       </div>
-                      <Button onClick={() => fetchDetailItems()}>Load {getDocSkill(detailDoc) === "Writing" ? "prompts" : "details"}</Button>
+                      <Button onClick={() => fetchDetailItems()}>
+                        Load{" "}
+                        {getDocSkill(detailDoc) === "Writing"
+                          ? "prompts"
+                          : "details"}
+                      </Button>
                     </div>
                   ) : detailLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                      <span>Loading {getDocSkill(detailDoc) === "Writing" ? "writing prompts" : "items and prompts"}...</span>
+                      <span>
+                        Loading{" "}
+                        {getDocSkill(detailDoc) === "Writing"
+                          ? "writing prompts"
+                          : "items and prompts"}
+                        ...
+                      </span>
                     </div>
-                  ) : getDocSkill(detailDoc) === "Writing" && detailWritingPrompts !== null && detailWritingPrompts.length > 0 ? (
+                  ) : getDocSkill(detailDoc) === "Writing" &&
+                    detailWritingPrompts !== null &&
+                    detailWritingPrompts.length > 0 ? (
                     <div className="space-y-4">
                       <div className="text-sm text-muted-foreground mb-3">
-                        Writing Prompts ({detailWritingPrompts.length} {detailWritingPrompts.length === 1 ? 'prompt' : 'prompts'})
+                        Writing Prompts ({detailWritingPrompts.length}{" "}
+                        {detailWritingPrompts.length === 1
+                          ? "prompt"
+                          : "prompts"}
+                        )
                       </div>
                       {detailWritingPrompts.map((prompt, index) => (
-                        <div key={prompt.id} className="border rounded-lg p-4 bg-white/50">
+                        <div
+                          key={prompt.id}
+                          className="border rounded-lg p-4 bg-white/50"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-3">
                                 <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  {prompt.taskType === "task1" ? "Task 1" : "Task 2"}
+                                  {prompt.taskType === "task1"
+                                    ? "Task 1"
+                                    : "Task 2"}
                                 </span>
                                 {prompt.level && (
                                   <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
@@ -2568,53 +2838,72 @@ export default function VtepAdminPage() {
                                   </span>
                                 )}
                               </div>
-                              
-                              <h5 className="font-semibold text-gray-900 mb-2">{prompt.title}</h5>
-                              
+
+                              <h5 className="font-semibold text-gray-900 mb-2">
+                                {prompt.title}
+                              </h5>
+
                               <div className="mb-3">
                                 <details className="group" open>
                                   <summary className="cursor-pointer select-none group-open:mb-2">
-                                    <span className="text-blue-600 font-medium">Prompt Text (click to collapse)</span>
+                                    <span className="text-blue-600 font-medium">
+                                      Prompt Text (click to collapse)
+                                    </span>
                                   </summary>
                                   <div className="whitespace-pre-wrap border-l-2 border-blue-300 pl-3 mt-2 text-gray-700">
                                     {prompt.promptText}
                                   </div>
                                 </details>
                               </div>
-                              
+
                               {prompt.minWords && (
                                 <div className="text-sm text-gray-600 mb-2">
-                                  <strong>Minimum Words:</strong> {prompt.minWords}
+                                  <strong>Minimum Words:</strong>{" "}
+                                  {prompt.minWords}
                                 </div>
                               )}
-                              
+
                               {prompt.sampleAnswer && (
                                 <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                  <div className="text-sm font-medium text-green-800 mb-1">Sample Answer:</div>
+                                  <div className="text-sm font-medium text-green-800 mb-1">
+                                    Sample Answer:
+                                  </div>
                                   <div className="text-sm text-green-700 whitespace-pre-wrap">
                                     {prompt.sampleAnswer}
                                   </div>
                                 </div>
                               )}
-                              
+
                               {prompt.keyPoints && (
                                 <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-                                  <div className="text-sm font-medium text-blue-800 mb-1">Key Points:</div>
+                                  <div className="text-sm font-medium text-blue-800 mb-1">
+                                    Key Points:
+                                  </div>
                                   <div className="text-sm text-blue-700">
-                                    {typeof prompt.keyPoints === 'string' 
-                                      ? prompt.keyPoints 
-                                      : JSON.stringify(JSON.parse(prompt.keyPoints), null, 2)}
+                                    {typeof prompt.keyPoints === "string"
+                                      ? prompt.keyPoints
+                                      : JSON.stringify(
+                                          JSON.parse(prompt.keyPoints),
+                                          null,
+                                          2,
+                                        )}
                                   </div>
                                 </div>
                               )}
-                              
+
                               {prompt.suggestedVocab && (
                                 <div className="mt-3 p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                                  <div className="text-sm font-medium text-yellow-800 mb-1">Suggested Vocabulary:</div>
+                                  <div className="text-sm font-medium text-yellow-800 mb-1">
+                                    Suggested Vocabulary:
+                                  </div>
                                   <div className="text-sm text-yellow-700">
-                                    {typeof prompt.suggestedVocab === 'string' 
-                                      ? prompt.suggestedVocab 
-                                      : JSON.stringify(JSON.parse(prompt.suggestedVocab), null, 2)}
+                                    {typeof prompt.suggestedVocab === "string"
+                                      ? prompt.suggestedVocab
+                                      : JSON.stringify(
+                                          JSON.parse(prompt.suggestedVocab),
+                                          null,
+                                          2,
+                                        )}
                                   </div>
                                 </div>
                               )}
@@ -2623,14 +2912,25 @@ export default function VtepAdminPage() {
                         </div>
                       ))}
                     </div>
-                  ) : getDocSkill(detailDoc) === "Speaking" && detailSpeakingPrompts !== null && detailSpeakingPrompts.length > 0 ? (
+                  ) : getDocSkill(detailDoc) === "Speaking" &&
+                    detailSpeakingPrompts !== null &&
+                    detailSpeakingPrompts.length > 0 ? (
                     <div className="space-y-4">
                       <div className="text-sm text-muted-foreground mb-3">
-                        Speaking Prompts ({detailSpeakingPrompts.length} {detailSpeakingPrompts.length === 1 ? 'prompt' : 'prompts'})
+                        Speaking Prompts ({detailSpeakingPrompts.length}{" "}
+                        {detailSpeakingPrompts.length === 1
+                          ? "prompt"
+                          : "prompts"}
+                        )
                       </div>
                       {detailSpeakingPrompts.map((prompt, index) => {
-                        const partLabel = prompt.partNumber === 1 ? "Part 1: Social Interaction" : prompt.partNumber === 2 ? "Part 2: Solution Discussion" : "Part 3: Topic Development";
-                        
+                        const partLabel =
+                          prompt.partNumber === 1
+                            ? "Part 1: Social Interaction"
+                            : prompt.partNumber === 2
+                              ? "Part 2: Solution Discussion"
+                              : "Part 3: Topic Development";
+
                         // Parse cue card bullets - handle both JSON array and plain text
                         let cueCardBullets = null;
                         if (prompt.cueCardBullets) {
@@ -2640,14 +2940,17 @@ export default function VtepAdminPage() {
                           } catch {
                             // If not JSON, split by newlines and clean up
                             cueCardBullets = prompt.cueCardBullets
-                              .split('\n')
+                              .split("\n")
                               .map((line: string) => line.trim())
                               .filter((line: string) => line.length > 0);
                           }
                         }
-                        
+
                         return (
-                          <div key={prompt.id} className="border rounded-lg p-4 bg-white/50">
+                          <div
+                            key={prompt.id}
+                            className="border rounded-lg p-4 bg-white/50"
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-3">
@@ -2665,35 +2968,49 @@ export default function VtepAdminPage() {
                                     </span>
                                   )}
                                 </div>
-                                
-                                <h4 className="font-medium text-base mb-2">{prompt.title}</h4>
-                                
+
+                                <h4 className="font-medium text-base mb-2">
+                                  {prompt.title}
+                                </h4>
+
                                 <div className="prose prose-sm max-w-none mb-3">
-                                  <div className="font-medium text-sm mb-1">Prompt:</div>
+                                  <div className="font-medium text-sm mb-1">
+                                    Prompt:
+                                  </div>
                                   <div className="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded border">
                                     {prompt.promptText}
                                   </div>
                                 </div>
-                                
-                                {cueCardBullets && cueCardBullets.length > 0 && (
-                                  <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
-                                    <div className="text-sm font-medium text-blue-800 mb-2">Cue Card Points:</div>
-                                    <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                                      {cueCardBullets.map((bullet: string, i: number) => (
-                                        <li key={i}>{bullet}</li>
-                                      ))}
-                                    </ul>
-                                    {prompt.preparationTime && prompt.speakingTime && (
-                                      <div className="text-xs text-blue-600 mt-2">
-                                        ⏱️ Preparation: {prompt.preparationTime}s | Speaking: {prompt.speakingTime}s
+
+                                {cueCardBullets &&
+                                  cueCardBullets.length > 0 && (
+                                    <div className="mt-3 p-3 bg-blue-50 rounded-md border border-blue-200">
+                                      <div className="text-sm font-medium text-blue-800 mb-2">
+                                        Cue Card Points:
                                       </div>
-                                    )}
-                                  </div>
-                                )}
-                                
+                                      <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
+                                        {cueCardBullets.map(
+                                          (bullet: string, i: number) => (
+                                            <li key={i}>{bullet}</li>
+                                          ),
+                                        )}
+                                      </ul>
+                                      {prompt.preparationTime &&
+                                        prompt.speakingTime && (
+                                          <div className="text-xs text-blue-600 mt-2">
+                                            ⏱️ Preparation:{" "}
+                                            {prompt.preparationTime}s |
+                                            Speaking: {prompt.speakingTime}s
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
+
                                 {prompt.sampleAnswer && (
                                   <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                    <div className="text-sm font-medium text-green-800 mb-1">Sample Answer:</div>
+                                    <div className="text-sm font-medium text-green-800 mb-1">
+                                      Sample Answer:
+                                    </div>
                                     <div className="text-sm text-green-700 whitespace-pre-wrap">
                                       {prompt.sampleAnswer}
                                     </div>
@@ -2708,54 +3025,91 @@ export default function VtepAdminPage() {
                   ) : detailItems.length === 0 ? (
                     <div className="space-y-4">
                       {/* Show writing-specific info from tocJson if available */}
-                      {getDocSkill(detailDoc) === "Writing" && detailDoc?.tocJson?.writing && (
-                        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950">
-                          <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Writing Document Info</h4>
-                          <div className="text-sm space-y-2">
-                            {detailDoc.tocJson.writing.prompt && (
-                              <div>
-                                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">General Prompt:</div>
-                                <div className="whitespace-pre-wrap text-blue-700 dark:text-blue-300 border-l-2 border-blue-400 pl-3">
-                                  {detailDoc.tocJson.writing.prompt}
+                      {getDocSkill(detailDoc) === "Writing" &&
+                        detailDoc?.tocJson?.writing && (
+                          <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950">
+                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                              Writing Document Info
+                            </h4>
+                            <div className="text-sm space-y-2">
+                              {detailDoc.tocJson.writing.prompt && (
+                                <div>
+                                  <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                                    General Prompt:
+                                  </div>
+                                  <div className="whitespace-pre-wrap text-blue-700 dark:text-blue-300 border-l-2 border-blue-400 pl-3">
+                                    {detailDoc.tocJson.writing.prompt}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {detailDoc.tocJson.writing.tasks && Array.isArray(detailDoc.tocJson.writing.tasks) && detailDoc.tocJson.writing.tasks.length > 0 && (
-                              <div>
-                                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">Tasks Overview:</div>
-                                <ul className="list-disc list-inside text-blue-700 dark:text-blue-300 space-y-1">
-                                  {detailDoc.tocJson.writing.tasks.map((task: any, idx: number) => (
-                                    <li key={idx}>{typeof task === 'string' ? task : task.title || task.name || `Task ${idx + 1}`}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {detailDoc.tocJson.writing.guidelines && (
-                              <div>
-                                <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">Guidelines:</div>
-                                <div className="whitespace-pre-wrap text-blue-700 dark:text-blue-300">
-                                  {detailDoc.tocJson.writing.guidelines}
+                              )}
+                              {detailDoc.tocJson.writing.tasks &&
+                                Array.isArray(
+                                  detailDoc.tocJson.writing.tasks,
+                                ) &&
+                                detailDoc.tocJson.writing.tasks.length > 0 && (
+                                  <div>
+                                    <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                                      Tasks Overview:
+                                    </div>
+                                    <ul className="list-disc list-inside text-blue-700 dark:text-blue-300 space-y-1">
+                                      {detailDoc.tocJson.writing.tasks.map(
+                                        (task: any, idx: number) => (
+                                          <li key={idx}>
+                                            {typeof task === "string"
+                                              ? task
+                                              : task.title ||
+                                                task.name ||
+                                                `Task ${idx + 1}`}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ul>
+                                  </div>
+                                )}
+                              {detailDoc.tocJson.writing.guidelines && (
+                                <div>
+                                  <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                                    Guidelines:
+                                  </div>
+                                  <div className="whitespace-pre-wrap text-blue-700 dark:text-blue-300">
+                                    {detailDoc.tocJson.writing.guidelines}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      
+                        )}
+
                       <div className="border-2 border-dashed rounded-lg p-6 text-center">
                         <div className="text-muted-foreground mb-3">
-                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
                           </svg>
                         </div>
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">No items yet</h3>
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          No items yet
+                        </h3>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {getDocSkill(detailDoc) === "Writing" 
+                          {getDocSkill(detailDoc) === "Writing"
                             ? "This writing document has no specific prompts added yet. Close this dialog and click 'Add Item' to create writing tasks."
                             : "No test items have been added to this document yet."}
                         </p>
                         <div className="mt-4">
-                          <Button variant="outline" size="sm" onClick={() => setDetailOpen(false)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDetailOpen(false)}
+                          >
                             Close and Add Items
                           </Button>
                         </div>
@@ -2763,223 +3117,344 @@ export default function VtepAdminPage() {
                     </div>
                   ) : (
                     <ul className="space-y-3">
-                      {getDocSkill(detailDoc) === "Reading" ? (() => {
-                        const parsePassageIndex = (part: any): number | null => {
-                          const s = String(part || "");
-                          const m = s.match(/\bpassage\s*(\d)\b/i);
-                          if (!m) return null;
-                          const n = Number(m[1]);
-                          return Number.isFinite(n) && n >= 1 && n <= 4 ? n : null;
-                        };
+                      {getDocSkill(detailDoc) === "Reading" ? (
+                        (() => {
+                          const parsePassageIndex = (
+                            part: any,
+                          ): number | null => {
+                            const s = String(part || "");
+                            const m = s.match(/\bpassage\s*(\d)\b/i);
+                            if (!m) return null;
+                            const n = Number(m[1]);
+                            return Number.isFinite(n) && n >= 1 && n <= 4
+                              ? n
+                              : null;
+                          };
 
-                        const passagesArr: any[] =
-                          Array.isArray((detailDoc as any)?.tocJson?.reading?.passages)
+                          const passagesArr: any[] = Array.isArray(
+                            (detailDoc as any)?.tocJson?.reading?.passages,
+                          )
                             ? (detailDoc as any).tocJson.reading.passages
                             : [];
-                        const passagesByIndex = new Map<number, any>();
-                        for (const p of passagesArr) {
-                          const idx = Number(p?.index);
-                          if (Number.isFinite(idx)) passagesByIndex.set(idx, p);
-                        }
+                          const passagesByIndex = new Map<number, any>();
+                          for (const p of passagesArr) {
+                            const idx = Number(p?.index);
+                            if (Number.isFinite(idx))
+                              passagesByIndex.set(idx, p);
+                          }
 
-                        const groups = new Map<string, { label: string; index: number | null; items: any[] }>();
+                          const groups = new Map<
+                            string,
+                            {
+                              label: string;
+                              index: number | null;
+                              items: any[];
+                            }
+                          >();
 
-                        // Ensure passages show up even if they currently have 0 questions.
-                        for (let pi = 1; pi <= 4; pi++) {
-                          if (passagesByIndex.has(pi)) {
-                            const key = `p${pi}`;
-                            if (!groups.has(key)) {
-                              groups.set(key, { label: `Passage ${pi}`, index: pi, items: [] });
+                          // Ensure passages show up even if they currently have 0 questions.
+                          for (let pi = 1; pi <= 4; pi++) {
+                            if (passagesByIndex.has(pi)) {
+                              const key = `p${pi}`;
+                              if (!groups.has(key)) {
+                                groups.set(key, {
+                                  label: `Passage ${pi}`,
+                                  index: pi,
+                                  items: [],
+                                });
+                              }
                             }
                           }
-                        }
 
-                        for (const it of detailItems) {
-                          const idx = parsePassageIndex(it.part);
-                          const key = idx ? `p${idx}` : "other";
-                          const label = idx ? `Passage ${idx}` : "Other";
-                          const existing = groups.get(key);
-                          if (existing) existing.items.push(it);
-                          else groups.set(key, { label, index: idx, items: [it] });
-                        }
+                          for (const it of detailItems) {
+                            const idx = parsePassageIndex(it.part);
+                            const key = idx ? `p${idx}` : "other";
+                            const label = idx ? `Passage ${idx}` : "Other";
+                            const existing = groups.get(key);
+                            if (existing) existing.items.push(it);
+                            else
+                              groups.set(key, {
+                                label,
+                                index: idx,
+                                items: [it],
+                              });
+                          }
 
-                        const ordered = Array.from(groups.values()).sort((a, b) => {
-                          if (a.index === null && b.index === null) return a.label.localeCompare(b.label);
-                          if (a.index === null) return 1;
-                          if (b.index === null) return -1;
-                          return a.index - b.index;
-                        });
+                          const ordered = Array.from(groups.values()).sort(
+                            (a, b) => {
+                              if (a.index === null && b.index === null)
+                                return a.label.localeCompare(b.label);
+                              if (a.index === null) return 1;
+                              if (b.index === null) return -1;
+                              return a.index - b.index;
+                            },
+                          );
 
-                        return (
-                          <div className="space-y-4">
-                            {ordered.map((g) => {
-                              const p = g.index ? passagesByIndex.get(g.index) : null;
-                              return (
-                                <div key={g.label} className="border rounded bg-white">
-                                  <div className="px-3 py-2 border-b flex items-center justify-between">
-                                    <div className="font-medium">
-                                      {g.label} <span className="text-xs text-muted-foreground">({g.items.length} questions)</span>
-                                    </div>
-                                    {g.index ? (
-                                      <div className="text-xs text-muted-foreground">part: {`Passage ${g.index}`}</div>
-                                    ) : null}
-                                  </div>
-
-                                  {g.index ? (
-                                    <div className="px-3 py-2">
-                                      {p && (p.html || p.raw) ? (
-                                        <details>
-                                          <summary className="cursor-pointer text-sm text-muted-foreground select-none">
-                                            Show passage text
-                                          </summary>
-                                          <div className="mt-2 border rounded p-3 bg-background">
-                                            {String(p?.raw || "").trim() ? (
-                                              <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
-                                                <ReactMarkdown
-                                                  remarkPlugins={[remarkGfm]}
-                                                  components={{
-                                                    code({ inline, children, ...props }) {
-                                                      if (inline) {
-                                                        return (
-                                                          <span className="vstep-hl" {...props}>
-                                                            {children}
-                                                          </span>
-                                                        );
-                                                      }
-                                                      return (
-                                                        <code {...props}>
-                                                          {children}
-                                                        </code>
-                                                      );
-                                                    },
-                                                  }}
-                                                >
-                                                  {toReadingPassageMarkdown(String(p.raw || ""))}
-                                                </ReactMarkdown>
-                                              </article>
-                                            ) : p.html ? (
-                                              <article
-                                                className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1"
-                                                dangerouslySetInnerHTML={{ __html: String(p.html) }}
-                                              />
-                                            ) : (
-                                              <div className="text-xs text-muted-foreground">(empty passage)</div>
-                                            )}
-                                          </div>
-                                        </details>
-                                      ) : (
+                          return (
+                            <div className="space-y-4">
+                              {ordered.map((g) => {
+                                const p = g.index
+                                  ? passagesByIndex.get(g.index)
+                                  : null;
+                                return (
+                                  <div
+                                    key={g.label}
+                                    className="border rounded bg-white"
+                                  >
+                                    <div className="px-3 py-2 border-b flex items-center justify-between">
+                                      <div className="font-medium">
+                                        {g.label}{" "}
+                                        <span className="text-xs text-muted-foreground">
+                                          ({g.items.length} questions)
+                                        </span>
+                                      </div>
+                                      {g.index ? (
                                         <div className="text-xs text-muted-foreground">
-                                          No saved passage text for this section yet.
+                                          part: {`Passage ${g.index}`}
                                         </div>
-                                      )}
+                                      ) : null}
                                     </div>
-                                  ) : null}
 
-                                  <div className="p-3 space-y-3">
-                                    {g.items.map((it, itemIndex) => (
-                                      <div key={it.id} className="border rounded p-3 bg-white">
-                                        <div className="flex items-start justify-between gap-3 mb-2">
-                                          <div className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                            Q{itemIndex + 1}
-                                          </div>
-                                          {it.difficulty && (
-                                            <div className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                                              Level: {it.difficulty}/10
+                                    {g.index ? (
+                                      <div className="px-3 py-2">
+                                        {p && (p.html || p.raw) ? (
+                                          <details>
+                                            <summary className="cursor-pointer text-sm text-muted-foreground select-none">
+                                              Show passage text
+                                            </summary>
+                                            <div className="mt-2 border rounded p-3 bg-background">
+                                              {String(p?.raw || "").trim() ? (
+                                                <article className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
+                                                  <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={{
+                                                      code(codeProps: any) {
+                                                        const {
+                                                          inline,
+                                                          children,
+                                                          ...props
+                                                        } = codeProps;
+                                                        if (inline) {
+                                                          return (
+                                                            <span
+                                                              className="vstep-hl"
+                                                              {...props}
+                                                            >
+                                                              {children}
+                                                            </span>
+                                                          );
+                                                        }
+                                                        return (
+                                                          <code {...props}>
+                                                            {children}
+                                                          </code>
+                                                        );
+                                                      },
+                                                    }}
+                                                  >
+                                                    {toReadingPassageMarkdown(
+                                                      String(p.raw || ""),
+                                                    )}
+                                                  </ReactMarkdown>
+                                                </article>
+                                              ) : p.html ? (
+                                                <article
+                                                  className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1"
+                                                  dangerouslySetInnerHTML={{
+                                                    __html: String(p.html),
+                                                  }}
+                                                />
+                                              ) : (
+                                                <div className="text-xs text-muted-foreground">
+                                                  (empty passage)
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
-                                        </div>
-                                        
-                                        <div className="mb-3">
-                                          {it.prompt && it.prompt.length > 150 ? (
-                                            <details className="group">
-                                              <summary className="cursor-pointer font-medium text-gray-900 select-none group-open:mb-2">
-                                                {it.prompt.substring(0, 150)}...
-                                                <span className="text-blue-600 ml-1">Show more</span>
-                                              </summary>
-                                              <div className="font-medium text-gray-900">
-                                                {it.prompt}
-                                              </div>
-                                            </details>
-                                          ) : (
-                                            <div className="font-medium text-gray-900">
-                                              {it.prompt || '(No prompt text)'}
-                                            </div>
-                                          )}
-                                        </div>
-                                        
-                                        {it.optionsJson ? (
-                                          <div className="mt-2 max-h-40 overflow-auto">
-                                            <div className="text-sm font-medium text-gray-700 mb-2">Options:</div>
-                                            {(it.optionsJson || []).map((opt: any, idx: number) => (
-                                              <div key={opt.id || idx} className="flex items-center gap-2 py-1">
-                                                <span className="text-blue-600 font-medium">{String.fromCharCode(65 + idx)}.</span>
-                                                <div className="text-sm">{opt.label}</div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        ) : null}
-                                        
-                                        {it.answerJson && (
-                                          <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
-                                            <div className="text-sm font-medium text-green-800 mb-1">Answer:</div>
-                                            <div className="text-sm text-green-700">
-                                              {(() => {
-                                                try {
-                                                  const answer = typeof it.answerJson === 'string' 
-                                                    ? JSON.parse(it.answerJson) 
-                                                    : it.answerJson;
-                                                  
-                                                  if (answer?.correctOptionId && it.optionsJson) {
-                                                    const options = Array.isArray(it.optionsJson) ? it.optionsJson : [];
-                                                    const correctIndex = options.findIndex((opt: any) => opt.id === answer.correctOptionId);
-                                                    
-                                                    if (correctIndex !== -1) {
-                                                      const letter = String.fromCharCode(65 + correctIndex);
-                                                      let optionText = options[correctIndex].label || '';
-                                                      
-                                                      // Remove leading letter if exists (e.g., "B. text" -> "text")
-                                                      optionText = optionText.replace(/^[A-Z]\.\s*/, '');
-                                                      
-                                                      return `${letter}. ${optionText}`;
-                                                    }
-                                                  }
-                                                  
-                                                  return typeof it.answerJson === 'string' ? it.answerJson : JSON.stringify(it.answerJson);
-                                                } catch (e) {
-                                                  return typeof it.answerJson === 'string' ? it.answerJson : JSON.stringify(it.answerJson);
-                                                }
-                                              })()}
-                                            </div>
+                                          </details>
+                                        ) : (
+                                          <div className="text-xs text-muted-foreground">
+                                            No saved passage text for this
+                                            section yet.
                                           </div>
                                         )}
-                                        
-                                        <div className="mt-3 flex gap-2">
-                                          <Button size="sm" onClick={() => openEditItem(it)}>
-                                            Edit
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            onClick={() => handleDeleteItem(it.id)}
-                                          >
-                                            Delete
-                                          </Button>
-                                        </div>
                                       </div>
-                                    ))}
+                                    ) : null}
+
+                                    <div className="p-3 space-y-3">
+                                      {g.items.map((it, itemIndex) => (
+                                        <div
+                                          key={it.id}
+                                          className="border rounded p-3 bg-white"
+                                        >
+                                          <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                              Q{itemIndex + 1}
+                                            </div>
+                                            {it.difficulty && (
+                                              <div className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                                Level: {it.difficulty}/10
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          <div className="mb-3">
+                                            {it.prompt &&
+                                            it.prompt.length > 150 ? (
+                                              <details className="group">
+                                                <summary className="cursor-pointer font-medium text-gray-900 select-none group-open:mb-2">
+                                                  {it.prompt.substring(0, 150)}
+                                                  ...
+                                                  <span className="text-blue-600 ml-1">
+                                                    Show more
+                                                  </span>
+                                                </summary>
+                                                <div className="font-medium text-gray-900">
+                                                  {it.prompt}
+                                                </div>
+                                              </details>
+                                            ) : (
+                                              <div className="font-medium text-gray-900">
+                                                {it.prompt ||
+                                                  "(No prompt text)"}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {it.optionsJson ? (
+                                            <div className="mt-2 max-h-40 overflow-auto">
+                                              <div className="text-sm font-medium text-gray-700 mb-2">
+                                                Options:
+                                              </div>
+                                              {(it.optionsJson || []).map(
+                                                (opt: any, idx: number) => (
+                                                  <div
+                                                    key={opt.id || idx}
+                                                    className="flex items-center gap-2 py-1"
+                                                  >
+                                                    <span className="text-blue-600 font-medium">
+                                                      {String.fromCharCode(
+                                                        65 + idx,
+                                                      )}
+                                                      .
+                                                    </span>
+                                                    <div className="text-sm">
+                                                      {opt.label}
+                                                    </div>
+                                                  </div>
+                                                ),
+                                              )}
+                                            </div>
+                                          ) : null}
+
+                                          {it.answerJson && (
+                                            <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
+                                              <div className="text-sm font-medium text-green-800 mb-1">
+                                                Answer:
+                                              </div>
+                                              <div className="text-sm text-green-700">
+                                                {(() => {
+                                                  try {
+                                                    const answer =
+                                                      typeof it.answerJson ===
+                                                      "string"
+                                                        ? JSON.parse(
+                                                            it.answerJson,
+                                                          )
+                                                        : it.answerJson;
+
+                                                    if (
+                                                      answer?.correctOptionId &&
+                                                      it.optionsJson
+                                                    ) {
+                                                      const options =
+                                                        Array.isArray(
+                                                          it.optionsJson,
+                                                        )
+                                                          ? it.optionsJson
+                                                          : [];
+                                                      const correctIndex =
+                                                        options.findIndex(
+                                                          (opt: any) =>
+                                                            opt.id ===
+                                                            answer.correctOptionId,
+                                                        );
+
+                                                      if (correctIndex !== -1) {
+                                                        const letter =
+                                                          String.fromCharCode(
+                                                            65 + correctIndex,
+                                                          );
+                                                        let optionText =
+                                                          options[correctIndex]
+                                                            .label || "";
+
+                                                        // Remove leading letter if exists (e.g., "B. text" -> "text")
+                                                        optionText =
+                                                          optionText.replace(
+                                                            /^[A-Z]\.\s*/,
+                                                            "",
+                                                          );
+
+                                                        return `${letter}. ${optionText}`;
+                                                      }
+                                                    }
+
+                                                    return typeof it.answerJson ===
+                                                      "string"
+                                                      ? it.answerJson
+                                                      : JSON.stringify(
+                                                          it.answerJson,
+                                                        );
+                                                  } catch (e) {
+                                                    return typeof it.answerJson ===
+                                                      "string"
+                                                      ? it.answerJson
+                                                      : JSON.stringify(
+                                                          it.answerJson,
+                                                        );
+                                                  }
+                                                })()}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          <div className="mt-3 flex gap-2">
+                                            <Button
+                                              size="sm"
+                                              onClick={() => openEditItem(it)}
+                                            >
+                                              Edit
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="destructive"
+                                              onClick={() =>
+                                                handleDeleteItem(it.id)
+                                              }
+                                            >
+                                              Delete
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })() : getDocSkill(detailDoc) === "Writing" ? (
+                                );
+                              })}
+                            </div>
+                          );
+                        })()
+                      ) : getDocSkill(detailDoc) === "Writing" ? (
                         <div className="space-y-4">
                           <div className="text-sm text-muted-foreground mb-3">
-                            Writing Tasks ({detailItems.length} {detailItems.length === 1 ? 'task' : 'tasks'})
+                            Writing Tasks ({detailItems.length}{" "}
+                            {detailItems.length === 1 ? "task" : "tasks"})
                           </div>
                           {detailItems.map((it, index) => (
-                            <div key={it.id} className="border rounded-lg p-4 bg-white/50">
+                            <div
+                              key={it.id}
+                              className="border rounded-lg p-4 bg-white/50"
+                            >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-2">
@@ -3001,7 +3476,9 @@ export default function VtepAdminPage() {
                                     {it.prompt && it.prompt.length > 200 ? (
                                       <details className="group" open>
                                         <summary className="cursor-pointer select-none group-open:mb-2">
-                                          <span className="text-blue-600 font-medium">Writing Prompt (click to collapse)</span>
+                                          <span className="text-blue-600 font-medium">
+                                            Writing Prompt (click to collapse)
+                                          </span>
                                         </summary>
                                         <div className="whitespace-pre-wrap border-l-2 border-blue-300 pl-3 mt-2">
                                           {it.prompt}
@@ -3009,36 +3486,58 @@ export default function VtepAdminPage() {
                                       </details>
                                     ) : (
                                       <div className="whitespace-pre-wrap">
-                                        {it.prompt || '(No prompt text available)'}
+                                        {it.prompt ||
+                                          "(No prompt text available)"}
                                       </div>
                                     )}
                                   </div>
-                                  
-                                  {it.optionsJson && Array.isArray(it.optionsJson) && it.optionsJson.length > 0 && (
-                                    <div className="mt-3">
-                                      <div className="text-sm font-medium text-gray-700 mb-2">Instructions:</div>
-                                      <div className="space-y-1">
-                                        {it.optionsJson.map((opt: any, idx: number) => (
-                                          <div key={opt.id || idx} className="text-sm text-gray-600 flex items-start gap-2">
-                                            <span className="text-blue-600 font-medium">•</span>
-                                            <span>{opt.label || opt.text || opt.value}</span>
-                                          </div>
-                                        ))}
+
+                                  {it.optionsJson &&
+                                    Array.isArray(it.optionsJson) &&
+                                    it.optionsJson.length > 0 && (
+                                      <div className="mt-3">
+                                        <div className="text-sm font-medium text-gray-700 mb-2">
+                                          Instructions:
+                                        </div>
+                                        <div className="space-y-1">
+                                          {it.optionsJson.map(
+                                            (opt: any, idx: number) => (
+                                              <div
+                                                key={opt.id || idx}
+                                                className="text-sm text-gray-600 flex items-start gap-2"
+                                              >
+                                                <span className="text-blue-600 font-medium">
+                                                  •
+                                                </span>
+                                                <span>
+                                                  {opt.label ||
+                                                    opt.text ||
+                                                    opt.value}
+                                                </span>
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                  
+                                    )}
+
                                   {it.answerJson && (
                                     <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
-                                      <div className="text-sm font-medium text-green-800 mb-1">Sample Answer/Guidelines:</div>
+                                      <div className="text-sm font-medium text-green-800 mb-1">
+                                        Sample Answer/Guidelines:
+                                      </div>
                                       <div className="text-sm text-green-700">
-                                        {typeof it.answerJson === 'string' 
-                                          ? it.answerJson 
-                                          : JSON.stringify(it.answerJson, null, 2)}
+                                        {typeof it.answerJson === "string"
+                                          ? it.answerJson
+                                          : JSON.stringify(
+                                              it.answerJson,
+                                              null,
+                                              2,
+                                            )}
                                       </div>
                                     </div>
                                   )}
-                                  
+
                                   {it.difficulty && (
                                     <div className="mt-2">
                                       <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
@@ -3047,9 +3546,13 @@ export default function VtepAdminPage() {
                                     </div>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex flex-col gap-1 flex-shrink-0">
-                                  <Button size="sm" variant="outline" onClick={() => openEditItem(it)}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openEditItem(it)}
+                                  >
                                     Edit
                                   </Button>
                                   <Button
@@ -3066,7 +3569,10 @@ export default function VtepAdminPage() {
                         </div>
                       ) : (
                         detailItems.map((it) => (
-                          <li key={it.id} className="border rounded p-3 bg-white">
+                          <li
+                            key={it.id}
+                            className="border rounded p-3 bg-white"
+                          >
                             <div className="font-medium">{it.prompt}</div>
                             {it.optionsJson ? (
                               <div className="mt-2 max-h-40 overflow-auto">
@@ -3083,7 +3589,10 @@ export default function VtepAdminPage() {
                               </div>
                             ) : null}
                             <div className="mt-3 flex gap-2">
-                              <Button size="sm" onClick={() => openEditItem(it)}>
+                              <Button
+                                size="sm"
+                                onClick={() => openEditItem(it)}
+                              >
                                 Edit
                               </Button>
                               <Button
@@ -3110,15 +3619,19 @@ export default function VtepAdminPage() {
                   <>
                     <Button
                       size="sm"
-                      variant={isLoadingAudio[detailDoc.id] ? "destructive" : "default"}
+                      variant={
+                        isLoadingAudio[detailDoc.id] ? "destructive" : "default"
+                      }
                       onClick={() => {
                         if (isLoadingAudio[detailDoc.id]) {
                           // Stop audio using hook function
                           stopAudio(detailDoc.id);
                         } else {
                           // Play audio
-                          const fullAudioUrl = detailDoc.audioPath.startsWith('http') 
-                            ? detailDoc.audioPath 
+                          const fullAudioUrl = detailDoc.audioPath.startsWith(
+                            "http",
+                          )
+                            ? detailDoc.audioPath
                             : `${window.location.protocol}//${window.location.hostname}:4000${detailDoc.audioPath}`;
                           playAudio(
                             detailDoc.id,
@@ -3128,16 +3641,16 @@ export default function VtepAdminPage() {
                         }
                       }}
                     >
-                      {isLoadingAudio[detailDoc.id]
-                        ? "⏸ Stop"
-                        : "▶ Play Audio"}
+                      {isLoadingAudio[detailDoc.id] ? "⏸ Stop" : "▶ Play Audio"}
                     </Button>
                     <div className="text-sm text-muted-foreground">
                       Attached audio:{" "}
                       <a
-                        href={detailDoc.audioPath.startsWith('http') 
-                          ? detailDoc.audioPath 
-                          : `${window.location.protocol}//${window.location.hostname}:4000${detailDoc.audioPath}`}
+                        href={
+                          detailDoc.audioPath.startsWith("http")
+                            ? detailDoc.audioPath
+                            : `${window.location.protocol}//${window.location.hostname}:4000${detailDoc.audioPath}`
+                        }
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -3186,7 +3699,8 @@ export default function VtepAdminPage() {
                     <div className="font-medium">Add to Practice Set</div>
                     <div className="text-xs text-muted-foreground">
                       Total {detailItems.length} items available
-                      {detailDoc?.tocJson?.skill === 'Reading' && ' (Reading: includes passages)'}
+                      {detailDoc?.tocJson?.skill === "Reading" &&
+                        " (Reading: includes passages)"}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -3477,7 +3991,8 @@ export default function VtepAdminPage() {
           <DialogHeader>
             <DialogTitle>Add Items</DialogTitle>
             <DialogDescription>
-              Add items to document: {selectedDocId || "(none)"} · Skill: {activeDocSkill}
+              Add items to document: {selectedDocId || "(none)"} · Skill:{" "}
+              {activeDocSkill}
             </DialogDescription>
           </DialogHeader>
 
@@ -3490,7 +4005,8 @@ export default function VtepAdminPage() {
                       <div className="font-medium">Reading Passage</div>
                       <div className="text-xs text-muted-foreground">
                         Paste 1 passage. Do not remove the [A][B][C][D] markers.
-                        Markdown supported: **bold**, _italic_ / *italic*, `inline highlight`, and &lt;&lt;highlight&gt;&gt;.
+                        Markdown supported: **bold**, _italic_ / *italic*,
+                        `inline highlight`, and &lt;&lt;highlight&gt;&gt;.
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -3539,10 +4055,13 @@ export default function VtepAdminPage() {
                 <div className="border rounded p-3 bg-background space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="font-medium">Reading Questions (10 questions)</div>
+                      <div className="font-medium">
+                        Reading Questions (10 questions)
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        Paste exactly 10 questions. Each question is one block separated by 1 blank line:
-                        first line = question, next lines = options A-D, last line = Answer.
+                        Paste exactly 10 questions. Each question is one block
+                        separated by 1 blank line: first line = question, next
+                        lines = options A-D, last line = Answer.
                       </div>
                     </div>
                     <Button
@@ -3550,7 +4069,9 @@ export default function VtepAdminPage() {
                       variant="outline"
                       type="button"
                       onClick={() => {
-                        const res = parseReadingQuestionsByPassageInputs(readingQuestionsInput);
+                        const res = parseReadingQuestionsByPassageInputs(
+                          readingQuestionsInput,
+                        );
                         if (res.errors.length) {
                           toast({
                             variant: "destructive",
@@ -3574,7 +4095,9 @@ export default function VtepAdminPage() {
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="text-sm text-muted-foreground">10 questions for this passage</div>
+                      <div className="text-sm text-muted-foreground">
+                        10 questions for this passage
+                      </div>
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
@@ -3641,12 +4164,16 @@ export default function VtepAdminPage() {
                 {activeDocSkill === "Reading" ? (
                   <>
                     <div className="text-xs text-muted-foreground mt-1">
-                      (Optional) If you already have the full input in PASSAGE 1..4 format, paste it here to parse both passages + questions.
+                      (Optional) If you already have the full input in PASSAGE
+                      1..4 format, paste it here to parse both passages +
+                      questions.
                     </div>
                     <textarea
                       className="w-full p-2 border rounded mt-1"
                       rows={5}
-                      placeholder={"PASSAGE 1\n...\n1. ...\nA. ...\nAnswer: A\n\nPASSAGE 2\n..."}
+                      placeholder={
+                        "PASSAGE 1\n...\n1. ...\nA. ...\nAnswer: A\n\nPASSAGE 2\n..."
+                      }
                       value={importText}
                       onChange={(e) => setImportText(e.target.value)}
                     />
@@ -3672,12 +4199,15 @@ export default function VtepAdminPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          const hasPassages = /^\s*PASSAGE\s*\d\b/im.test(importText);
+                          const hasPassages = /^\s*PASSAGE\s*\d\b/im.test(
+                            importText,
+                          );
                           if (!hasPassages) {
                             toast({
                               variant: "destructive",
                               title: "Missing PASSAGE blocks",
-                              description: "This input is only for PASSAGE 1..4 format.",
+                              description:
+                                "This input is only for PASSAGE 1..4 format.",
                               duration: 5000,
                             });
                             return;
@@ -3702,7 +4232,11 @@ export default function VtepAdminPage() {
                       >
                         Parse full PASSAGE
                       </Button>
-                      <Button size="sm" type="button" onClick={addParsedItemsToPending}>
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={addParsedItemsToPending}
+                      >
                         Add parsed to pending
                       </Button>
                     </div>
@@ -3754,17 +4288,23 @@ export default function VtepAdminPage() {
                       >
                         Parse import
                       </Button>
-                      <Button size="sm" type="button" onClick={addParsedItemsToPending}>
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={addParsedItemsToPending}
+                      >
                         Add parsed to pending
                       </Button>
                     </div>
                   </>
                 )}
 
-                {activeDocSkill === "Reading" && parsedReadingMeta?.passages?.length ? (
+                {activeDocSkill === "Reading" &&
+                parsedReadingMeta?.passages?.length ? (
                   <div className="mt-2 p-2 border rounded bg-background">
                     <div className="text-xs text-muted-foreground">
-                      Detected passages: {parsedReadingMeta.passages.length} · Total questions: {parsedReadingMeta.totalQuestions}
+                      Detected passages: {parsedReadingMeta.passages.length} ·
+                      Total questions: {parsedReadingMeta.totalQuestions}
                     </div>
                   </div>
                 ) : null}
@@ -3968,7 +4508,9 @@ export default function VtepAdminPage() {
                   <input
                     type="checkbox"
                     checked={readingReplaceExisting}
-                    onChange={(e) => setReadingReplaceExisting(e.target.checked)}
+                    onChange={(e) =>
+                      setReadingReplaceExisting(e.target.checked)
+                    }
                   />
                   Replace existing questions for passages in this save
                 </label>
@@ -4119,7 +4661,9 @@ export default function VtepAdminPage() {
               <ol className="space-y-4">
                 {practiceSet.map((it, idx) => {
                   // Get passage for this item
-                  const doc = it.sourceDocumentId ? docs.find(d => d.id === it.sourceDocumentId) : null;
+                  const doc = it.sourceDocumentId
+                    ? docs.find((d) => d.id === it.sourceDocumentId)
+                    : null;
                   let passage = null;
                   if (doc && doc.tocJson?.reading?.passages) {
                     const partStr = String(it.part || "").toLowerCase();
@@ -4127,19 +4671,23 @@ export default function VtepAdminPage() {
                     if (match) {
                       const passageIndex = parseInt(match[1], 10);
                       passage = doc.tocJson.reading.passages.find(
-                        (p: any) => p.index === passageIndex
+                        (p: any) => p.index === passageIndex,
                       );
                     }
                   }
-                  
+
                   return (
                     <li key={idx} className="border rounded p-3 bg-white">
                       {passage && (
                         <div className="mb-3 p-3 bg-blue-50 rounded border">
-                          <div className="text-xs font-medium mb-2">Reading Passage</div>
-                          <div 
+                          <div className="text-xs font-medium mb-2">
+                            Reading Passage
+                          </div>
+                          <div
                             className="prose prose-xs max-w-none text-sm"
-                            dangerouslySetInnerHTML={{ __html: passage.html || '' }}
+                            dangerouslySetInnerHTML={{
+                              __html: passage.html || "",
+                            }}
                           />
                         </div>
                       )}
@@ -4150,7 +4698,10 @@ export default function VtepAdminPage() {
                         <>
                           <div className="mt-2 space-y-1 max-h-40 overflow-auto">
                             {(it.optionsJson || []).map((opt: any) => (
-                              <div key={opt.id || opt.label} className="text-sm">
+                              <div
+                                key={opt.id || opt.label}
+                                className="text-sm"
+                              >
                                 - {opt.label}
                               </div>
                             ))}
@@ -4205,55 +4756,65 @@ export default function VtepAdminPage() {
       </Dialog>
 
       {/* Writing Management Dialog */}
-      <Dialog 
-        open={writingDialogOpen} 
+      <Dialog
+        open={writingDialogOpen}
         onOpenChange={(open) => {
           setWritingDialogOpen(open);
           if (!open) {
-            setWritingDialogMode('manage');
+            setWritingDialogMode("manage");
           }
         }}
       >
         <DialogContent className="max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>VSTEP Writing {writingDialogMode === 'create' ? 'Create' : 'Management'}</DialogTitle>
+            <DialogTitle>
+              VSTEP Writing{" "}
+              {writingDialogMode === "create" ? "Create" : "Management"}
+            </DialogTitle>
             <DialogDescription>
-              {writingDialogMode === 'create' ? 'Create new writing prompts' : 'Create and manage prompts and tests for Writing section'}
+              {writingDialogMode === "create"
+                ? "Create new writing prompts"
+                : "Create and manage prompts and tests for Writing section"}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-1">
-            <VtepWritingManager 
-              mode={writingDialogMode} 
-              documentId={selectedDocId} 
-              onPromptChange={load} 
+            <VtepWritingManager
+              mode={writingDialogMode}
+              documentId={selectedDocId ?? undefined}
+              onPromptChange={load}
             />
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Speaking Management Dialog */}
-      <Dialog 
-        open={speakingDialogOpen} 
+      <Dialog
+        open={speakingDialogOpen}
         onOpenChange={(open) => {
           setSpeakingDialogOpen(open);
           // Reset mode về 'manage' khi đóng dialog
           if (!open) {
-            setSpeakingDialogMode('manage');
+            setSpeakingDialogMode("manage");
           }
         }}
       >
         <DialogContent className="max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>VSTEP Speaking {speakingDialogMode === 'create' ? 'Create' : 'Management'}</DialogTitle>
+            <DialogTitle>
+              VSTEP Speaking{" "}
+              {speakingDialogMode === "create" ? "Create" : "Management"}
+            </DialogTitle>
             <DialogDescription>
-              {speakingDialogMode === 'create' ? 'Create new speaking prompts' : 'View and manage speaking prompts'}
+              {speakingDialogMode === "create"
+                ? "Create new speaking prompts"
+                : "View and manage speaking prompts"}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-1">
-            <VtepSpeakingManager 
-              mode={speakingDialogMode} 
-              documentId={selectedDocId} 
-              onPromptChange={load} 
+            <VtepSpeakingManager
+              mode={speakingDialogMode}
+              documentId={selectedDocId ?? undefined}
+              onPromptChange={load}
             />
           </div>
         </DialogContent>

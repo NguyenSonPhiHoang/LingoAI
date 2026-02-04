@@ -179,11 +179,18 @@ export class VtepController {
   static async listDocuments(req: AuthRequest, res: Response) {
     try {
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 10;
       const search = req.query.search as string | undefined;
       const skill = req.query.skill as string | undefined;
 
-      const result = await VtepRepository.listDocuments({ page, limit, search, skill });
+      const result = await VtepRepository.listDocuments({
+        page,
+        limit,
+        search,
+        skill,
+      });
       return res.json(result);
     } catch (err: any) {
       console.error("VTEP list error:", err?.message || err);
@@ -195,11 +202,18 @@ export class VtepController {
   static async listDocumentsPublic(req: AuthRequest, res: Response) {
     try {
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 10;
       const search = req.query.search as string | undefined;
       const skill = req.query.skill as string | undefined;
 
-      const result = await VtepRepository.listDocuments({ page, limit, search, skill });
+      const result = await VtepRepository.listDocuments({
+        page,
+        limit,
+        search,
+        skill,
+      });
       return res.json(result);
     } catch (err: any) {
       console.error("VTEP public list error:", err?.message || err);
@@ -259,7 +273,8 @@ export class VtepController {
       const prepared = items.map((it: any, idx: number) => ({
         documentId,
         sectionKey:
-          (it.sectionKey ?? null) || `${batchKey}:${String(idx).padStart(4, "0")}`,
+          (it.sectionKey ?? null) ||
+          `${batchKey}:${String(idx).padStart(4, "0")}`,
         skill: (it.skill ?? null) || "Listening",
         part: it.part ?? null,
         prompt: it.prompt ?? null,
@@ -309,15 +324,17 @@ export class VtepController {
     try {
       const id = req.params.id;
       if (!id) return res.status(400).json({ error: "id required" });
-      
+
       console.log(`🔍 VTEP listItems called for document: ${id}`);
       const items = await VtepRepository.listItemsForDocument(id);
-      
+
       console.log(`✅ VTEP listItems returning ${items.length} items`);
-      items.forEach((item, index) => {
-        console.log(`Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`);
+      items.forEach((item: any, index: number) => {
+        console.log(
+          `Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`,
+        );
       });
-      
+
       return res.json({ items });
     } catch (err: any) {
       console.error("VTEP listItems error:", err?.message || err);
@@ -330,15 +347,17 @@ export class VtepController {
     try {
       const id = req.params.id;
       if (!id) return res.status(400).json({ error: "id required" });
-      
+
       console.log(`🔍 VTEP listItemsPublic called for document: ${id}`);
       const items = await VtepRepository.listItemsForDocument(id);
-      
+
       console.log(`✅ VTEP listItemsPublic returning ${items.length} items`);
-      items.forEach((item, index) => {
-        console.log(`Public Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`);
+      items.forEach((item: any, index: number) => {
+        console.log(
+          `Public Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`,
+        );
       });
-      
+
       return res.json({ items });
     } catch (err: any) {
       console.error("VTEP listItemsPublic error:", err?.message || err);
@@ -409,9 +428,11 @@ export class VtepController {
 
       const { title, description, tocJson } = req.body;
       await VtepRepository.updateDocument(id, {
-        title: typeof title === "undefined" ? undefined : title ?? null,
+        title: typeof title === "undefined" ? undefined : (title ?? null),
         description:
-          typeof description === "undefined" ? undefined : description ?? null,
+          typeof description === "undefined"
+            ? undefined
+            : (description ?? null),
         tocJson: typeof tocJson === "undefined" ? undefined : tocJson,
       });
       return res.json({ id });

@@ -57,19 +57,19 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
   const q = query(
     storybooksCollection,
     where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
   );
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => {
-    const data = doc.data();
+    const data = doc.data() as Record<string, any>;
     return {
       id: doc.id,
-      userId: data.userId || "",
-      level: data.level || "beginner",
-      format: data.format || "bilingual",
-      title: data.title || "Untitled Story",
-      status: data.status || "not-started",
+      userId: typeof data.userId === "string" ? data.userId : "",
+      level: (data.level || "beginner") as UserLevel,
+      format: (data.format || "bilingual") as StorybookFormat,
+      title: typeof data.title === "string" ? data.title : "Untitled Story",
+      status: (data.status || "not-started") as StorybookStatus,
       createdAt:
         data.createdAt instanceof Timestamp
           ? data.createdAt.toDate()
@@ -81,13 +81,13 @@ export const getStorybooks = async (userId: string): Promise<Storybook[]> => {
 
 export const getStorybooksByLessonId = async (
   userId: string,
-  lessonId: string
+  lessonId: string,
 ): Promise<Storybook[]> => {
   if (!lessonId) return [];
 
   if (!firebaseEnabled) {
     const rows = await apiGet<any[]>(
-      `/api/storybooks/me/by-lesson/${encodeURIComponent(lessonId)}`
+      `/api/storybooks/me/by-lesson/${encodeURIComponent(lessonId)}`,
     );
     return (rows || []).map((r) => ({
       id: r.id,
@@ -167,7 +167,7 @@ export const addStorybook = async (
   storyData: GenerateStorybookOutput,
   level: UserLevel,
   format: StorybookFormat,
-  lessonId?: string
+  lessonId?: string,
 ): Promise<Storybook> => {
   if (!firebaseEnabled) {
     const payload = {
@@ -231,7 +231,7 @@ export const updateStorybook = async (
       | "vietnameseContentAudioUrl"
       | "status"
     >
-  >
+  >,
 ) => {
   if (!firebaseEnabled) {
     await apiPut(`/api/storybooks/${id}`, updates);

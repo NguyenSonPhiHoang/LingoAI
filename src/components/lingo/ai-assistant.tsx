@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +45,7 @@ const DEBUG_MODE = false;
 const debug = {
   log: (...args: any[]) => DEBUG_MODE && console.log(...args),
   error: (...args: any[]) => DEBUG_MODE && console.error(...args),
-  warn: (...args: any[]) => DEBUG_MODE && console.warn(...args)
+  warn: (...args: any[]) => DEBUG_MODE && console.warn(...args),
 };
 
 // Dynamic import to avoid SSR issues with Three.js
@@ -134,39 +136,38 @@ export default function AiAssistant() {
 
   const userId = user?.uid || user?.id || null;
 
-
-
-
   // Load wake word script once on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     // Check if script already loaded
-    const existingScript = document.querySelector('script[src="/web-speech-wakeword.js"]');
+    const existingScript = document.querySelector(
+      'script[src="/web-speech-wakeword.js"]',
+    );
     if (existingScript) {
-      debug.log('⚠️ Wake word script already loaded');
+      debug.log("⚠️ Wake word script already loaded");
       return;
     }
 
     // Load WebSpeechWakeWord script
-    const wakeWordScript = document.createElement('script');
-    wakeWordScript.src = '/web-speech-wakeword.js';
+    const wakeWordScript = document.createElement("script");
+    wakeWordScript.src = "/web-speech-wakeword.js";
     wakeWordScript.async = true;
     document.body.appendChild(wakeWordScript);
 
     wakeWordScript.onload = () => {
-      debug.log('✅ Wake word script loaded');
+      debug.log("✅ Wake word script loaded");
     };
 
     // Load Face Detector (MediaPipe-based)
-    const faceDetectorScript = document.createElement('script');
-    faceDetectorScript.src = '/face-detector.js';
-    faceDetectorScript.type = 'module'; // ES6 module for dynamic imports
+    const faceDetectorScript = document.createElement("script");
+    faceDetectorScript.src = "/face-detector.js";
+    faceDetectorScript.type = "module"; // ES6 module for dynamic imports
     faceDetectorScript.async = true;
     document.body.appendChild(faceDetectorScript);
 
     faceDetectorScript.onload = () => {
-      debug.log('✅ Face detector script loaded');
+      debug.log("✅ Face detector script loaded");
     };
 
     return () => {
@@ -174,22 +175,20 @@ export default function AiAssistant() {
     };
   }, []); // Empty deps - only run once
 
-
-
   // Start/stop wake word based on mic state (NOT dialog state)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
-    debug.log('🔍 Wake word effect triggered:', {
+    debug.log("🔍 Wake word effect triggered:", {
       open,
       listening,
       voiceInputEnabled,
       hasWakeWordClass: !!(window as any).WebSpeechWakeWord,
-      hasInstance: !!(window as any).wakeWordInstance
+      hasInstance: !!(window as any).wakeWordInstance,
     });
 
     if (!(window as any).WebSpeechWakeWord) {
-      debug.warn('⚠️ WebSpeechWakeWord class not loaded yet');
+      debug.warn("⚠️ WebSpeechWakeWord class not loaded yet");
       return;
     }
     if (!open) return; // Only run when dialog is open
@@ -198,18 +197,22 @@ export default function AiAssistant() {
     if (!listening) {
       // Start wake word when mic is off
       if (!(window as any).wakeWordInstance) {
-        debug.log('🎤 Creating new wake word instance...');
+        debug.log("🎤 Creating new wake word instance...");
         const wakeWord = new (window as any).WebSpeechWakeWord();
         wakeWord.init();
         wakeWord.setCallback(() => {
-          debug.log('🎤 Wake word detected! Auto-greeting...');
+          debug.log("🎤 Wake word detected! Auto-greeting...");
 
           // Don't add messages to history - just display greeting
           // Adding model message first will cause API error
           const botGreeting = "Hello! How can I help you today?";
 
           // Speak the greeting if voice output is enabled
-          if (voiceOutputEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+          if (
+            voiceOutputEnabled &&
+            typeof window !== "undefined" &&
+            window.speechSynthesis
+          ) {
             const utterance = new SpeechSynthesisUtterance(botGreeting);
             utterance.lang = "en-US";
 
@@ -233,22 +236,24 @@ export default function AiAssistant() {
               // Check if Continuous mode is enabled
               if (continuousVoice) {
                 // Enable main mic after greeting
-                debug.log('✅ Continuous enabled - enabling main mic');
+                debug.log("✅ Continuous enabled - enabling main mic");
                 setTimeout(() => {
                   setVoiceInputEnabled(true);
                   // Trigger mic button to start listening
-                  const micButton = document.querySelector('[aria-label="Voice input"]') as HTMLButtonElement;
+                  const micButton = document.querySelector(
+                    '[aria-label="Voice input"]',
+                  ) as HTMLButtonElement;
                   if (micButton && !listening) {
                     micButton.click();
                   }
                 }, 500);
               } else {
                 // Restart wake word to keep listening
-                debug.log('⏸️ Continuous disabled - restarting wake word');
+                debug.log("⏸️ Continuous disabled - restarting wake word");
                 setTimeout(() => {
                   if ((window as any).wakeWordInstance) {
                     (window as any).wakeWordInstance.start();
-                    debug.log('🎤 Wake word restarted');
+                    debug.log("🎤 Wake word restarted");
                   }
                 }, 500);
               }
@@ -260,7 +265,9 @@ export default function AiAssistant() {
             if (continuousVoice) {
               setTimeout(() => {
                 setVoiceInputEnabled(true);
-                const micButton = document.querySelector('[aria-label="Voice input"]') as HTMLButtonElement;
+                const micButton = document.querySelector(
+                  '[aria-label="Voice input"]',
+                ) as HTMLButtonElement;
                 if (micButton && !listening) {
                   micButton.click();
                 }
@@ -270,7 +277,7 @@ export default function AiAssistant() {
               setTimeout(() => {
                 if ((window as any).wakeWordInstance) {
                   (window as any).wakeWordInstance.start();
-                  debug.log('🎤 Wake word restarted (no voice output)');
+                  debug.log("🎤 Wake word restarted (no voice output)");
                 }
               }, 500);
             }
@@ -278,16 +285,16 @@ export default function AiAssistant() {
         });
         wakeWord.start();
         (window as any).wakeWordInstance = wakeWord;
-        debug.log('🎤 Wake word detection started');
+        debug.log("🎤 Wake word detection started");
       } else {
-        debug.log('⚠️ Wake word instance already exists');
+        debug.log("⚠️ Wake word instance already exists");
       }
     } else {
       // Stop wake word when mic is enabled (main voice input active)
       if ((window as any).wakeWordInstance) {
         (window as any).wakeWordInstance.stop();
         (window as any).wakeWordInstance = null;
-        debug.log('🛑 Wake word stopped - main mic active');
+        debug.log("🛑 Wake word stopped - main mic active");
       }
     }
 
@@ -302,25 +309,30 @@ export default function AiAssistant() {
 
   // Initialize face detector when dialog opens
   useEffect(() => {
-    if (!open || typeof window === 'undefined') return;
+    if (!open || typeof window === "undefined") return;
 
     // Wait for scripts to load
     const initFaceDetection = async () => {
       // Check if FaceDetector is available
       if (!(window as any).FaceDetector) {
-        debug.log('⏳ Waiting for FaceDetector to load...');
+        debug.log("⏳ Waiting for FaceDetector to load...");
         return;
       }
 
-      debug.log('👤 Initializing face detection...');
+      debug.log("👤 Initializing face detection...");
 
       // Create greeting callback
       const greetingCallback = (result: any) => {
-        debug.log('👋 Face detection greeting triggered:', result);
+        debug.log("👋 Face detection greeting triggered:", result);
 
         // Speak greeting
-        if (voiceOutputEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
-          const greeting = "Hello! I noticed you looking at me. How can I help you today?";
+        if (
+          voiceOutputEnabled &&
+          typeof window !== "undefined" &&
+          window.speechSynthesis
+        ) {
+          const greeting =
+            "Hello! I noticed you looking at me. How can I help you today?";
           const utterance = new SpeechSynthesisUtterance(greeting);
           utterance.lang = "en-US";
 
@@ -348,63 +360,66 @@ export default function AiAssistant() {
       const detector = new (window as any).FaceDetector(greetingCallback);
 
       // Init in background - don't block UI
-      detector.init().then(() => {
-        (window as any).faceDetector = detector;
+      detector
+        .init()
+        .then(() => {
+          (window as any).faceDetector = detector;
 
-        // Expose isBotSpeaking function for detector
-        (window as any).isBotSpeaking = () => isSpeakingRef.current;
+          // Expose isBotSpeaking function for detector
+          (window as any).isBotSpeaking = () => isSpeakingRef.current;
 
-        // Expose bot processing state (waiting for API response)
-        (window as any).isBotProcessing = () => isSendingRef.current;
+          // Expose bot processing state (waiting for API response)
+          (window as any).isBotProcessing = () => isSendingRef.current;
 
-        // Expose conversation length to prevent interrupting
-        (window as any).getConversationLength = () => messages.length;
+          // Expose conversation length to prevent interrupting
+          (window as any).getConversationLength = () => messages.length;
 
-        // Expose mic control for secondary threads (wake word, face detection)
-        // When secondary threads speak, they should pause main mic to avoid capturing their own speech
-        (window as any).pauseMainMic = () => {
-          debug.log('⏸️ Pausing main mic (secondary thread speaking)');
-          isSpeakingRef.current = true; // Mark as speaking to block safeStart
-          if (recognitionRef.current) {
-            try {
-              recognitionRef.current.stop();
-              setListening(false);
-            } catch (e) {
-              // Ignore
-            }
-          }
-        };
-
-        (window as any).resumeMainMic = () => {
-          debug.log('▶️ Resuming main mic (secondary thread finished)');
-          isSpeakingRef.current = false;
-          // Only resume if continuous mode is on
-          if (continuousVoiceRef.current && shouldBeListeningRef.current) {
-            setTimeout(() => {
-              if (recognitionRef.current && !isSpeakingRef.current) {
-                try {
-                  recognitionRef.current.start();
-                  setListening(true);
-                } catch (e) {
-                  // Ignore if already started
-                }
+          // Expose mic control for secondary threads (wake word, face detection)
+          // When secondary threads speak, they should pause main mic to avoid capturing their own speech
+          (window as any).pauseMainMic = () => {
+            debug.log("⏸️ Pausing main mic (secondary thread speaking)");
+            isSpeakingRef.current = true; // Mark as speaking to block safeStart
+            if (recognitionRef.current) {
+              try {
+                recognitionRef.current.stop();
+                setListening(false);
+              } catch (e) {
+                // Ignore
               }
-            }, 500); // Small delay to ensure speech synthesis is fully done
-          }
-        };
+            }
+          };
 
-        // Expose avatar smile trigger
-        (window as any).triggerAvatarSmile = () => {
-          if (avatarRef.current) {
-            avatarRef.current.smile(10000); // 10 second smile
-          }
-        };
+          (window as any).resumeMainMic = () => {
+            debug.log("▶️ Resuming main mic (secondary thread finished)");
+            isSpeakingRef.current = false;
+            // Only resume if continuous mode is on
+            if (continuousVoiceRef.current && shouldBeListeningRef.current) {
+              setTimeout(() => {
+                if (recognitionRef.current && !isSpeakingRef.current) {
+                  try {
+                    recognitionRef.current.start();
+                    setListening(true);
+                  } catch (e) {
+                    // Ignore if already started
+                  }
+                }
+              }, 500); // Small delay to ensure speech synthesis is fully done
+            }
+          };
 
-        debug.log('✅ Face detector initialized');
-      }).catch((err: any) => {
-        debug.warn('⚠️ Face detector init failed:', err);
-        // Don't block UI - just log error
-      });
+          // Expose avatar smile trigger
+          (window as any).triggerAvatarSmile = () => {
+            if (avatarRef.current) {
+              avatarRef.current.smile(10000); // 10 second smile
+            }
+          };
+
+          debug.log("✅ Face detector initialized");
+        })
+        .catch((err: any) => {
+          debug.warn("⚠️ Face detector init failed:", err);
+          // Don't block UI - just log error
+        });
     };
 
     // Delay to ensure scripts are loaded
@@ -419,8 +434,6 @@ export default function AiAssistant() {
       }
     };
   }, [open, voiceOutputEnabled]);
-
-
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -520,37 +533,37 @@ export default function AiAssistant() {
     };
 
     const safeStart = () => {
-      debug.log('🎤 safeStart called:', {
+      debug.log("🎤 safeStart called:", {
         startingRecognition: startingRecognitionRef.current,
         open: openRef.current,
         shouldBeListen: shouldBeListeningRef.current,
         continuousVoice: continuousVoiceRef.current,
         voiceInputEnabled,
-        isSpeaking: isSpeakingRef.current
+        isSpeaking: isSpeakingRef.current,
       });
 
       if (startingRecognitionRef.current) {
-        debug.log('⏭️ Already starting recognition');
+        debug.log("⏭️ Already starting recognition");
         return;
       }
       if (!openRef.current) {
-        debug.log('⏭️ Dialog not open');
+        debug.log("⏭️ Dialog not open");
         return;
       }
       if (!shouldBeListeningRef.current) {
-        debug.log('⏭️ Should not be listening');
+        debug.log("⏭️ Should not be listening");
         return;
       }
       if (!continuousVoiceRef.current && !voiceInputEnabled) {
-        debug.log('⏭️ Voice input disabled');
+        debug.log("⏭️ Voice input disabled");
         return;
       }
       if (isSpeakingRef.current) {
-        debug.log('⏭️ Bot is speaking');
+        debug.log("⏭️ Bot is speaking");
         return;
       }
 
-      debug.log('✅ Starting recognition...');
+      debug.log("✅ Starting recognition...");
       startingRecognitionRef.current = true;
       try {
         recognition.start();
@@ -762,19 +775,19 @@ export default function AiAssistant() {
       // Many browsers fire an error event when we intentionally stop.
       // Do not disable everything for these programmatic stops.
       if (suppressNextVoiceErrorToastRef.current) {
-        debug.log('⚠️ Recognition error (intentional stop):', event.error);
+        debug.log("⚠️ Recognition error (intentional stop):", event.error);
         return;
       }
 
       // Only disable on real errors (not 'aborted' or 'no-speech')
       const errorType = event.error;
-      if (errorType === 'aborted' || errorType === 'no-speech') {
-        debug.log('⚠️ Recognition error (non-critical):', errorType);
+      if (errorType === "aborted" || errorType === "no-speech") {
+        debug.log("⚠️ Recognition error (non-critical):", errorType);
         return;
       }
 
       // Real error - disable everything
-      debug.error('❌ Recognition error (critical):', errorType);
+      debug.error("❌ Recognition error (critical):", errorType);
       shouldBeListeningRef.current = false;
       setVoiceInputEnabled(false);
       if (continuousVoiceRef.current) {
@@ -877,7 +890,7 @@ export default function AiAssistant() {
   const toggleSuggestions = async (
     idx: number,
     aiText: string,
-    history: AiChatMessage[]
+    history: AiChatMessage[],
   ) => {
     if (!aiText?.trim()) return;
 
@@ -997,8 +1010,8 @@ export default function AiAssistant() {
   }, [open, continuousVoice, canUseSpeechRecognition, userId]);
 
   const handleContinuousModeChange = (checked: boolean) => {
-    debug.log('🔄 Continuous mode changed:', checked);
-    console.trace('Called from:');
+    debug.log("🔄 Continuous mode changed:", checked);
+    console.trace("Called from:");
     setContinuousVoice(checked);
 
     if (!checked) {
@@ -1046,14 +1059,14 @@ export default function AiAssistant() {
       } catch {
         // ignore
       }
-      debug.log('🔇 Main mic disabled - wake word will take over');
+      debug.log("🔇 Main mic disabled - wake word will take over");
       return;
     }
 
     try {
       shouldBeListeningRef.current = true;
       recognition.start();
-      debug.log('🎤 Main mic enabled');
+      debug.log("🎤 Main mic enabled");
     } catch {
       setListening(false);
       // User requested: do not show voice input error notifications.
@@ -1126,7 +1139,7 @@ export default function AiAssistant() {
         className={cn(
           // Place above the existing chat bubble (which sits at bottom-5 right-5)
           "fixed bottom-24 right-5 h-14 w-14 rounded-full p-0",
-          "shadow-lg z-[1001]"
+          "shadow-lg z-[1001]",
         )}
         aria-label="Open AI assistant"
       >
@@ -1136,7 +1149,7 @@ export default function AiAssistant() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg p-0">
           {/* Header + Avatar Section with yellow background */}
-          <div style={{ backgroundColor: '#FFF9E6' }}>
+          <div style={{ backgroundColor: "#FFF9E6" }}>
             <div className="flex items-center justify-between p-4">
               <DialogHeader className="p-0">
                 <DialogTitle className="flex items-center gap-2">
@@ -1163,14 +1176,12 @@ export default function AiAssistant() {
               </div>
             </div>
 
-
             {/* 3D Avatar */}
-            <div className="flex justify-center items-center pb-2" data-avatar-container>
-              <AvatarViewer
-                ref={avatarRef}
-                width={240}
-                height={240}
-              />
+            <div
+              className="flex justify-center items-center pb-2"
+              data-avatar-container
+            >
+              <AvatarViewer ref={avatarRef} width={240} height={240} />
             </div>
           </div>
 
@@ -1191,15 +1202,16 @@ export default function AiAssistant() {
                   key={idx}
                   className={cn(
                     m.role === "user" ? "ml-auto" : "mr-auto",
-                    "max-w-[85%]"
+                    "max-w-[85%]",
                   )}
                 >
                   <div
                     className={cn(
-                      "relative rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                      "relative rounded-lg px-3 py-2 text-sm",
+                      m.role === "user" ? "whitespace-pre-wrap" : null,
                       m.role === "user"
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
+                        : "bg-muted",
                     )}
                   >
                     {m.role === "model" ? (
@@ -1212,7 +1224,7 @@ export default function AiAssistant() {
                             className={cn(
                               "h-7 w-7",
                               "text-muted-foreground hover:text-foreground",
-                              "bg-background/40 hover:bg-background/60"
+                              "bg-background/40 hover:bg-background/60",
                             )}
                             onClick={() =>
                               void toggleSuggestions(idx, m.content, messages)
@@ -1230,7 +1242,7 @@ export default function AiAssistant() {
                           className={cn(
                             "h-7 w-7",
                             "text-muted-foreground hover:text-foreground",
-                            "bg-background/40 hover:bg-background/60"
+                            "bg-background/40 hover:bg-background/60",
                           )}
                           onClick={() => void toggleTranslate(idx, m.content)}
                           aria-label="Translate"
@@ -1241,12 +1253,58 @@ export default function AiAssistant() {
                       </div>
                     ) : null}
 
-                    {m.content}
+                    {m.role === "model" ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-2 [&_pre]:whitespace-pre-wrap [&_pre]:break-words">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a(aProps: any) {
+                              const { href, children, ...rest } = aProps;
+                              return (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  {...rest}
+                                >
+                                  {children}
+                                </a>
+                              );
+                            },
+                            code(codeProps: any) {
+                              const { inline, children, ...rest } = codeProps;
+                              if (inline) {
+                                return (
+                                  <code
+                                    className="rounded bg-background/60 px-1 py-0.5"
+                                    {...rest}
+                                  >
+                                    {children}
+                                  </code>
+                                );
+                              }
+                              return (
+                                <code
+                                  className="block rounded bg-background/60 p-2"
+                                  {...rest}
+                                >
+                                  {children}
+                                </code>
+                              );
+                            },
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      m.content
+                    )}
                   </div>
 
                   {conversationMode === "guided" &&
-                    m.role === "model" &&
-                    suggestions[idx]?.open ? (
+                  m.role === "model" &&
+                  suggestions[idx]?.open ? (
                     <div className="mt-2 rounded-lg border bg-background px-3 py-2 text-sm">
                       {suggestions[idx].loading ? (
                         <div className="flex items-center gap-2 text-muted-foreground">

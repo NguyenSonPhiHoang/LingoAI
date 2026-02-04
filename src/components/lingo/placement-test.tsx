@@ -187,7 +187,9 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
     });
 
     try {
-      await addTestResult(user.uid, {
+      if (!user?.uid) return;
+      const userId = user.uid;
+      await addTestResult(userId, {
         correctAnswers: totalCorrect,
         totalQuestions: questions.length,
         percentage: (totalCorrect / questions.length) * 100,

@@ -1,7 +1,7 @@
 "use client";
 import type { FC } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import type { View } from "@/app/page";
+import type { ViewState } from "@/app/page";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -17,11 +17,11 @@ import { User, Settings, LogOut, Users, Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
-  activeView: View | "guide";
-  setActiveView: (view: View | "guide") => void;
+  activeView: ViewState["view"];
+  setActiveView: (view: ViewState["view"]) => void;
 }
 
-const viewTitles: Record<View | "guide", string> = {
+const viewTitles: Partial<Record<ViewState["view"], string>> = {
   overview: "Overview",
   levels: "All Levels",
   "ai-suggester": "AI Suggester",
@@ -78,11 +78,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
           >
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src={
-                  user?.photoUrl ||
-                  user?.photoURL ||
-                  "https://placehold.co/100x100.png"
-                }
+                src={user?.photoUrl || "https://placehold.co/100x100.png"}
                 data-ai-hint="person"
               />
               <AvatarFallback>

@@ -11,11 +11,18 @@ export async function listVtepDocuments(options?: {
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.search) params.append("search", options.search);
   if (options?.skill) params.append("skill", options.skill);
-  
+
   const queryString = params.toString();
-  const url = queryString ? `/api/vtep/documents?${queryString}` : "/api/vtep/documents";
-  
-  return apiGet<{ documents: any[]; total: number; page: number; limit: number }>(url);
+  const url = queryString
+    ? `/api/vtep/documents?${queryString}`
+    : "/api/vtep/documents";
+
+  return apiGet<{
+    documents: any[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(url);
 }
 
 export async function listVtepDocumentsPublic(options?: {
@@ -29,11 +36,18 @@ export async function listVtepDocumentsPublic(options?: {
   if (options?.limit) params.append("limit", options.limit.toString());
   if (options?.search) params.append("search", options.search);
   if (options?.skill) params.append("skill", options.skill);
-  
+
   const queryString = params.toString();
-  const url = queryString ? `/api/vtep/public/documents?${queryString}` : "/api/vtep/public/documents";
-  
-  return apiGet<{ documents: any[]; total: number; page: number; limit: number }>(url);
+  const url = queryString
+    ? `/api/vtep/public/documents?${queryString}`
+    : "/api/vtep/public/documents";
+
+  return apiGet<{
+    documents: any[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(url);
 }
 
 export async function getVtepDocument(id: string) {
@@ -288,12 +302,12 @@ export async function listWritingPrompts(filters?: {
   if (filters?.level) params.append("level", filters.level);
   if (filters?.category) params.append("category", filters.category);
   if (filters?.search) params.append("search", filters.search);
-  
+
   const queryString = params.toString();
-  const url = queryString 
-    ? `/api/vtep-writing/prompts?${queryString}` 
+  const url = queryString
+    ? `/api/vtep-writing/prompts?${queryString}`
     : "/api/vtep-writing/prompts";
-  
+
   return apiGet<any[]>(url);
 }
 
@@ -305,6 +319,7 @@ export default {
   listVtepDocuments,
   listVtepDocumentsPublic,
   getVtepDocument,
+  getVtepDocumentPublic,
   uploadVtepPdf,
   createVtepDocument,
   addVtepItems,

@@ -50,9 +50,15 @@ type WritingTest = {
 
 interface VtepWritingManagerProps {
   onPromptChange?: () => void;
+  mode?: "create" | "manage";
+  documentId?: string;
 }
 
-export default function VtepWritingManager({ onPromptChange }: VtepWritingManagerProps = {}) {
+export default function VtepWritingManager({
+  onPromptChange,
+  mode: _dialogMode = "manage",
+  documentId: _documentId,
+}: VtepWritingManagerProps = {}) {
   const { toast } = useToast();
   const [prompts, setPrompts] = useState<WritingPrompt[]>([]);
   const [tests, setTests] = useState<WritingTest[]>([]);
@@ -62,10 +68,14 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
   const [mode, setMode] = useState<"prompt" | "test">("prompt");
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
-  
+
   // Filter states
-  const [promptTaskFilter, setPromptTaskFilter] = useState<"all" | "task1" | "task2">("all");
-  const [promptLevelFilter, setPromptLevelFilter] = useState<"all" | "a1" | "a2" | "b1" | "b2" | "c1" | "c2">("all");
+  const [promptTaskFilter, setPromptTaskFilter] = useState<
+    "all" | "task1" | "task2"
+  >("all");
+  const [promptLevelFilter, setPromptLevelFilter] = useState<
+    "all" | "a1" | "a2" | "b1" | "b2" | "c1" | "c2"
+  >("all");
 
   // Form states
   const [promptForm, setPromptForm] = useState({
@@ -201,16 +211,18 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
   }, []);
 
   // Filtered prompts based on task type and level
-  const filteredPrompts = prompts.filter(p => {
-    if (promptTaskFilter !== "all" && p.taskType !== promptTaskFilter) return false;
-    if (promptLevelFilter !== "all" && p.level !== promptLevelFilter) return false;
+  const filteredPrompts = prompts.filter((p) => {
+    if (promptTaskFilter !== "all" && p.taskType !== promptTaskFilter)
+      return false;
+    if (promptLevelFilter !== "all" && p.level !== promptLevelFilter)
+      return false;
     return true;
   });
 
   // Delete prompt
   const handleDeletePrompt = async (promptId: string) => {
     if (!confirm("Are you sure you want to delete this prompt?")) return;
-    
+
     try {
       await apiDelete(`/api/vtep-writing/prompts/${promptId}`);
 
@@ -230,7 +242,10 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
   };
 
   // Update prompt
-  const handleUpdatePrompt = async (promptId: string, updatedData: Partial<WritingPrompt>) => {
+  const handleUpdatePrompt = async (
+    promptId: string,
+    updatedData: Partial<WritingPrompt>,
+  ) => {
     try {
       await apiPut(`/api/vtep-writing/prompts/${promptId}`, updatedData);
 
@@ -252,7 +267,7 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
   // Delete test
   const handleDeleteTest = async (testId: string) => {
     if (!confirm("Are you sure you want to delete this test?")) return;
-    
+
     try {
       await apiDelete(`/api/vtep-writing/tests/${testId}`);
 
@@ -271,7 +286,10 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
   };
 
   // Update test
-  const handleUpdateTest = async (testId: string, updatedData: Partial<WritingTest>) => {
+  const handleUpdateTest = async (
+    testId: string,
+    updatedData: Partial<WritingTest>,
+  ) => {
     try {
       await apiPut(`/api/vtep-writing/tests/${testId}`, updatedData);
 
@@ -486,7 +504,8 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
               {showPrompts ? (
                 <>
                   <ChevronUp className="h-4 w-4 mr-2" />
-                  Hide Existing Prompts ({filteredPrompts.length}/{prompts.length})
+                  Hide Existing Prompts ({filteredPrompts.length}/
+                  {prompts.length})
                 </>
               ) : (
                 <>
@@ -495,7 +514,7 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                 </>
               )}
             </Button>
-            
+
             {showPrompts && (
               <>
                 {/* Filters */}
@@ -520,7 +539,9 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                     <Label className="text-xs">Level</Label>
                     <Select
                       value={promptLevelFilter}
-                      onValueChange={(value: any) => setPromptLevelFilter(value)}
+                      onValueChange={(value: any) =>
+                        setPromptLevelFilter(value)
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
@@ -537,108 +558,120 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                     </Select>
                   </div>
                 </div>
-                
+
                 <div className="mt-2 space-y-2 max-h-[300px] overflow-y-auto border rounded p-2">
-                {filteredPrompts.map((prompt) => (
-                  <div
-                    key={prompt.id}
-                    className="p-2 border rounded hover:bg-gray-50"
-                  >
-                    {editingPromptId === prompt.id ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={prompt.title}
-                          onChange={(e) => {
-                            setPrompts(prompts.map(p => 
-                              p.id === prompt.id ? {...p, title: e.target.value} : p
-                            ));
-                          }}
-                          placeholder="Title"
-                          className="text-xs"
-                        />
-                        <Textarea
-                          value={prompt.promptText}
-                          onChange={(e) => {
-                            setPrompts(prompts.map(p => 
-                              p.id === prompt.id ? {...p, promptText: e.target.value} : p
-                            ));
-                          }}
-                          placeholder="Prompt text"
-                          rows={3}
-                          className="text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdatePrompt(prompt.id, {
-                              title: prompt.title,
-                              promptText: prompt.promptText,
-                            })}
-                          >
-                            <Save className="h-3 w-3 mr-1" />
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingPromptId(null);
-                              fetchPrompts(); // Reload to reset changes
+                  {filteredPrompts.map((prompt) => (
+                    <div
+                      key={prompt.id}
+                      className="p-2 border rounded hover:bg-gray-50"
+                    >
+                      {editingPromptId === prompt.id ? (
+                        <div className="space-y-2">
+                          <Input
+                            value={prompt.title}
+                            onChange={(e) => {
+                              setPrompts(
+                                prompts.map((p) =>
+                                  p.id === prompt.id
+                                    ? { ...p, title: e.target.value }
+                                    : p,
+                                ),
+                              );
                             }}
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-semibold text-xs">{prompt.title}</h3>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                              {prompt.taskType.toUpperCase()}
-                            </span>
+                            placeholder="Title"
+                            className="text-xs"
+                          />
+                          <Textarea
+                            value={prompt.promptText}
+                            onChange={(e) => {
+                              setPrompts(
+                                prompts.map((p) =>
+                                  p.id === prompt.id
+                                    ? { ...p, promptText: e.target.value }
+                                    : p,
+                                ),
+                              );
+                            }}
+                            placeholder="Prompt text"
+                            rows={3}
+                            className="text-xs"
+                          />
+                          <div className="flex gap-2">
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0"
-                              onClick={() => setEditingPromptId(prompt.id)}
+                              onClick={() =>
+                                handleUpdatePrompt(prompt.id, {
+                                  title: prompt.title,
+                                  promptText: prompt.promptText,
+                                })
+                              }
                             >
-                              <Edit className="h-3 w-3" />
+                              <Save className="h-3 w-3 mr-1" />
+                              Save
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeletePrompt(prompt.id)}
+                              variant="outline"
+                              onClick={() => {
+                                setEditingPromptId(null);
+                                fetchPrompts(); // Reload to reset changes
+                              }}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel
                             </Button>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-600 line-clamp-2">
-                          {prompt.promptText}
-                        </p>
-                        <div className="flex gap-2 mt-1 text-xs text-gray-500">
-                          <span>Level: {prompt.level || "N/A"}</span>
-                          <span>•</span>
-                          <span>{prompt.timeLimit}min</span>
-                          <span>•</span>
-                          <span>{prompt.minWords} words</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-                {filteredPrompts.length === 0 && (
-                  <p className="text-gray-500 text-center py-4 text-xs">
-                    {prompts.length === 0 
-                      ? "No prompts yet. Create your first prompt!"
-                      : "No prompts match the current filters."}
-                  </p>
-                )}
-              </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-1">
+                            <h3 className="font-semibold text-xs">
+                              {prompt.title}
+                            </h3>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                {prompt.taskType.toUpperCase()}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() => setEditingPromptId(prompt.id)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => handleDeletePrompt(prompt.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600 line-clamp-2">
+                            {prompt.promptText}
+                          </p>
+                          <div className="flex gap-2 mt-1 text-xs text-gray-500">
+                            <span>Level: {prompt.level || "N/A"}</span>
+                            <span>•</span>
+                            <span>{prompt.timeLimit}min</span>
+                            <span>•</span>
+                            <span>{prompt.minWords} words</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {filteredPrompts.length === 0 && (
+                    <p className="text-gray-500 text-center py-4 text-xs">
+                      {prompts.length === 0
+                        ? "No prompts yet. Create your first prompt!"
+                        : "No prompts match the current filters."}
+                    </p>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -781,27 +814,32 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Creating..." : "Create Test"}
             </Button>
-            
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or
+                </span>
               </div>
             </div>
-            
-            <Button 
-              type="button" 
-              variant="outline" 
-              disabled={loading} 
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
               className="w-full"
               onClick={handleCreateRandomTest}
             >
               {loading ? "Creating..." : "🎲 Create Random Test"}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Randomly select 1 Task 1 and 1 Task 2 prompt{testForm.level && testForm.level !== "b1" ? ` (Level: ${testForm.level.toUpperCase()})` : ""}
+              Randomly select 1 Task 1 and 1 Task 2 prompt
+              {testForm.level && testForm.level !== "b1"
+                ? ` (Level: ${testForm.level.toUpperCase()})`
+                : ""}
             </p>
           </form>
 
@@ -825,7 +863,7 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                 </>
               )}
             </Button>
-            
+
             {showTests && (
               <div className="mt-2 space-y-2 max-h-[300px] overflow-y-auto border rounded p-2">
                 {tests.map((test) => (
@@ -838,9 +876,13 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                         <Input
                           value={test.title}
                           onChange={(e) => {
-                            setTests(tests.map(t => 
-                              t.id === test.id ? {...t, title: e.target.value} : t
-                            ));
+                            setTests(
+                              tests.map((t) =>
+                                t.id === test.id
+                                  ? { ...t, title: e.target.value }
+                                  : t,
+                              ),
+                            );
                           }}
                           placeholder="Title"
                           className="text-xs"
@@ -848,9 +890,13 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                         <Textarea
                           value={test.description || ""}
                           onChange={(e) => {
-                            setTests(tests.map(t => 
-                              t.id === test.id ? {...t, description: e.target.value} : t
-                            ));
+                            setTests(
+                              tests.map((t) =>
+                                t.id === test.id
+                                  ? { ...t, description: e.target.value }
+                                  : t,
+                              ),
+                            );
                           }}
                           placeholder="Description"
                           rows={2}
@@ -859,10 +905,12 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            onClick={() => handleUpdateTest(test.id, {
-                              title: test.title,
-                              description: test.description,
-                            })}
+                            onClick={() =>
+                              handleUpdateTest(test.id, {
+                                title: test.title,
+                                description: test.description,
+                              })
+                            }
                           >
                             <Save className="h-3 w-3 mr-1" />
                             Save
@@ -883,7 +931,9 @@ export default function VtepWritingManager({ onPromptChange }: VtepWritingManage
                     ) : (
                       <>
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-semibold text-xs">{test.title}</h3>
+                          <h3 className="font-semibold text-xs">
+                            {test.title}
+                          </h3>
                           <div className="flex gap-1 items-center">
                             {test.isActive && (
                               <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">

@@ -50,7 +50,7 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
 
   const [timeLeft, setTimeLeft] = useState(allQuestions.length * 45); // 45 seconds per question
   const [initialDuration, setInitialDuration] = useState(
-    allQuestions.length * 45
+    allQuestions.length * 45,
   );
 
   useEffect(() => {
@@ -126,7 +126,9 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
     });
 
     try {
-      await addTestResult(user.uid, {
+      if (!user?.uid) return;
+      const userId = user.uid;
+      await addTestResult(userId, {
         correctAnswers: totalCorrect,
         totalQuestions: allQuestions.length,
         percentage: scorePercentage,
@@ -193,7 +195,7 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
                   showResults &&
                     (selectedAnswer !== correctOption
                       ? "bg-red-50 border-red-200"
-                      : "bg-green-50 border-green-200")
+                      : "bg-green-50 border-green-200"),
                 )}
               >
                 <p className="font-semibold mb-3">

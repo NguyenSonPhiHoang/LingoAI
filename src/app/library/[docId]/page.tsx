@@ -186,7 +186,8 @@ const LibraryDocPage: FC = () => {
   const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
   useEffect(() => {
-    if (authLoading || !user || !docId) return;
+    if (authLoading || !user?.uid || !docId) return;
+    const userId = user.uid;
 
     const fetchData = async () => {
       setIsLoading(true);
@@ -194,7 +195,7 @@ const LibraryDocPage: FC = () => {
         const [fetchedDoc, fetchedContent, fetchedVocab] = await Promise.all([
           getDocument(docId),
           getContentForDocument(docId),
-          getVocabulary(user.uid),
+          getVocabulary(userId),
         ]);
 
         if (!fetchedDoc) {
@@ -211,7 +212,7 @@ const LibraryDocPage: FC = () => {
         setDoc(fetchedDoc);
         setContents(fetchedContent);
         setVocabulary(fetchedVocab);
-        
+
         // Auto-open content section if no notes exist for writing documents
         if (fetchedContent.length === 0 && fetchedDoc.skill === "Writing") {
           setIsContentOpen(true);
@@ -237,7 +238,7 @@ const LibraryDocPage: FC = () => {
 
   const handleNoteUpdated = (updatedNote: LibraryContent) => {
     setContents((prev) =>
-      prev.map((c) => (c.id === updatedNote.id ? updatedNote : c))
+      prev.map((c) => (c.id === updatedNote.id ? updatedNote : c)),
     );
   };
 
@@ -256,14 +257,16 @@ const LibraryDocPage: FC = () => {
 
   const loadDocumentContent = async () => {
     if (!doc || isLoadingContent) return;
-    
+
     setIsLoadingContent(true);
     try {
       const content = await fetchDocumentContent(docId);
       setDocumentContent(content);
     } catch (error) {
       console.error("Failed to fetch document content:", error);
-      setDocumentContent("Failed to load document content. You can view the original at the provided URL.");
+      setDocumentContent(
+        "Failed to load document content. You can view the original at the provided URL.",
+      );
     } finally {
       setIsLoadingContent(false);
     }
@@ -341,7 +344,7 @@ const LibraryDocPage: FC = () => {
             </CollapsibleContent>
           </Collapsible>
         )}
-        
+
         <Collapsible
           open={isContentOpen}
           onOpenChange={setIsContentOpen}
@@ -357,7 +360,7 @@ const LibraryDocPage: FC = () => {
             <div className="px-4 pb-4 pt-0">
               {documentContent === null ? (
                 <div className="flex items-center gap-2">
-                  <Button 
+                  <Button
                     onClick={loadDocumentContent}
                     disabled={isLoadingContent}
                     variant="outline"
@@ -380,6 +383,7 @@ const LibraryDocPage: FC = () => {
                     text={documentContent}
                     vocabulary={vocabulary}
                     playbackHook={playbackHook}
+                    activePlaybackKey={playbackHook.activePlaybackKey}
                   />
                 </div>
               )}
@@ -419,7 +423,7 @@ const LibraryDocPage: FC = () => {
                   key={content.id}
                   className={cn(
                     "group flex flex-col",
-                    NOTE_BG_COLORS[index % NOTE_BG_COLORS.length]
+                    NOTE_BG_COLORS[index % NOTE_BG_COLORS.length],
                   )}
                 >
                   <CardHeader className="flex-grow">
@@ -526,7 +530,8 @@ const LibraryDocPage: FC = () => {
             </p>
             {doc?.skill === "Writing" && (
               <p className="text-xs text-muted-foreground mt-2">
-                💡 Tip: Check the "View Original Content" section above to see the source material for this writing document.
+                💡 Tip: Check the "View Original Content" section above to see
+                the source material for this writing document.
               </p>
             )}
           </div>

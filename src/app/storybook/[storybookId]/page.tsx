@@ -91,14 +91,15 @@ const StorybookDetailPage: FC = () => {
   });
 
   useEffect(() => {
-    if (!user || !storybookId) return;
+    if (!user?.uid || !storybookId) return;
+    const userId = user.uid;
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const [fetchedStorybook, fetchedVocab] = await Promise.all([
           getStorybook(storybookId),
-          getVocabulary(user.uid),
+          getVocabulary(userId),
         ]);
 
         if (!fetchedStorybook) {
@@ -138,7 +139,8 @@ const StorybookDetailPage: FC = () => {
     pronunciation: string;
     vietnameseWord: string;
   }) => {
-    if (!user) return;
+    if (!user?.uid) return;
+    const userId = user.uid;
     setIsSavingWord((prev) => ({ ...prev, [vocabItem.word]: true }));
 
     try {
@@ -157,7 +159,7 @@ const StorybookDetailPage: FC = () => {
       };
 
       // 3. Save to database
-      const savedWord = await addWordToVocabulary(user.uid, newWordData);
+      const savedWord = await addWordToVocabulary(userId, newWordData);
 
       // 4. Update local state
       setVocabulary((prev) => [...prev, savedWord]);
@@ -414,7 +416,7 @@ const StorybookDetailPage: FC = () => {
                     onClick={() =>
                       playAndCacheStoryAudio(
                         "englishContent",
-                        storybook.interspersedStory,
+                        storybook.interspersedStory!,
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[englishAudioKey]}
