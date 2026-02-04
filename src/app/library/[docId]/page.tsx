@@ -26,6 +26,7 @@ import {
   getDocument,
   getContentForDocument,
   deleteContent,
+  fetchDocumentContent,
 } from "@/services/library";
 import { Button } from "@/components/ui/button";
 import {
@@ -178,7 +179,10 @@ const LibraryDocPage: FC = () => {
   const [vocabulary, setVocabulary] = useState<CombinedVocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isContentOpen, setIsContentOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const playbackHook = useAudioPlayback({ setWords: setVocabulary });
 
   useEffect(() => {
@@ -207,6 +211,11 @@ const LibraryDocPage: FC = () => {
         setDoc(fetchedDoc);
         setContents(fetchedContent);
         setVocabulary(fetchedVocab);
+        
+        // Auto-open content section if no notes exist for writing documents
+        if (fetchedContent.length === 0 && fetchedDoc.skill === "Writing") {
+          setIsContentOpen(true);
+        }
       } catch (error) {
         console.error("Failed to fetch document data:", error);
         toast({
@@ -242,6 +251,21 @@ const LibraryDocPage: FC = () => {
       console.error("Failed to delete content:", error);
       toast({ variant: "destructive", title: "Deletion Failed" });
       setContents(originalContents);
+    }
+  };
+
+  const loadDocumentContent = async () => {
+    if (!doc || isLoadingContent) return;
+    
+    setIsLoadingContent(true);
+    try {
+      const content = await fetchDocumentContent(docId);
+      setDocumentContent(content);
+    } catch (error) {
+      console.error("Failed to fetch document content:", error);
+      setDocumentContent("Failed to load document content. You can view the original at the provided URL.");
+    } finally {
+      setIsLoadingContent(false);
     }
   };
 
@@ -317,6 +341,51 @@ const LibraryDocPage: FC = () => {
             </CollapsibleContent>
           </Collapsible>
         )}
+        
+        <Collapsible
+          open={isContentOpen}
+          onOpenChange={setIsContentOpen}
+          className="border-t"
+        >
+          <CollapsibleTrigger asChild>
+            <div className="flex justify-between items-center p-4 cursor-pointer hover:bg-muted/50">
+              <span className="text-sm font-medium">View Original Content</span>
+              <ChevronsUpDown className="h-4 w-4" />
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-4 pb-4 pt-0">
+              {documentContent === null ? (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={loadDocumentContent}
+                    disabled={isLoadingContent}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isLoadingContent ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    {isLoadingContent ? "Loading..." : "Load Content"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Fetch the original content from the URL
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-muted/30 p-4 rounded-md max-h-96 overflow-auto">
+                  <InteractiveText
+                    text={documentContent}
+                    vocabulary={vocabulary}
+                    playbackHook={playbackHook}
+                  />
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       <div className="space-y-4">
@@ -455,6 +524,11 @@ const LibraryDocPage: FC = () => {
             <p className="text-sm text-muted-foreground mt-1">
               Add your first note to this document.
             </p>
+            {doc?.skill === "Writing" && (
+              <p className="text-xs text-muted-foreground mt-2">
+                💡 Tip: Check the "View Original Content" section above to see the source material for this writing document.
+              </p>
+            )}
           </div>
         )}
       </div>

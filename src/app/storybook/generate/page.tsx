@@ -317,7 +317,7 @@ const GenerateStorybookPage: FC = () => {
                               Bilingual (EN/VI)
                             </SelectItem>
                             <SelectItem value="interspersed">
-                              Truyện Chêm (VI/EN)
+                              Interspersed (VI/EN)
                             </SelectItem>
                           </SelectContent>
                         </Select>

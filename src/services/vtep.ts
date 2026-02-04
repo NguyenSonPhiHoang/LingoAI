@@ -1,15 +1,47 @@
 import { getApiBaseUrl, apiGet } from "./api";
 
-export async function listVtepDocuments() {
-  return apiGet<{ documents: any[] }>("/api/vtep/documents");
+export async function listVtepDocuments(options?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  skill?: string;
+}) {
+  const params = new URLSearchParams();
+  if (options?.page) params.append("page", options.page.toString());
+  if (options?.limit) params.append("limit", options.limit.toString());
+  if (options?.search) params.append("search", options.search);
+  if (options?.skill) params.append("skill", options.skill);
+  
+  const queryString = params.toString();
+  const url = queryString ? `/api/vtep/documents?${queryString}` : "/api/vtep/documents";
+  
+  return apiGet<{ documents: any[]; total: number; page: number; limit: number }>(url);
 }
 
-export async function listVtepDocumentsPublic() {
-  return apiGet<{ documents: any[] }>("/api/vtep/public/documents");
+export async function listVtepDocumentsPublic(options?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  skill?: string;
+}) {
+  const params = new URLSearchParams();
+  if (options?.page) params.append("page", options.page.toString());
+  if (options?.limit) params.append("limit", options.limit.toString());
+  if (options?.search) params.append("search", options.search);
+  if (options?.skill) params.append("skill", options.skill);
+  
+  const queryString = params.toString();
+  const url = queryString ? `/api/vtep/public/documents?${queryString}` : "/api/vtep/public/documents";
+  
+  return apiGet<{ documents: any[]; total: number; page: number; limit: number }>(url);
 }
 
 export async function getVtepDocument(id: string) {
   return apiGet<{ document: any }>(`/api/vtep/documents/${id}`);
+}
+
+export async function getVtepDocumentPublic(id: string) {
+  return apiGet<{ document: any }>(`/api/vtep/public/documents/${id}`);
 }
 
 export async function listVtepDocumentItems(documentId: string) {
@@ -55,7 +87,11 @@ export async function uploadVtepPdf(
   return res.json();
 }
 
-export async function createVtepDocument(title?: string, description?: string) {
+export async function createVtepDocument(
+  title?: string,
+  description?: string,
+  tocJson?: any,
+) {
   const base = getApiBaseUrl();
   const url = `${base}/api/vtep/documents`;
   const token =
@@ -68,7 +104,7 @@ export async function createVtepDocument(title?: string, description?: string) {
     headers: token
       ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
       : { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, description }),
+    body: JSON.stringify({ title, description, tocJson }),
   });
 
   if (!res.ok) {
@@ -85,6 +121,7 @@ export async function updateVtepDocument(
   id: string,
   title?: string,
   description?: string,
+  tocJson?: any,
 ) {
   const base = getApiBaseUrl();
   const url = `${base}/api/vtep/documents/${id}`;
@@ -98,7 +135,7 @@ export async function updateVtepDocument(
     headers: token
       ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
       : { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, description }),
+    body: JSON.stringify({ title, description, tocJson }),
   });
 
   if (!res.ok) {
@@ -240,6 +277,30 @@ export async function uploadVtepAudio(documentId: string, file: File) {
   return res.json();
 }
 
+export async function listWritingPrompts(filters?: {
+  taskType?: "task1" | "task2";
+  level?: string;
+  category?: string;
+  search?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filters?.taskType) params.append("taskType", filters.taskType);
+  if (filters?.level) params.append("level", filters.level);
+  if (filters?.category) params.append("category", filters.category);
+  if (filters?.search) params.append("search", filters.search);
+  
+  const queryString = params.toString();
+  const url = queryString 
+    ? `/api/vtep-writing/prompts?${queryString}` 
+    : "/api/vtep-writing/prompts";
+  
+  return apiGet<any[]>(url);
+}
+
+export async function getWritingPrompt(id: string) {
+  return apiGet<any>(`/api/vtep-writing/prompts/${id}`);
+}
+
 export default {
   listVtepDocuments,
   listVtepDocumentsPublic,
@@ -254,4 +315,6 @@ export default {
   updateVtepItem,
   deleteVtepItem,
   uploadVtepAudio,
+  listWritingPrompts,
+  getWritingPrompt,
 };

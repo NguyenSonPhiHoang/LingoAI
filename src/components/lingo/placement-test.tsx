@@ -193,6 +193,7 @@ const PlacementTest: FC<PlacementTestProps> = ({ setActiveViewState }) => {
         percentage: (totalCorrect / questions.length) * 100,
         recommendedLevel: recLevel,
         testType: "Placement Test",
+        skill: "reading",
         durationSeconds: durationTaken,
         data: {
           kind: "placement-test",

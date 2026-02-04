@@ -21,6 +21,9 @@ import aiRoutes from "./routes/ai.routes";
 import grammarRoutes from "./routes/grammar.routes";
 import vtepRoutes from "./routes/vtep.routes";
 import vteptestRoutes from "./routes/vteptest.routes";
+import vtepWritingRoutes from "./routes/vtepWriting.routes";
+import vtepSpeakingRoutes from "./routes/vtepSpeaking.routes";
+import skillsRoutes from "./routes/skills.routes";
 import userLearningSessionRoutes from "./routes/userLearningSession.routes";
 import { authenticateJWT } from "./middleware/auth.middleware";
 import { config } from "./config";
@@ -103,6 +106,9 @@ app.use("/api/library", libraryRoutes);
 // Learning resources (system-wide)
 app.use("/api/learning-resources", learningResourceRoutes);
 
+// Skills (system-wide skill definitions)
+app.use("/api/skills", skillsRoutes);
+
 // AI (Gemini)
 app.use("/api/ai", aiRoutes);
 
@@ -113,6 +119,12 @@ app.use("/api/vtep", vtepRoutes);
 
 // VTEP tests (admin creates vteptest bundles; students can instantiate them)
 app.use("/api/vteptests", vteptestRoutes);
+
+// VTEP Writing (prompts, tests, submissions)
+app.use("/api/vtep-writing", vtepWritingRoutes);
+
+// VTEP Speaking (prompts, tests, submissions)
+app.use("/api/vtep-speaking", vtepSpeakingRoutes);
 
 // User learning sessions (client records of lessons / time)
 app.use("/api/sessions", userLearningSessionRoutes);

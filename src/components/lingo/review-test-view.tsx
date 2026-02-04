@@ -131,6 +131,7 @@ const ReviewTestView: FC<ReviewTestViewProps> = ({ test, onBack }) => {
         totalQuestions: allQuestions.length,
         percentage: scorePercentage,
         testType: "Review Test",
+        skill: "reading",
         durationSeconds: durationTaken,
         data: {
           kind: "review-test",

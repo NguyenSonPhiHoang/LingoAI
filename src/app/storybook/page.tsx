@@ -57,7 +57,7 @@ const StorybookCard: FC<{ story: Storybook; onStoryDeleted: (id: string) => void
                  <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
                         <Badge variant="outline" className="capitalize bg-background/50">{story.level}</Badge>
-                        <Badge variant="secondary" className="capitalize bg-background/50">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge>
+                        <Badge variant="secondary" className="capitalize bg-background/50">{story.format === 'interspersed' ? 'Interspersed' : 'Bilingual'}</Badge>
                     </div>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -247,7 +247,7 @@ const StorybookLibraryPage: FC = () => {
                                             </TableCell>
                                             <TableCell className="font-medium">{story.title}</TableCell>
                                             <TableCell><Badge variant="outline" className="capitalize">{story.level}</Badge></TableCell>
-                                            <TableCell><Badge variant="secondary" className="capitalize">{story.format === 'interspersed' ? 'Truyện Chêm' : 'Bilingual'}</Badge></TableCell>
+                                            <TableCell><Badge variant="secondary" className="capitalize">{story.format === 'interspersed' ? 'Interspersed' : 'Bilingual'}</Badge></TableCell>
                                             <TableCell className="text-muted-foreground text-sm">{formatDistanceToNow(new Date(story.createdAt), { addSuffix: true })}</TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
