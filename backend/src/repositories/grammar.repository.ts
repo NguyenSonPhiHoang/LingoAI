@@ -296,7 +296,7 @@ export class GrammarRepository {
         .input("Points", ex.points ?? 1)
         .input("SortOrder", ex.sortOrder ?? 0).query(`
           MERGE dbo.GrammarExercises AS target
-          USING (SELECT @Id as Id) AS source
+          USING (SELECT CONVERT(UNIQUEIDENTIFIER, @Id) as Id) AS source
           ON target.Id = source.Id
           WHEN MATCHED THEN
             UPDATE SET
