@@ -57,3 +57,33 @@ export async function getPool(): Promise<any> {
 export async function closePool() {
   if (pool) await pool.close();
 }
+
+/**
+ * Auto-creates the EmailOtps table if it doesn't exist.
+ * Called once on server startup — no manual migration needed.
+ */
+export async function ensureEmailOtpsTable() {
+  try {
+    const p = await getPool();
+    await p.request().query(`
+      IF OBJECT_ID('dbo.EmailOtps', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.EmailOtps (
+          Id          INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_EmailOtps PRIMARY KEY,
+          Email       NVARCHAR(256) NOT NULL,
+          Otp         NVARCHAR(10)  NOT NULL,
+          PendingData NVARCHAR(MAX) NOT NULL,
+          ExpiresAt   DATETIME2     NOT NULL,
+          CreatedAt   DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+          IsUsed      BIT           NOT NULL DEFAULT(0)
+        );
+        CREATE INDEX IX_EmailOtps_Email ON dbo.EmailOtps(Email);
+        CREATE INDEX IX_EmailOtps_ExpiresAt ON dbo.EmailOtps(ExpiresAt);
+      END
+    `);
+    console.log("EmailOtps table ready.");
+  } catch (err: any) {
+    console.error("Failed to ensure EmailOtps table:", err?.message || err);
+  }
+}
+
