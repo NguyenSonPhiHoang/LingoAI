@@ -22,6 +22,11 @@ export class AuthController {
       if (existing)
         return res.status(409).json({ error: "email already exists" });
 
+      // Rate limit: tối đa 1 OTP / 60 giây / email
+      const tooSoon = await OtpRepository.hasRecentOtp(email, 60);
+      if (tooSoon)
+        return res.status(429).json({ error: "Please wait 60 seconds before requesting a new OTP" });
+
       // Generate OTP and store pending registration data
       const otp = generateOtp();
       await OtpRepository.deleteByEmail(email); // clear old OTPs

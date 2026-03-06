@@ -10,6 +10,24 @@ export class OtpRepository {
             .query("DELETE FROM dbo.EmailOtps WHERE Email = @Email");
     }
 
+    /**
+     * Kiểm tra xem email này đã được gửi OTP trong vòng 60 giây chưa.
+     * Dùng để rate-limit phía backend, tránh spam.
+     */
+    static async hasRecentOtp(email: string, cooldownSeconds = 60): Promise<boolean> {
+        const pool = await getPool();
+        const since = new Date(Date.now() - cooldownSeconds * 1000);
+        const res = await pool
+            .request()
+            .input("Email", email)
+            .input("Since", since)
+            .query(`
+        SELECT TOP 1 Id FROM dbo.EmailOtps
+        WHERE Email = @Email AND CreatedAt > @Since
+      `);
+        return (res.recordset?.length ?? 0) > 0;
+    }
+
     /** Lưu OTP mới vào DB, TTL = 5 phút */
     static async create(
         email: string,
