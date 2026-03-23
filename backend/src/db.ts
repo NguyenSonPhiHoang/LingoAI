@@ -81,7 +81,7 @@ export async function ensureEmailOtpsTable() {
         CREATE INDEX IX_EmailOtps_ExpiresAt ON dbo.EmailOtps(ExpiresAt);
       END
     `);
-    console.log("EmailOtps table ready.");
+
   } catch (err: any) {
     console.error("Failed to ensure EmailOtps table:", err?.message || err);
   }

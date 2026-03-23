@@ -742,6 +742,7 @@ export default function AiAssistant() {
   return (
     <>
       <Button
+        id="ai-assistant-trigger"
         type="button"
         onClick={() => setOpen(true)}
         className={cn(

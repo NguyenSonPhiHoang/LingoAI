@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   Voicemail,
   Volume2,
+  Sparkles,
 } from "lucide-react";
 import type { View, ViewState } from "@/app/page";
 import type { CombinedVocabulary } from "@/services/vocabulary";
@@ -338,11 +339,28 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
   return (
     <div className="space-y-6">
       <audio ref={audioRef} className="hidden" />
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Welcome Back!</h2>
-        <p className="text-muted-foreground">
-          Here's a summary of your learning journey. Keep up the great work!
-        </p>
+
+      {/* ── Welcome banner ── */}
+      <div
+        className="rounded-2xl p-6 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #312e81 0%, #4c1d95 50%, #5b21b6 100%)",
+        }}
+      >
+        {/* Blur blobs */}
+        <div className="absolute -top-8 -right-8 h-40 w-40 rounded-full opacity-20"
+          style={{ background: "radial-gradient(circle, #818cf8, transparent)" }} />
+        <div className="absolute -bottom-6 right-24 h-24 w-24 rounded-full opacity-15"
+          style={{ background: "radial-gradient(circle, #c084fc, transparent)" }} />
+        <div className="relative z-10">
+          <p className="text-indigo-300 text-sm font-medium mb-1">Xin chào trở lại 👋</p>
+          <h2 className="text-2xl font-bold text-white">
+            {user?.displayName || "Học viên"}
+          </h2>
+          <p className="text-indigo-200 text-sm mt-1">
+            Tiếp tục hành trình học tiếng Anh của bạn nhé!
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -356,65 +374,37 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
           <CardContent className="flex-1 flex flex-col">
             <div>
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-md border bg-background/50 p-3 text-center">
-                  <div className="text-xs text-muted-foreground">
-                    Total time
-                  </div>
-                  <div className="mt-2 text-lg font-semibold">
+                {/* Total time */}
+                <div className="rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))", border: "1px solid rgba(99,102,241,0.2)"}}>
+                  <div className="text-xs text-muted-foreground">Thời gian học</div>
+                  <div className="mt-2 text-xl font-bold text-primary">
                     {formatDurationShort(totalUsageSeconds)}
                   </div>
                 </div>
 
-                <div className="rounded-md border bg-background/50 p-3">
-                  <div className="text-center text-xs text-muted-foreground">
-                    Lessons
-                  </div>
+                {/* Lessons breakdown */}
+                <div className="rounded-xl p-3" style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1))", border: "1px solid rgba(16,185,129,0.2)"}}>
+                  <div className="text-center text-xs text-muted-foreground">Bài học</div>
                   <div className="mt-1 grid grid-cols-3 gap-2">
-                    <div
-                      className="flex flex-col items-center justify-center gap-1"
-                      title="Completed"
-                    >
-                      <div className="text-lg font-semibold leading-none">
-                        {lessonsCompleted}
-                      </div>
-                      <CheckCircle2
-                        className="h-5 w-5 text-green-500"
-                        aria-hidden="true"
-                      />
-                      <span className="sr-only">Completed</span>
+                    <div className="flex flex-col items-center justify-center gap-1" title="Completed">
+                      <div className="text-lg font-bold text-green-600 leading-none">{lessonsCompleted}</div>
+                      <CheckCircle2 className="h-4 w-4 text-green-500" aria-hidden />
                     </div>
-                    <div
-                      className="flex flex-col items-center justify-center gap-1"
-                      title="In progress"
-                    >
-                      <div className="text-lg font-semibold leading-none">
-                        {lessonsInProgress}
-                      </div>
-                      <Clock
-                        className="h-5 w-5 text-blue-500"
-                        aria-hidden="true"
-                      />
-                      <span className="sr-only">In progress</span>
+                    <div className="flex flex-col items-center justify-center gap-1" title="In progress">
+                      <div className="text-lg font-bold text-blue-600 leading-none">{lessonsInProgress}</div>
+                      <Clock className="h-4 w-4 text-blue-500" aria-hidden />
                     </div>
-                    <div
-                      className="flex flex-col items-center justify-center gap-1"
-                      title="Not started"
-                    >
-                      <div className="text-lg font-semibold leading-none">
-                        {lessonsNotStarted}
-                      </div>
-                      <Circle
-                        className="h-5 w-5 text-orange-500"
-                        aria-hidden="true"
-                      />
-                      <span className="sr-only">Not started</span>
+                    <div className="flex flex-col items-center justify-center gap-1" title="Not started">
+                      <div className="text-lg font-bold text-orange-500 leading-none">{lessonsNotStarted}</div>
+                      <Circle className="h-4 w-4 text-orange-400" aria-hidden />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-md border bg-background/50 p-3 text-center">
-                  <div className="text-xs text-muted-foreground">Level</div>
-                  <div className="mt-2 text-lg font-semibold">
+                {/* Level */}
+                <div className="rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.12))", border: "1px solid rgba(245,158,11,0.2)"}}>
+                  <div className="text-xs text-muted-foreground">Cấp độ</div>
+                  <div className="mt-2 text-xl font-bold text-amber-600">
                     {levelKey ? levelKey.toUpperCase() : "N/A"}
                   </div>
                 </div>
@@ -530,54 +520,52 @@ const DashboardOverview: FC<DashboardOverviewProps> = ({
           }}
         />
 
-        <Card className="flex flex-col justify-between bg-primary/10 transition-transform hover:scale-[1.02] hover:shadow-lg">
+        <Card
+          className="flex flex-col justify-between transition-transform hover:scale-[1.02] hover:shadow-xl cursor-pointer"
+          style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))", border: "1px solid rgba(99,102,241,0.2)"}}
+          onClick={() => setActiveView("my-lessons")}
+        >
           <CardHeader>
-            <CardTitle>Explore Lessons</CardTitle>
-            <CardDescription>
-              Dive into exercises for all skill levels.
-            </CardDescription>
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center mb-2"
+              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", boxShadow: "0 4px 12px rgba(99,102,241,0.35)"}}>
+              <BookOpen className="h-5 w-5 text-white" />
+            </div>
+            <CardTitle>Khám Phá Bài Học</CardTitle>
+            <CardDescription>Luyện tập kỹ năng tiếng Anh mọi cấp độ.</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-md border bg-background/50 p-3 text-center">
-                <div className="text-lg font-semibold">{totalLessons}</div>
-                <div className="text-xs text-muted-foreground">Lessons</div>
-              </div>
-              <div className="rounded-md border bg-background/50 p-3 text-center">
-                <div className="text-lg font-semibold">{lessonsInProgress}</div>
-                <div className="text-xs text-muted-foreground">Learning</div>
-              </div>
-              <div className="rounded-md border bg-background/50 p-3 text-center">
-                <div className="text-lg font-semibold">{lessonsCompleted}</div>
-                <div className="text-xs text-muted-foreground">Completed</div>
-              </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[{label:"Tổng cộng",val:totalLessons,color:"text-indigo-600"},{label:"Đang học",val:lessonsInProgress,color:"text-blue-600"},{label:"Hoàn thành",val:lessonsCompleted,color:"text-green-600"}].map(({label,val,color})=>(
+                <div key={label} className="rounded-lg p-2 text-center" style={{background:"rgba(255,255,255,0.6)"}}>
+                  <div className={`text-lg font-bold ${color}`}>{val}</div>
+                  <div className="text-[10px] text-muted-foreground">{label}</div>
+                </div>
+              ))}
             </div>
           </CardContent>
           <CardFooter>
-            <Button
-              className="w-full"
-              onClick={() => setActiveView("my-lessons")}
-              variant="outline"
-            >
-              Start Learning <ArrowRight className="ml-2" />
+            <Button className="w-full" style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",boxShadow:"0 2px 12px rgba(99,102,241,0.3)"}} onClick={()=>setActiveView("my-lessons")}>
+              Bắt đầu học <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>
         </Card>
 
-        <Card className="flex flex-col justify-between bg-accent/10 transition-transform hover:scale-[1.02] hover:shadow-lg">
+        <Card
+          className="flex flex-col justify-between transition-transform hover:scale-[1.02] hover:shadow-xl cursor-pointer"
+          style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(216,180,254,0.1))", border: "1px solid rgba(139,92,246,0.2)"}}
+          onClick={() => setActiveView("ai-suggester")}
+        >
           <CardHeader>
-            <CardTitle>AI Suggestions</CardTitle>
-            <CardDescription>
-              Get personalized lesson recommendations.
-            </CardDescription>
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center mb-2"
+              style={{ background: "linear-gradient(135deg,#8b5cf6,#a855f7)", boxShadow: "0 4px 12px rgba(139,92,246,0.35)"}}>
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <CardTitle>AI Gợi Ý</CardTitle>
+            <CardDescription>Nhận đề xuất bài học cá nhân hóa từ AI.</CardDescription>
           </CardHeader>
-          <CardFooter>
-            <Button
-              className="w-full"
-              onClick={() => setActiveView("ai-suggester")}
-              variant="outline"
-            >
-              Get Suggestions <ArrowRight className="ml-2" />
+          <CardFooter className="mt-auto">
+            <Button className="w-full" style={{background:"linear-gradient(135deg,#8b5cf6,#a855f7)",boxShadow:"0 2px 12px rgba(139,92,246,0.3)"}} onClick={()=>setActiveView("ai-suggester")}>
+              Nhận gợi ý <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardFooter>
         </Card>

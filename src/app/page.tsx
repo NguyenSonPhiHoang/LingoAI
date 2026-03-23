@@ -27,6 +27,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
+import { FeatureTip } from "@/components/lingo/feature-tip";
+import { useFeatureTip } from "@/hooks/use-feature-tip";
 
 export type View =
   | "overview"
@@ -63,8 +65,9 @@ const Home: FC = () => {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const userId = user?.uid || user?.id || null;
+  const { activeTip, showTipForFeature, dismissTip } = useFeatureTip(userId);
 
-  const userId = user?.uid;
   const userStatus = user?.status;
 
   useEffect(() => {
@@ -101,6 +104,12 @@ const Home: FC = () => {
       setIsLoading(false);
     }
   }, [userId, userStatus, authLoading, router, toast]);
+
+  // Show feature tip on first visit to each view
+  useEffect(() => {
+    if (user?.status !== "approved") return;
+    showTipForFeature(activeViewState.view);
+  }, [activeViewState.view, user?.status, showTipForFeature]);
 
   if (authLoading || !user) {
     return (
@@ -238,13 +247,16 @@ const Home: FC = () => {
   };
 
   return (
-    <DashboardLayout
-      activeView={activeViewState.view}
-      setActiveView={setActiveView}
-      setWords={setWords}
-    >
-      {renderContent()}
-    </DashboardLayout>
+    <>
+      <DashboardLayout
+        activeView={activeViewState.view}
+        setActiveView={setActiveView}
+        setWords={setWords}
+      >
+        {renderContent()}
+      </DashboardLayout>
+      {activeTip && <FeatureTip data={activeTip} onDismiss={dismissTip} />}
+    </>
   );
 };
 

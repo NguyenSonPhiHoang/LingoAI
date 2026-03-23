@@ -55,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import { OnboardingTour, reopenOnboardingTour } from "./onboarding-tour";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -229,6 +230,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
               availableMenuItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
+                    id={`nav-${item.id}`}
                     onClick={() => handleMenuClick(item.id as View, item.href)}
                     isActive={
                       activeView === item.id ||
@@ -274,6 +276,20 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
+            {user?.status === "approved" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Xem lại hướng dẫn"
+                  onClick={() => {
+                    const uid = user?.uid || user?.id;
+                    if (uid) reopenOnboardingTour(uid);
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Xem lại hướng dẫn</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
@@ -284,6 +300,14 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
+      {user?.status === "approved" && (
+        <OnboardingTour
+          userId={(user?.uid || user?.id) ?? ""}
+          onStartPlacementTest={() =>
+            setActiveView("placement-test" as View)
+          }
+        />
+      )}
     </>
   );
 };
