@@ -21,6 +21,7 @@ import {
   BookImage,
   Library,
   HelpCircle,
+  BarChart3,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -183,6 +184,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       role: ["role_admin"],
       href: "/",
     },
+    {
+      id: "admin-analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      role: ["role_admin"],
+      href: "/",
+    },
   ];
 
   const availableMenuItems = menuItems.filter((item) => {
@@ -197,7 +205,7 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
   };
 
   const handleMenuClick = (
-    itemId: View | "storybook" | "library" | "guide",
+    itemId: View | "storybook" | "library" | "guide" | "admin-analytics",
     href: string,
   ) => {
     if (href && href !== "/") {

@@ -19,6 +19,7 @@ import SettingsView from "@/components/lingo/settings-view";
 import PlacementTest from "@/components/lingo/placement-test";
 import ReviewTestView from "@/components/lingo/review-test-view";
 import VtepAdminPage from "@/app/vtep/page";
+import AdminAnalyticsView from "@/components/lingo/admin-analytics-view";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -45,7 +46,8 @@ export type View =
   | "profile"
   | "settings"
   | "placement-test"
-  | "review-test";
+  | "review-test"
+  | "admin-analytics";
 
 export type ViewState = {
   view: View | "storybook" | "library" | "guide";
@@ -230,6 +232,8 @@ const Home: FC = () => {
           );
         case "vtep":
           return <VtepAdminPage />;
+        case "admin-analytics":
+          return <AdminAnalyticsView />;
         default:
           return (
             <DashboardOverview

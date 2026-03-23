@@ -6,5 +6,6 @@ const router = Router();
 router.use(authenticateJWT);
 
 router.get("/me", InsightsController.getMyInsights);
+router.get("/admin/overview", InsightsController.getAdminOverview);
 
 export default router;

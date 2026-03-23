@@ -39,6 +39,7 @@ interface DashboardHeaderProps {
   "review-test": "Review Test",
   library: "My Library",
   guide: "User Guide",
+  "admin-analytics": "Thống kê Admin",
 };
 
 const DashboardHeader: FC<DashboardHeaderProps> = ({
@@ -82,6 +83,7 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
     "review-test": "📝",
     library: "📚",
     guide: "🆘",
+    "admin-analytics": "📈",
   };
 
   return (
