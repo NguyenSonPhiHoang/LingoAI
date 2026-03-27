@@ -45,8 +45,6 @@ import {
   type GrammarLessonDetail,
   type GrammarExercise,
   type SubmitGrammarAttemptResult,
-  GRAMMAR_LEVELS,
-  type GrammarLevel,
   upsertGrammarExercises,
   updateGrammarLesson,
   generateGrammarExercises,
@@ -66,13 +64,6 @@ type EditorExercise = {
   points?: number;
   sortOrder?: number;
 };
-
-function isGrammarLevel(value: unknown): value is GrammarLevel {
-  return (
-    typeof value === "string" &&
-    (GRAMMAR_LEVELS as readonly string[]).includes(value)
-  );
-}
 
 function safeParseOptions(
   optionsJson: string | null,
@@ -255,7 +246,8 @@ const GrammarLessonPage: FC = () => {
   // Edit lesson dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
-  const [editLevel, setEditLevel] = useState<GrammarLevel>("a1");
+  const [editLevel, setEditLevel] =
+    useState<GrammarLessonDetail["level"]>("a1");
   const [editTopic, setEditTopic] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [editResources, setEditResources] = useState<
@@ -302,7 +294,7 @@ const GrammarLessonPage: FC = () => {
   useEffect(() => {
     if (editOpen && lesson) {
       setEditTitle(lesson.title || "");
-      setEditLevel(isGrammarLevel(lesson.level) ? lesson.level : "a1");
+      setEditLevel(lesson.level || "a1");
       setEditTopic(lesson.topic || null);
       setEditContent(lesson.contentMarkdown || "");
       setEditResources(
@@ -318,11 +310,7 @@ const GrammarLessonPage: FC = () => {
 
   const saveLessonEdits = async () => {
     if (!lesson) return;
-    console.log("Saving lesson edits...", {
-      editTitle,
-      editLevel,
-      editContent,
-    });
+    console.log("Saving lesson edits...", { editTitle, editLevel, editContent });
     setIsSavingLesson(true);
     try {
       await updateGrammarLesson({
@@ -701,13 +689,10 @@ const GrammarLessonPage: FC = () => {
           </Button>
           {canManage ? (
             <>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  console.log("Edit button clicked, canManage:", canManage);
-                  setEditOpen(true);
-                }}
-              >
+              <Button variant="ghost" onClick={() => {
+                console.log("Edit button clicked, canManage:", canManage);
+                setEditOpen(true);
+              }}>
                 Edit
               </Button>
               <Button variant="outline" onClick={() => setEditorOpen(true)}>

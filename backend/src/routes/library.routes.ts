@@ -10,7 +10,6 @@ router.post("/", requireAuth, LibraryController.createMyDocument);
 router.get("/:id", requireAuth, LibraryController.getMyDocument);
 router.put("/:id", requireAuth, LibraryController.updateMyDocument);
 router.delete("/:id", requireAuth, LibraryController.deleteMyDocument);
-router.get("/:id/fetch-content", requireAuth, LibraryController.fetchMyDocumentContent);
 
 // Contents (notes)
 router.get("/:id/content", requireAuth, LibraryController.listMyContent);

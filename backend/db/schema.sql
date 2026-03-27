@@ -1025,3 +1025,4 @@ BEGIN
     CREATE INDEX IX_GrammarAttemptAnswers_AttemptId ON dbo.GrammarAttemptAnswers(AttemptId);
   END
 END
+

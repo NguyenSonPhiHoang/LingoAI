@@ -19,6 +19,7 @@ import SettingsView from "@/components/lingo/settings-view";
 import PlacementTest from "@/components/lingo/placement-test";
 import ReviewTestView from "@/components/lingo/review-test-view";
 import VtepAdminPage from "@/app/vtep/page";
+import AdminAnalyticsView from "@/components/lingo/admin-analytics-view";
 import type { CombinedVocabulary } from "@/services/vocabulary";
 import { getVocabulary } from "@/services/vocabulary";
 import type { Lesson } from "@/services/lessons";
@@ -27,6 +28,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { UserLevel, GenerateReviewTestOutput } from "@/ai/flows/schemas";
+import { FeatureTip } from "@/components/lingo/feature-tip";
+import { useFeatureTip } from "@/hooks/use-feature-tip";
 
 export type View =
   | "overview"
@@ -43,7 +46,8 @@ export type View =
   | "profile"
   | "settings"
   | "placement-test"
-  | "review-test";
+  | "review-test"
+  | "admin-analytics";
 
 export type ViewState = {
   view: View | "storybook" | "library" | "guide";
@@ -63,8 +67,9 @@ const Home: FC = () => {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const userId = user?.uid || user?.id || null;
+  const { activeTip, showTipForFeature, dismissTip } = useFeatureTip(userId);
 
-  const userId = user?.uid;
   const userStatus = user?.status;
 
   useEffect(() => {
@@ -101,6 +106,12 @@ const Home: FC = () => {
       setIsLoading(false);
     }
   }, [userId, userStatus, authLoading, router, toast]);
+
+  // Show feature tip on first visit to each view
+  useEffect(() => {
+    if (user?.status !== "approved") return;
+    showTipForFeature(activeViewState.view);
+  }, [activeViewState.view, user?.status, showTipForFeature]);
 
   if (authLoading || !user) {
     return (
@@ -221,6 +232,8 @@ const Home: FC = () => {
           );
         case "vtep":
           return <VtepAdminPage />;
+        case "admin-analytics":
+          return <AdminAnalyticsView />;
         default:
           return (
             <DashboardOverview
@@ -238,13 +251,16 @@ const Home: FC = () => {
   };
 
   return (
-    <DashboardLayout
-      activeView={activeViewState.view}
-      setActiveView={setActiveView}
-      setWords={setWords}
-    >
-      {renderContent()}
-    </DashboardLayout>
+    <>
+      <DashboardLayout
+        activeView={activeViewState.view}
+        setActiveView={setActiveView}
+        setWords={setWords}
+      >
+        {renderContent()}
+      </DashboardLayout>
+      {activeTip && <FeatureTip data={activeTip} onDismiss={dismissTip} />}
+    </>
   );
 };
 

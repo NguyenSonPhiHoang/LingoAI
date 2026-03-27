@@ -171,10 +171,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     displayName: string
   ) => {
-    const response = await registerApi(email, password, displayName);
-
-    // Auto login after registration
-    await login(email, password);
+    // Only request OTP — do not login yet.
+    // After verifyOtp succeeds, the page will call login() directly.
+    await registerApi(email, password, displayName);
   };
 
   const logout = () => {

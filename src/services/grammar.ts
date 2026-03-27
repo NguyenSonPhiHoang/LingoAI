@@ -1,12 +1,9 @@
 import { apiGet, apiPost, apiPut } from "@/services/api";
 
-export const GRAMMAR_LEVELS = ["a1", "a2", "b1", "b2", "c1", "c2"] as const;
-export type GrammarLevel = (typeof GRAMMAR_LEVELS)[number];
-
 export type GrammarLessonListItem = {
   id: string;
   title: string;
-  level: GrammarLevel;
+  level: string;
   topic: string | null;
   isPublished: boolean;
   exerciseCount: number;
@@ -16,7 +13,7 @@ export type GrammarLessonListItem = {
 
 export type GrammarExercise = {
   id: string;
-  type: "mcq" | "multichoice" | "text";
+  type: "mcq" | "text";
   prompt: string;
   optionsJson: string | null;
   explanation: string | null;
@@ -27,12 +24,11 @@ export type GrammarExercise = {
 export type GrammarLessonDetail = {
   id: string;
   title: string;
-  level: GrammarLevel;
+  level: string;
   topic: string | null;
   contentMarkdown: string;
   exercises: GrammarExercise[];
   resources?: Array<{ title: string; url: string }>;
-  isPublished?: boolean;
 };
 
 export async function listGrammarLessons() {
@@ -75,7 +71,7 @@ export async function submitGrammarAttempt(
 
 export type CreateGrammarLessonInput = {
   title: string;
-  level: GrammarLevel;
+  level: "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
   topic?: string | null;
   contentMarkdown: string;
   resources?: Array<{ title: string; url: string }>;
@@ -89,7 +85,7 @@ export async function createGrammarLesson(input: CreateGrammarLessonInput) {
 export type UpdateGrammarLessonInput = {
   id: string;
   title?: string;
-  level?: GrammarLevel;
+  level?: "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
   topic?: string | null;
   contentMarkdown?: string;
   resources?: Array<{ title: string; url: string }>;
@@ -103,7 +99,7 @@ export async function updateGrammarLesson(input: UpdateGrammarLessonInput) {
 
 export type UpsertGrammarExerciseInput = {
   id?: string;
-  type: "mcq" | "multichoice" | "text";
+  type: "mcq" | "text";
   prompt: string;
   optionsJson?: any;
   answerJson: any;

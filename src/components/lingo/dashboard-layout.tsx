@@ -1,12 +1,7 @@
 "use client";
 
-import React, {
-  useState,
-  type Dispatch,
-  type FC,
-  type ReactNode,
-  type SetStateAction,
-} from "react";
+import Image from "next/image";
+import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +22,7 @@ import {
   BookImage,
   Library,
   HelpCircle,
-  ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import type { View } from "@/app/page";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,13 +40,11 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarGroup,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -65,7 +58,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { cn } from "@/lib/utils";
+import { OnboardingTour, reopenOnboardingTour } from "./onboarding-tour";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -193,6 +186,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       role: ["role_admin"],
       href: "/",
     },
+    {
+      id: "admin-analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      role: ["role_admin"],
+      href: "/",
+    },
   ];
 
   const availableMenuItems = menuItems.filter((item) => {
@@ -201,18 +201,13 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     return item.role.includes(roleIdNormalized);
   });
 
-  const vtepIds = ["vtep-student", "vtep", "vteptests"];
-  const [vtepOpen, setVtepOpen] = useState<boolean>(() =>
-    vtepIds.includes(activeView as string) ? true : false,
-  );
-
   const handleViewChange = (view: View | "guide") => {
     setActiveView(view);
     setOpenMobile(false);
   };
 
   const handleMenuClick = (
-    itemId: View | "storybook" | "library" | "guide",
+    itemId: View | "storybook" | "library" | "guide" | "admin-analytics",
     href: string,
   ) => {
     if (href && href !== "/") {
@@ -228,111 +223,65 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         <SidebarHeader>
           <Link
             href="/"
-            className="block"
+            className="flex w-full items-center justify-center min-h-[40px]"
             onClick={() => handleViewChange("overview")}
           >
-            <h1 className="text-2xl font-bold text-primary">
-              <span className="group-data-[collapsible=icon]:hidden">
-                Lingo
-              </span>
-              <span>AI</span>
-            </h1>
+            {/* Full logo - visible when sidebar is expanded */}
+            <Image
+              src="/logo.png"
+              alt="LingoAI"
+              width={120}
+              height={40}
+              className="object-contain group-data-[collapsible=icon]:hidden"
+              priority
+            />
+            {/* Icon only - visible when sidebar is collapsed */}
+            <Image
+              src="/logo-icon.png"
+              alt="LingoAI Icon"
+              width={32}
+              height={32}
+              className="object-contain hidden group-data-[collapsible=icon]:block"
+              priority
+            />
           </Link>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
-            {user?.status === "approved" &&
-              (() => {
-                const vtepItems = availableMenuItems.filter((it) =>
-                  vtepIds.includes(it.id),
-                );
-                const otherItems = availableMenuItems.filter(
-                  (it) => !vtepIds.includes(it.id),
-                );
-
-                return (
-                  <>
-                    {otherItems.map((item) => (
-                      <SidebarMenuItem key={item.id}>
-                        <SidebarMenuButton
-                          onClick={() =>
-                            handleMenuClick(item.id as View, item.href)
-                          }
-                          isActive={
-                            activeView === item.id ||
-                            (activeView === "lesson-detail" &&
-                              item.id === "my-lessons")
-                          }
-                          tooltip={item.label}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-
-                    {vtepItems.length > 0 && (
-                      <SidebarMenuItem key="vtep-group">
-                        <SidebarMenuButton
-                          onClick={() => setVtepOpen((s) => !s)}
-                          isActive={
-                            vtepOpen ||
-                            vtepItems.some((it) => activeView === it.id)
-                          }
-                          tooltip="VTEP"
-                          aria-expanded={vtepOpen}
-                        >
-                          <FileText />
-                          <span>VTEP</span>
-                          <ChevronDown
-                            className={cn(
-                              "ml-auto transition-transform duration-200",
-                              vtepOpen ? "rotate-180" : "rotate-0",
-                            )}
-                          />
-                        </SidebarMenuButton>
-
-                        {vtepOpen && (
-                          <SidebarMenuSub>
-                            {vtepItems.map((it) => (
-                              <SidebarMenuSubItem key={it.id}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={activeView === it.id}
-                                >
-                                  <Link
-                                    href={it.href}
-                                    onClick={() =>
-                                      handleMenuClick(it.id as View, it.href)
-                                    }
-                                  >
-                                    <it.icon />
-                                    <span>{it.label}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        )}
-                      </SidebarMenuItem>
-                    )}
-                  </>
-                );
-              })()}
-            {user?.status === "approved" && (
-              <SidebarMenuItem>
-                <AddWordDialog
-                  setWords={setWords}
-                  trigger={
-                    <SidebarMenuButton tooltip="Add New Word">
-                      <Plus />
-                      <span>Add New Word</span>
+          <SidebarGroup>
+            <SidebarMenu>
+              {user?.status === "approved" &&
+                availableMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      id={`nav-${item.id}`}
+                      onClick={() => handleMenuClick(item.id as View, item.href)}
+                      isActive={
+                        activeView === item.id ||
+                        (activeView === "lesson-detail" &&
+                          item.id === "my-lessons")
+                      }
+                      tooltip={item.label}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
-                  }
-                />
-              </SidebarMenuItem>
-            )}
-          </SidebarMenu>
+                  </SidebarMenuItem>
+                ))}
+              {user?.status === "approved" && (
+                <SidebarMenuItem>
+                  <AddWordDialog
+                    setWords={setWords}
+                    trigger={
+                      <SidebarMenuButton tooltip="Add New Word">
+                        <Plus />
+                        <span>Add New Word</span>
+                      </SidebarMenuButton>
+                    }
+                  />
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>
@@ -351,16 +300,38 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
+            {user?.status === "approved" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Xem lại hướng dẫn"
+                  onClick={() => {
+                    const uid = user?.uid || user?.id;
+                    if (uid) reopenOnboardingTour(uid);
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Xem lại hướng dẫn</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <DashboardHeader
-          activeView={activeView}
-          setActiveView={setActiveView}
+          activeView={activeView as View | "guide"}
+          setActiveView={setActiveView as (view: View | "guide") => void}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
+      {user?.status === "approved" && (
+        <OnboardingTour
+          userId={(user?.uid || user?.id) ?? ""}
+          onStartPlacementTest={() =>
+            setActiveView("placement-test" as View)
+          }
+        />
+      )}
     </>
   );
 };

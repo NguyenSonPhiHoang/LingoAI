@@ -8,7 +8,12 @@ export interface LoginResponse {
 
 export interface RegisterResponse {
   ok: boolean;
-  user: {
+  message?: string;
+}
+
+export interface VerifyOtpResponse {
+  ok: boolean;
+  user?: {
     id: string;
     email: string;
     displayName: string;
@@ -71,8 +76,15 @@ export async function registerApi(
     email,
     password,
     displayName,
-    roleId: "role_student", // default role
+    roleId: "role_student",
   });
+}
+
+export async function verifyOtpApi(
+  email: string,
+  otp: string
+): Promise<VerifyOtpResponse> {
+  return apiPost<VerifyOtpResponse>("/api/auth/verify-otp", { email, otp });
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {

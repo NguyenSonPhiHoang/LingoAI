@@ -2,29 +2,20 @@
 
 import * as React from "react";
 import { Textarea } from "@/components/ui/textarea";
-import type { FieldValues, UseFormSetValue } from "react-hook-form";
+import type { Control } from "react-hook-form";
 
-type Props<TFieldValues extends FieldValues> = {
-  field: {
-    name: keyof TFieldValues & string;
-    value: any;
-  };
-  setValue: UseFormSetValue<TFieldValues>;
+type Props = {
+  field: any;
+  setValue: (name: string, value: any, options?: any) => void;
 };
 
-export default function SummaryEditor<TFieldValues extends FieldValues>({
-  field,
-  setValue,
-}: Props<TFieldValues>) {
+export default function SummaryEditor({ field, setValue }: Props) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const insertMarkdown = (prefix: string, suffix: string) => {
     const el = textareaRef.current;
     if (!el) {
-      setValue(
-        field.name as any,
-        ((field.value || "") + prefix + suffix) as any,
-      );
+      setValue(field.name, (field.value || "") + prefix + suffix);
       return;
     }
     const start = el.selectionStart ?? el.value.length;
@@ -33,7 +24,7 @@ export default function SummaryEditor<TFieldValues extends FieldValues>({
     const selected = el.value.slice(start, end);
     const after = el.value.slice(end);
     const newVal = before + prefix + selected + suffix + after;
-    setValue(field.name as any, newVal as any);
+    setValue(field.name, newVal);
 
     requestAnimationFrame(() => {
       const pos =
@@ -113,7 +104,7 @@ export default function SummaryEditor<TFieldValues extends FieldValues>({
       <Textarea
         ref={textareaRef}
         value={field.value}
-        onChange={(e) => setValue(field.name as any, e.target.value as any)}
+        onChange={(e) => setValue(field.name, e.target.value)}
         placeholder="A brief summary of the content..."
         className="min-h-[320px]"
       />

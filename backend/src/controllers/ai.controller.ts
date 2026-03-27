@@ -40,31 +40,23 @@ async function getApiKeyForUser(userId: string): Promise<string> {
   if (typeof serverKey === "string" && serverKey.trim()) return serverKey;
 
   throw new Error(
-    "Gemini API key not configured. Add geminiApiKey in Settings or set GEMINI_API_KEY on the backend.",
+    "Gemini API key not configured. Add geminiApiKey in Settings or set GEMINI_API_KEY on the backend."
   );
 }
 
 function normalizeHistory(history: any): ChatHistoryItem[] {
   if (!Array.isArray(history)) return [];
 
-  const cleaned = history
+  return history
     .filter(
       (h) =>
         h &&
         (h.role === "user" || h.role === "model") &&
         typeof h.content === "string" &&
-        h.content.trim(),
+        h.content.trim()
     )
     .slice(-12)
     .map((h) => ({ role: h.role, content: String(h.content) }));
-
-  // Gemini chat requires the first history item to be a user message.
-  // When trimming to the last N items, we can accidentally start with "model".
-  while (cleaned.length > 0 && cleaned[0]?.role === "model") {
-    cleaned.shift();
-  }
-
-  return cleaned;
 }
 
 function normalizeMode(mode: any): ConversationMode {

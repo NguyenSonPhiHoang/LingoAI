@@ -131,4 +131,130 @@ export class InsightsController {
       res.status(500).json({ error: err.message });
     }
   }
+
+  // GET /api/insights/admin/overview  (admin only)
+  static async getAdminOverview(req: AuthRequest, res: Response) {
+    try {
+      const pool = await getPool();
+
+      // 1. User stats
+      const userStatsQ = await pool.request().query(`
+        SELECT
+          COUNT(1) AS Total,
+          SUM(CASE WHEN Status='approved'     THEN 1 ELSE 0 END) AS Approved,
+          SUM(CASE WHEN Status='pending'      THEN 1 ELSE 0 END) AS Pending,
+          SUM(CASE WHEN Status='rejected'     THEN 1 ELSE 0 END) AS Rejected,
+          SUM(CASE WHEN RoleId='role_student' THEN 1 ELSE 0 END) AS Students,
+          SUM(CASE WHEN RoleId='role_teacher' THEN 1 ELSE 0 END) AS Teachers,
+          SUM(CASE WHEN RoleId='role_admin'   THEN 1 ELSE 0 END) AS Admins
+        FROM dbo.Users;
+      `);
+
+      // 2. Registrations last 30 days
+      const regByDayQ = await pool.request().query(`
+        SELECT CAST(CreatedAt AS DATE) AS RegDate, COUNT(1) AS Cnt
+        FROM dbo.Users
+        WHERE CreatedAt >= DATEADD(day, -30, SYSDATETIMEOFFSET())
+        GROUP BY CAST(CreatedAt AS DATE)
+        ORDER BY RegDate;
+      `);
+
+      // 3. Overall test stats
+      const testStatsQ = await pool.request().query(`
+        SELECT
+          COUNT(1) AS TotalAttempts,
+          AVG(CASE WHEN Score IS NULL THEN NULL ELSE Score END) AS AvgScore,
+          AVG(CASE WHEN DurationSeconds IS NULL THEN NULL ELSE CAST(DurationSeconds AS FLOAT) END) AS AvgDuration
+        FROM dbo.Tests WHERE UserId IS NOT NULL;
+      `);
+
+      // 4. Test perf by skill
+      const bySkillQ = await pool.request().query(`
+        SELECT Skill, COUNT(1) AS Attempts,
+          AVG(CASE WHEN Score IS NULL THEN NULL ELSE Score END) AS AvgScore,
+          SUM(CASE WHEN TotalQuestions IS NULL OR TotalQuestions=0 THEN 0 ELSE TotalQuestions END) AS TotalQ,
+          SUM(CASE WHEN CorrectAnswers IS NULL THEN 0 ELSE CorrectAnswers END) AS CorrectA
+        FROM dbo.Tests WHERE Skill IS NOT NULL AND UserId IS NOT NULL
+        GROUP BY Skill ORDER BY Attempts DESC;
+      `);
+
+      // 5. Session stats
+      const sessionQ = await pool.request().query(`
+        SELECT COUNT(1) AS TotalSessions,
+          AVG(CASE WHEN EndTime IS NULL OR StartTime IS NULL THEN NULL
+              ELSE DATEDIFF(second, StartTime, EndTime)/60.0 END) AS AvgDurationMin,
+          AVG(CASE WHEN Completed=1 THEN 1.0 ELSE 0.0 END) AS CompletionRate
+        FROM dbo.UserLearningSession;
+      `).catch(() => ({ recordset: [{}] }));
+
+      // 6. Top 10 active users
+      const topUsersQ = await pool.request().query(`
+        SELECT TOP 10 t.UserId, u.DisplayName, u.Email,
+          COUNT(1) AS Attempts,
+          AVG(CASE WHEN t.Score IS NULL THEN NULL ELSE t.Score END) AS AvgScore,
+          MAX(t.CreatedAt) AS LastActive
+        FROM dbo.Tests t JOIN dbo.Users u ON u.Id = t.UserId
+        WHERE t.UserId IS NOT NULL
+        GROUP BY t.UserId, u.DisplayName, u.Email ORDER BY Attempts DESC;
+      `);
+
+      // 7. Active last 7 days
+      const activeRecentQ = await pool.request().query(`
+        SELECT COUNT(DISTINCT UserId) AS ActiveUsers FROM dbo.Tests
+        WHERE UserId IS NOT NULL AND CreatedAt >= DATEADD(day,-7,SYSDATETIMEOFFSET());
+      `).catch(() => ({ recordset: [{ ActiveUsers: 0 }] }));
+
+      const us = userStatsQ.recordset?.[0] || {};
+      const ts = testStatsQ.recordset?.[0] || {};
+      const ss = sessionQ.recordset?.[0] || {};
+
+      res.json({
+        userStats: {
+          total:    Number(us.Total    || 0),
+          approved: Number(us.Approved || 0),
+          pending:  Number(us.Pending  || 0),
+          rejected: Number(us.Rejected || 0),
+          students: Number(us.Students || 0),
+          teachers: Number(us.Teachers || 0),
+          admins:   Number(us.Admins   || 0),
+          activeLastWeek: Number(activeRecentQ.recordset?.[0]?.ActiveUsers || 0),
+        },
+        registrationsByDay: (regByDayQ.recordset || []).map((r: any) => ({
+          date:  r.RegDate ? new Date(r.RegDate).toISOString().split("T")[0] : "",
+          count: Number(r.Cnt || 0),
+        })),
+        testStats: {
+          totalAttempts:  Number(ts.TotalAttempts || 0),
+          avgScore:       ts.AvgScore   != null ? Math.round(Number(ts.AvgScore) * 10) / 10 : null,
+          avgDurationMin: ts.AvgDuration != null ? Math.round(Number(ts.AvgDuration) / 60 * 10) / 10 : null,
+        },
+        testsBySkill: (bySkillQ.recordset || []).map((r: any) => {
+          const tq = Number(r.TotalQ || 0);
+          const ca = Number(r.CorrectA || 0);
+          return {
+            skill:    r.Skill,
+            attempts: Number(r.Attempts || 0),
+            avgScore: r.AvgScore != null ? Math.round(Number(r.AvgScore) * 10) / 10 : null,
+            accuracy: tq > 0 ? Math.round((ca / tq) * 1000) / 10 : null,
+          };
+        }),
+        sessionStats: {
+          totalSessions:  Number(ss.TotalSessions  || 0),
+          avgDurationMin: ss.AvgDurationMin != null ? Math.round(Number(ss.AvgDurationMin) * 10) / 10 : null,
+          completionRate: ss.CompletionRate  != null ? Math.round(Number(ss.CompletionRate) * 1000) / 10 : null,
+        },
+        topActiveUsers: (topUsersQ.recordset || []).map((r: any) => ({
+          userId:      r.UserId,
+          displayName: r.DisplayName || r.Email || r.UserId,
+          email:       r.Email,
+          attempts:    Number(r.Attempts || 0),
+          avgScore:    r.AvgScore != null ? Math.round(Number(r.AvgScore) * 10) / 10 : null,
+          lastActive:  r.LastActive ? new Date(r.LastActive).toISOString() : null,
+        })),
+      });
+    } catch (err: any) {
+      console.error("Admin overview error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
 }

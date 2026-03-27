@@ -38,13 +38,13 @@ import {
 } from "../ui/select";
 import SummaryEditor from "./summary-editor";
 
-const SKILLS = [
+const SKILLS: LibrarySkill[] = [
   "Reading",
   "Writing",
   "Listening",
   "Speaking",
   "Pronunciation",
-] as const satisfies readonly LibrarySkill[];
+];
 
 const editDocSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),

@@ -1147,7 +1147,7 @@ export default function AiAssistant() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg p-0">
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
           {/* Header + Avatar Section with yellow background */}
           <div style={{ backgroundColor: "#FFF9E6" }}>
             <div className="flex items-center justify-between p-4">

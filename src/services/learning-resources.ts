@@ -47,17 +47,16 @@ export const getResources = async (): Promise<LearningResource[]> => {
   const q = query(resourcesCollection, orderBy("createdAt", "asc"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
-    const data = doc.data() as Record<string, any>;
+    const data = doc.data();
     return {
       id: doc.id,
-      level: data.level as LevelKey,
-      skill: data.skill as Skill,
-      label: String(data.label ?? ""),
-      url: String(data.url ?? ""),
-      ratings: (data.ratings as Record<string, number> | undefined) || {},
-      ratingCount: typeof data.ratingCount === "number" ? data.ratingCount : 0,
-      averageRating:
-        typeof data.averageRating === "number" ? data.averageRating : 0,
+      level: data.level,
+      skill: data.skill,
+      label: data.label,
+      url: data.url,
+      ratings: data.ratings || {},
+      ratingCount: data.ratingCount || 0,
+      averageRating: data.averageRating || 0,
       createdAt:
         data.createdAt instanceof Timestamp
           ? data.createdAt.toDate()
@@ -70,7 +69,7 @@ export const addResource = async (
   payload: Omit<
     LearningResource,
     "id" | "createdAt" | "ratings" | "ratingCount" | "averageRating"
-  >,
+  >
 ): Promise<LearningResource> => {
   if (!firebaseEnabled) {
     return apiPost<LearningResource>("/api/learning-resources", payload);
@@ -118,12 +117,12 @@ export const deleteResource = async (id: string) => {
 
 export const rateResource = async (
   resourceId: string,
-  rating: number,
+  rating: number
 ): Promise<{ averageRating: number; ratingCount: number }> => {
   if (!firebaseEnabled) {
     return apiPost<{ averageRating: number; ratingCount: number }>(
       `/api/learning-resources/${resourceId}/rate`,
-      { rating },
+      { rating }
     );
   }
 

@@ -65,8 +65,8 @@ function gradeExercise(
 
     const pickedIds: string[] =
       userAnswer &&
-      typeof userAnswer === "object" &&
-      Array.isArray(userAnswer.optionIds)
+        typeof userAnswer === "object" &&
+        Array.isArray(userAnswer.optionIds)
         ? userAnswer.optionIds.map((s: any) => String(s))
         : [];
 
@@ -313,13 +313,21 @@ export class GrammarController {
       if (!lesson) return res.status(404).json({ error: "lesson not found" });
 
       // Get API key for user or fallback to server key
-      const row = await UserSettingsRepository.getByUserId(userId);
-      const userKey = row?.GeminiApiKey;
+      let userKey: string | null = null;
+      try {
+        const row = await UserSettingsRepository.getByUserId(userId);
+        userKey = row?.GeminiApiKey ?? null;
+      } catch (settingsErr: any) {
+        console.warn(
+          "Could not fetch user Gemini API key (falling back to server key):",
+          settingsErr?.message || settingsErr,
+        );
+      }
       const apiKey =
         typeof userKey === "string" && userKey.trim()
           ? userKey.trim()
           : typeof config.geminiApiKey === "string" &&
-              config.geminiApiKey.trim()
+            config.geminiApiKey.trim()
             ? config.geminiApiKey.trim()
             : null;
       if (!apiKey)
@@ -329,7 +337,7 @@ export class GrammarController {
       const modelName =
         typeof config.geminiModel === "string" && config.geminiModel.trim()
           ? config.geminiModel.trim()
-          : "gemini-1.5-flash";
+          : "gemini-2.5-flash";
 
       const model = client.getGenerativeModel({
         model: modelName,
@@ -581,8 +589,9 @@ Return the JSON array.`;
 
       return res.json({ ok: true, count: payload.length });
     } catch (err: any) {
-      console.error("Generate exercises error:", err?.message || err);
-      return res.status(500).json({ error: "failed to generate exercises" });
+      const errMsg = err?.message || String(err) || "unknown error";
+      console.error("Generate exercises error:", errMsg, err);
+      return res.status(500).json({ error: `failed to generate exercises: ${errMsg}` });
     }
   }
 }

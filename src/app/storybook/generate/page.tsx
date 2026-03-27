@@ -42,7 +42,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getVocabulary, type CombinedVocabulary } from "@/services/vocabulary";
 import { getLessonStorybookSeed } from "@/services/lessons";
-import { generateStorybook } from "@/ai/flows/generate-storybook-flow";
+import {
+  generateStorybook,
+  type GenerateStorybookInput,
+} from "@/ai/flows/generate-storybook-flow";
 import { addStorybook } from "@/services/storybooks";
 import {
   StorybookFormatSchema,
@@ -54,8 +57,6 @@ import { useAudioPlayback } from "@/hooks/use-audio-playback";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Timestamp } from "firebase/firestore";
-
-type GenerateStorybookInput = Parameters<typeof generateStorybook>[0];
 
 const formSchema = z
   .object({
@@ -164,10 +165,7 @@ const GenerateStorybookPage: FC = () => {
       return;
     }
 
-    if (!user?.uid) return;
-    const userId = user.uid;
-
-    getVocabulary(userId)
+    getVocabulary(user.uid)
       .then((allWords) => {
         setFavoriteWords(allWords.filter((w) => w.favorite));
       })
@@ -220,13 +218,12 @@ const GenerateStorybookPage: FC = () => {
   };
 
   const handleSaveStory = async () => {
-    if (!user?.uid || !generatedStory) return;
-    const userId = user.uid;
+    if (!user || !generatedStory) return;
     setIsSaving(true);
     try {
       const { level, format } = form.getValues();
       await addStorybook(
-        userId,
+        user.uid,
         generatedStory,
         level,
         format,
@@ -320,7 +317,7 @@ const GenerateStorybookPage: FC = () => {
                               Bilingual (EN/VI)
                             </SelectItem>
                             <SelectItem value="interspersed">
-                              Interspersed (VI/EN)
+                              Truyện Chêm (VI/EN)
                             </SelectItem>
                           </SelectContent>
                         </Select>

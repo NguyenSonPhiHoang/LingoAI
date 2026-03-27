@@ -1,9 +1,15 @@
 import { Request, Response } from "express";
 import { UserRepository } from "../repositories/user.repository";
 import { RoleRepository } from "../repositories/role.repository";
+import { OtpRepository } from "../repositories/otp.repository";
 import UserProfileRepository from "../repositories/userProfile.repository";
+import { sendOtpEmail } from "../services/email.service";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export class AuthController {
   static async register(req: Request, res: Response) {
@@ -11,22 +17,58 @@ export class AuthController {
       const { id, email, displayName, password, roleId } = req.body;
       if (!id || !email || !password)
         return res.status(400).json({ error: "id, email, password required" });
+
       const existing = await UserRepository.findByEmail(email);
       if (existing)
         return res.status(409).json({ error: "email already exists" });
-      const user = await UserRepository.createUser(
-        id,
-        email,
-        displayName || null,
-        password,
-        roleId || "role_student"
-      );
-      res.json({ ok: true, user });
+
+      // Rate limit: tối đa 1 OTP / 60 giây / email
+      const tooSoon = await OtpRepository.hasRecentOtp(email, 60);
+      if (tooSoon)
+        return res.status(429).json({ error: "Please wait 60 seconds before requesting a new OTP" });
+
+      // Generate OTP and store pending registration data
+      const otp = generateOtp();
+      await OtpRepository.deleteByEmail(email); // clear old OTPs
+      await OtpRepository.create(email, otp, { id, email, displayName, password, roleId });
+
+      // Send email
+      await sendOtpEmail(email, otp);
+
+      return res.json({ ok: true, message: "OTP sent to your email" });
     } catch (error: any) {
       console.error("Register error:", error);
       res.status(500).json({ error: error.message || "Registration failed" });
     }
   }
+
+  static async verifyOtp(req: Request, res: Response) {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp)
+        return res.status(400).json({ error: "email and otp required" });
+
+      const pendingData = await OtpRepository.verify(email, otp) as any;
+      if (!pendingData)
+        return res.status(400).json({ error: "Invalid or expired OTP" });
+
+      // Create user with status=approved
+      const user = await UserRepository.createUser(
+        pendingData.id,
+        pendingData.email,
+        pendingData.displayName || null,
+        pendingData.password,
+        pendingData.roleId || "role_student",
+        "approved"
+      );
+
+      return res.json({ ok: true, user });
+    } catch (error: any) {
+      console.error("Verify OTP error:", error);
+      res.status(500).json({ error: error.message || "OTP verification failed" });
+    }
+  }
+
 
   static async login(req: Request, res: Response) {
     try {

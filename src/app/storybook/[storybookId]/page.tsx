@@ -91,15 +91,14 @@ const StorybookDetailPage: FC = () => {
   });
 
   useEffect(() => {
-    if (!user?.uid || !storybookId) return;
-    const userId = user.uid;
+    if (!user || !storybookId) return;
 
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const [fetchedStorybook, fetchedVocab] = await Promise.all([
           getStorybook(storybookId),
-          getVocabulary(userId),
+          getVocabulary(user.uid),
         ]);
 
         if (!fetchedStorybook) {
@@ -139,8 +138,7 @@ const StorybookDetailPage: FC = () => {
     pronunciation: string;
     vietnameseWord: string;
   }) => {
-    if (!user?.uid) return;
-    const userId = user.uid;
+    if (!user) return;
     setIsSavingWord((prev) => ({ ...prev, [vocabItem.word]: true }));
 
     try {
@@ -159,7 +157,7 @@ const StorybookDetailPage: FC = () => {
       };
 
       // 3. Save to database
-      const savedWord = await addWordToVocabulary(userId, newWordData);
+      const savedWord = await addWordToVocabulary(user.uid, newWordData);
 
       // 4. Update local state
       setVocabulary((prev) => [...prev, savedWord]);
@@ -364,7 +362,7 @@ const StorybookDetailPage: FC = () => {
                 </Badge>
                 <Badge variant="secondary" className="capitalize">
                   {storybook.format === "interspersed"
-                    ? "Interspersed"
+                    ? "Truyện Chêm"
                     : "Bilingual"}
                 </Badge>
               </div>
@@ -416,7 +414,7 @@ const StorybookDetailPage: FC = () => {
                     onClick={() =>
                       playAndCacheStoryAudio(
                         "englishContent",
-                        storybook.interspersedStory!,
+                        storybook.interspersedStory,
                       )
                     }
                     disabled={playbackHook.isLoadingAudio[englishAudioKey]}

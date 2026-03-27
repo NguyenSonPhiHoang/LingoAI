@@ -16,13 +16,10 @@ export default async function GuidePage() {
     // Construct the path to the markdown file relative to the project root
     const filePath = path.join(process.cwd(), "HUONG_DAN_SU_DUNG.md");
     markdownContent = await fs.readFile(filePath, "utf-8");
-    if (/[\u00C0-\u1EF9]/.test(markdownContent)) {
-      markdownContent = "# User Guide\n\nThe guide is currently available only in Vietnamese. An English version will be added soon.";
-    }
   } catch (error) {
     console.error("Error reading guide file:", error);
     markdownContent =
-      "# User Guide\n\nError: Unable to load the guide file. Please try again later.";
+      "# Hướng Dẫn Sử Dụng\n\nLỗi: Không thể tải được tệp hướng dẫn. Vui lòng thử lại sau.";
   }
 
   return (
@@ -34,7 +31,7 @@ export default async function GuidePage() {
       </Button>
       <Card className="h-[calc(100vh-10rem)] flex flex-col">
         <CardHeader>
-          <CardTitle>LingoAI User Guide</CardTitle>
+          <CardTitle>Hướng Dẫn Sử Dụng LingoAI</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">

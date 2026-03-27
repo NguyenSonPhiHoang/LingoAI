@@ -78,7 +78,6 @@ import {
   type ReadingComprehensionQuestion,
   type WritingPrompt,
   type GenerateListeningExerciseOutput,
-  type GeneratePronunciationExerciseOutput,
   type GenerateSpeakingExerciseOutput,
   type GenerateWritingFeedbackOutput,
   type LessonVocabularySuggestion,
@@ -254,8 +253,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
   };
 
   const handleAddWord = async (vocabItem: LessonVocabularySuggestion) => {
-    if (!user?.uid) return;
-    const userId = user.uid;
+    if (!user) return;
     setIsSavingWord((prev) => ({ ...prev, [vocabItem.word]: true }));
 
     try {
@@ -272,7 +270,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
         vietnameseSentence: details.vietnameseSentence,
       };
 
-      const savedWord = await addWordToVocabularyService(userId, newWordData);
+      const savedWord = await addWordToVocabularyService(user.uid, newWordData);
       setWords((prev) => [...prev, savedWord]);
 
       toast({
@@ -413,7 +411,7 @@ const LessonDetailView: FC<LessonDetailViewProps> = ({
   const handleSaveChanges = async () => {
     setIsLoading("saving");
     try {
-      const finalContent = tempContent ?? currentLesson.content ?? [];
+      const finalContent = tempContent ?? currentLesson.content;
       const finalExercises = tempExercises ?? currentLesson.exercises;
 
       await updateLessonContent(

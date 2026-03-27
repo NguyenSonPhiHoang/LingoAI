@@ -197,10 +197,7 @@ export const getTotalUserActivity = async (userId: string): Promise<number> => {
 
   let totalSeconds = 0;
   querySnapshot.forEach((doc) => {
-    const data = doc.data() as { durationSeconds?: unknown };
-    const seconds =
-      typeof data.durationSeconds === "number" ? data.durationSeconds : 0;
-    totalSeconds += seconds;
+    totalSeconds += doc.data().durationSeconds || 0;
   });
 
   return totalSeconds;
@@ -215,10 +212,9 @@ export const getAllUsersTotalActivity = async (): Promise<
   const userTotals: Record<string, number> = {};
 
   querySnapshot.forEach((doc) => {
-    const data = doc.data() as { userId?: unknown; durationSeconds?: unknown };
-    const userId = typeof data.userId === "string" ? data.userId : undefined;
-    const duration =
-      typeof data.durationSeconds === "number" ? data.durationSeconds : 0;
+    const data = doc.data();
+    const userId = data.userId;
+    const duration = data.durationSeconds || 0;
     if (userId) {
       userTotals[userId] = (userTotals[userId] || 0) + duration;
     }
@@ -249,11 +245,10 @@ export const getUserActivityForMonth = async (
   const querySnapshot = await getDocs(q);
 
   return querySnapshot.docs.map((doc) => {
-    const data = doc.data() as { date?: unknown; durationSeconds?: unknown };
+    const data = doc.data();
     return {
       date: format((data.date as Timestamp).toDate(), "yyyy-MM-dd"),
-      durationSeconds:
-        typeof data.durationSeconds === "number" ? data.durationSeconds : 0,
+      durationSeconds: data.durationSeconds,
     };
   });
 };

@@ -10,6 +10,13 @@ export const config = {
     process.env.GEMINI_MODEL ||
     "gemini-1.5-flash",
   geminiTtsModel: process.env.GEMINI_TTS_MODEL || "",
+  smtp: {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || "",
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@lingoai.com",
+  },
   db: {
     user: process.env.DB_USER || "sa",
     password: process.env.DB_PASSWORD || "",
