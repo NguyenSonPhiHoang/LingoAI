@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +40,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarGroup,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -221,51 +223,65 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
         <SidebarHeader>
           <Link
             href="/"
-            className="block"
+            className="flex w-full items-center justify-center min-h-[40px]"
             onClick={() => handleViewChange("overview")}
           >
-            <h1 className="text-2xl font-bold text-primary">
-              <span className="group-data-[collapsible=icon]:hidden">
-                Lingo
-              </span>
-              <span>AI</span>
-            </h1>
+            {/* Full logo - visible when sidebar is expanded */}
+            <Image
+              src="/logo.png"
+              alt="LingoAI"
+              width={120}
+              height={40}
+              className="object-contain group-data-[collapsible=icon]:hidden"
+              priority
+            />
+            {/* Icon only - visible when sidebar is collapsed */}
+            <Image
+              src="/logo-icon.png"
+              alt="LingoAI Icon"
+              width={32}
+              height={32}
+              className="object-contain hidden group-data-[collapsible=icon]:block"
+              priority
+            />
           </Link>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
-            {user?.status === "approved" &&
-              availableMenuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    id={`nav-${item.id}`}
-                    onClick={() => handleMenuClick(item.id as View, item.href)}
-                    isActive={
-                      activeView === item.id ||
-                      (activeView === "lesson-detail" &&
-                        item.id === "my-lessons")
-                    }
-                    tooltip={item.label}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            {user?.status === "approved" && (
-              <SidebarMenuItem>
-                <AddWordDialog
-                  setWords={setWords}
-                  trigger={
-                    <SidebarMenuButton tooltip="Add New Word">
-                      <Plus />
-                      <span>Add New Word</span>
+          <SidebarGroup>
+            <SidebarMenu>
+              {user?.status === "approved" &&
+                availableMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      id={`nav-${item.id}`}
+                      onClick={() => handleMenuClick(item.id as View, item.href)}
+                      isActive={
+                        activeView === item.id ||
+                        (activeView === "lesson-detail" &&
+                          item.id === "my-lessons")
+                      }
+                      tooltip={item.label}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
                     </SidebarMenuButton>
-                  }
-                />
-              </SidebarMenuItem>
-            )}
-          </SidebarMenu>
+                  </SidebarMenuItem>
+                ))}
+              {user?.status === "approved" && (
+                <SidebarMenuItem>
+                  <AddWordDialog
+                    setWords={setWords}
+                    trigger={
+                      <SidebarMenuButton tooltip="Add New Word">
+                        <Plus />
+                        <span>Add New Word</span>
+                      </SidebarMenuButton>
+                    }
+                  />
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>

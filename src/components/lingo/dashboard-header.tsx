@@ -65,27 +65,6 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
     return viewTitles[activeView] || "Dashboard";
   };
 
-  const viewEmojis: Record<string, string> = {
-    overview: "📊",
-    levels: "🎓",
-    "ai-suggester": "✨",
-    "my-lessons": "📚",
-    grammar: "📖",
-    vocabulary: "🗂️",
-    review: "🎯",
-    "user-management": "👥",
-    "word-management": "🗄️",
-    "lesson-detail": "📄",
-    profile: "👤",
-    settings: "⚙️",
-    storybook: "📕",
-    "placement-test": "🧠",
-    "review-test": "📝",
-    library: "📚",
-    guide: "🆘",
-    "admin-analytics": "📈",
-  };
-
   return (
     <header
       className="sticky top-0 z-10 flex h-16 min-w-0 items-center gap-4 px-4 sm:px-6"
@@ -104,9 +83,6 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({
           className="h-6 w-1 rounded-full shrink-0"
           style={{ background: "linear-gradient(180deg, #6366f1, #8b5cf6)" }}
         />
-        <span className="text-sm text-muted-foreground shrink-0">
-          {viewEmojis[activeView] ?? ""}
-        </span>
         <h1 className="text-base font-bold truncate text-foreground">
           {getTitle()}
         </h1>
