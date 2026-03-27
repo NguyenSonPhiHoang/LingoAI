@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/services/api";
 import vtepService from "@/services/vtep";
+import * as speakingService from "@/services/vtep-speaking";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -171,6 +172,16 @@ export default function VtepTestsAdminPage() {
   }
 
   function openEdit(t: any) {
+    // Speaking tests are managed through VTEP documents page
+    if (t.skill === 'Speaking') {
+      toast({ 
+        title: "Speaking Test", 
+        description: "To edit Speaking test details, go to /vtep, open the Speaking document, and use the 'Prompts' button.",
+        duration: 5000
+      });
+      return;
+    }
+    
     // Open the items management dialog and prefill metadata so user can
     // edit both metadata and items in the same view.
     setCurrent(t);
@@ -211,7 +222,14 @@ export default function VtepTestsAdminPage() {
     if (!confirm("Delete this VTEP test?")) return;
     try {
       setLoading(true);
-      await apiDelete(`/api/vteptests/${t.id}`);
+      
+      // Handle Speaking tests differently
+      if (t.skill === 'Speaking') {
+        await speakingService.deleteSpeakingTest(t.id);
+      } else {
+        await apiDelete(`/api/vteptests/${t.id}`);
+      }
+      
       await load();
       toast({ title: "Deleted" });
     } catch (err) {
@@ -225,7 +243,16 @@ export default function VtepTestsAdminPage() {
   async function toggleActive(t: any) {
     try {
       setLoading(true);
-      await apiPut(`/api/vteptests/${t.id}`, { isActive: !t.isActive });
+      
+      // Handle Speaking tests differently
+      if (t.skill === 'Speaking') {
+        await speakingService.updateSpeakingTest(t.id, {
+          isActive: !t.isActive
+        });
+      } else {
+        await apiPut(`/api/vteptests/${t.id}`, { isActive: !t.isActive });
+      }
+      
       await load();
     } catch (err) {
       console.error(err);
@@ -240,6 +267,7 @@ export default function VtepTestsAdminPage() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [items, setItems] = useState<any[]>([]);
   const [managingTest, setManagingTest] = useState<any | null>(null);
+  const [documentsMetadata, setDocumentsMetadata] = useState<{ [docId: string]: any }>({});
 
   async function loadItems(testId: string) {
     try {
@@ -248,6 +276,18 @@ export default function VtepTestsAdminPage() {
         `/api/vteptests/${testId}/items`,
       );
       setItems(res.items || []);
+      
+      // Load document metadata for reading passages
+      const uniqueDocIds = Array.from(
+        new Set(
+          (res.items || [])
+            .map((it: any) => it.sourceDocumentId)
+            .filter(Boolean)
+        )
+      );
+      for (const docId of uniqueDocIds) {
+        await loadDocumentMetadata(docId);
+      }
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", title: "Failed to load items" });
@@ -257,7 +297,29 @@ export default function VtepTestsAdminPage() {
     }
   }
 
+  async function loadDocumentMetadata(docId: string) {
+    if (!docId || documentsMetadata[docId]) return;
+    try {
+      const res = await vtepService.getVtepDocument(docId);
+      if (res?.document) {
+        setDocumentsMetadata(prev => ({ ...prev, [docId]: res.document }));
+      }
+    } catch (err) {
+      console.error("Failed to load document metadata", err);
+    }
+  }
+
   function openManageItems(t: any) {
+    // Check if this is a Speaking test
+    if (t.skill === 'Speaking') {
+      toast({ 
+        title: "Speaking Test", 
+        description: "Speaking tests are managed through the VTEP documents page. Navigate to /vtep and open a Speaking document, then use the 'Prompts' button.",
+        duration: 5000
+      });
+      return;
+    }
+    
     setManagingTest(t);
     setItemsOpen(true);
     loadItems(t.id);
@@ -562,6 +624,7 @@ export default function VtepTestsAdminPage() {
                   items={pageItems}
                   itemsOnly
                   layout={layoutMode}
+                  showProgress={false}
                   onOpen={(id: string) => {
                     const t = pageItems.find((x: any) => x.id === id);
                     if (t) openManageItems(t);
@@ -932,35 +995,62 @@ export default function VtepTestsAdminPage() {
               ) : items.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No items</div>
               ) : (
-                <ul className="space-y-2 max-h-72 overflow-auto">
-                  {items.map((it) => (
-                    <li
-                      key={it.id}
-                      className="p-2 border rounded flex items-start justify-between"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{it.prompt}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {it.sectionKey || ""}{" "}
-                          {it.sourceDocumentId
-                            ? `• ${it.sourceDocumentId}`
-                            : ""}
+                <ul className="space-y-3 max-h-72 overflow-auto">
+                  {items.map((it) => {
+                    // Get passage for this item
+                    const doc = it.sourceDocumentId ? documentsMetadata[it.sourceDocumentId] : null;
+                    let passage = null;
+                    if (doc && doc.tocJson?.reading?.passages) {
+                      const partStr = String(it.part || "").toLowerCase();
+                      const match = partStr.match(/passage\\s*(\\d+)/);
+                      if (match) {
+                        const passageIndex = parseInt(match[1], 10);
+                        passage = doc.tocJson.reading.passages.find(
+                          (p: any) => p.index === passageIndex
+                        );
+                      }
+                    }
+                    
+                    return (
+                      <li
+                        key={it.id}
+                        className="p-3 border rounded"
+                      >
+                        {passage && (
+                          <div className="mb-3 p-3 bg-blue-50 rounded border">
+                            <div className="text-xs font-medium mb-2">Reading Passage</div>
+                            <div 
+                              className="prose prose-xs max-w-none text-sm"
+                              dangerouslySetInnerHTML={{ __html: passage.html || '' }}
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium">{it.prompt}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {it.sectionKey || ""}{" "}
+                              {it.sourceDocumentId
+                                ? `• ${it.sourceDocumentId}`
+                                : ""}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 flex gap-2">
+                            <Button size="sm" onClick={() => startEditItem(it)}>
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteItem(it)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-shrink-0 flex gap-2">
-                        <Button size="sm" onClick={() => startEditItem(it)}>
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteItem(it)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

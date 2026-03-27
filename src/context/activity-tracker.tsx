@@ -83,10 +83,11 @@ export const ActivityTracker = ({ children }: { children: ReactNode }) => {
       intervalRef.current = null;
     }
 
-    if (user && !loading) {
+    if (user?.uid && !loading) {
+      const userId = user.uid;
       intervalRef.current = setInterval(() => {
         if (isVisibleRef.current) {
-          recordActivity(user.uid, PING_INTERVAL_MS / 1000);
+          recordActivity(userId, PING_INTERVAL_MS / 1000);
         }
       }, PING_INTERVAL_MS);
     }

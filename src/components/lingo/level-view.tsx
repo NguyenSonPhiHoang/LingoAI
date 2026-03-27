@@ -64,7 +64,7 @@ import {
   rateResource,
   type LearningResource,
 } from "@/services/learning-resources";
-import { addDocument } from "@/services/library";
+import { addContentToDocument, addDocument } from "@/services/library";
 import { extractTextFromFile } from "@/ai/flows/extract-text-from-file";
 import mammoth from "mammoth";
 import { useRouter } from "next/navigation";
@@ -424,10 +424,11 @@ const AIPersonalization: FC = () => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user?.uid) return;
+    const userId = user.uid;
 
     setIsUploading(true);
     toast({
@@ -438,6 +439,7 @@ const AIPersonalization: FC = () => {
 
     try {
       let textContent = "";
+      let extractedImageDataUri: string | null = null;
       if (
         file.type ===
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -451,6 +453,7 @@ const AIPersonalization: FC = () => {
           reader.onload = () => resolve(reader.result as string);
           reader.readAsDataURL(file);
         });
+        extractedImageDataUri = dataUri;
         const result = await extractTextFromFile({ imageDataUri: dataUri });
         textContent = result.text;
       } else {
@@ -473,7 +476,18 @@ const AIPersonalization: FC = () => {
         return;
       }
 
-      const newDoc = await addDocument(user.uid, file.name, textContent);
+      const newDoc = await addDocument(userId, file.name, "", "Reading", "");
+
+      await addContentToDocument(newDoc.id, file.name, textContent, "markdown");
+
+      if (extractedImageDataUri) {
+        await addContentToDocument(
+          newDoc.id,
+          file.name,
+          extractedImageDataUri,
+          "image",
+        );
+      }
       toast({
         title: "Success!",
         description: `"${file.name}" has been added. Redirecting to your library.`,
@@ -580,7 +594,7 @@ const StarRating: FC<{
                 "h-4 w-4 cursor-pointer transition-colors",
                 isFilled ? "text-yellow-400 fill-yellow-400" : "text-gray-300",
                 isUserChoice && "fill-yellow-400",
-                isSubmitting && "animate-pulse"
+                isSubmitting && "animate-pulse",
               )}
               onMouseEnter={() => setHoverRating(star)}
               onClick={() => handleRating(star)}
@@ -659,20 +673,26 @@ const LevelView: FC = () => {
           };
         }
         return r;
-      })
+      }),
     );
   };
 
-  const groupedResources = resources.reduce((acc, resource) => {
-    if (!acc[resource.level]) {
-      acc[resource.level] = {};
-    }
-    if (!acc[resource.level][resource.skill]) {
-      acc[resource.level][resource.skill] = [];
-    }
-    acc[resource.level][resource.skill].push(resource);
-    return acc;
-  }, {} as Record<LevelKey, Record<Skill, LearningResource[]>>);
+  type GroupedResources = Partial<
+    Record<LevelKey, Partial<Record<Skill, LearningResource[]>>>
+  >;
+
+  const groupedResources = resources.reduce<GroupedResources>(
+    (acc, resource) => {
+      const level = resource.level as LevelKey;
+      const skill = resource.skill as Skill;
+
+      acc[level] ??= {};
+      acc[level]![skill] ??= [];
+      acc[level]![skill]!.push(resource);
+      return acc;
+    },
+    {},
+  );
 
   if (isLoading) {
     return (
@@ -694,7 +714,7 @@ const LevelView: FC = () => {
               key={levelKey}
               className={cn(
                 "border rounded-lg",
-                levelColors[index % levelColors.length]
+                levelColors[index % levelColors.length],
               )}
             >
               <AccordionTrigger className="p-4 text-left hover:no-underline [&>svg]:ml-4">

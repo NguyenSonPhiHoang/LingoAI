@@ -294,14 +294,14 @@ export default function UserManagement() {
           <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
             <DialogTrigger asChild>
               <Button onClick={() => setCreateOpen(true)}>
-                Tạo người dùng mới
+                Create new user
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tạo người dùng mới</DialogTitle>
+                <DialogTitle>Create new user</DialogTitle>
                 <DialogDescription>
-                  Thêm tài khoản người dùng mới vào hệ thống.
+                  Add a new user account to the system.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 mt-2">
@@ -358,11 +358,11 @@ export default function UserManagement() {
                 <DialogFooter>
                   <DialogClose asChild>
                     <Button type="button" variant="outline">
-                      Hủy
+                      Cancel
                     </Button>
                   </DialogClose>
                   <Button type="submit" disabled={isCreating}>
-                    {isCreating ? "Đang tạo..." : "Tạo"}
+                    {isCreating ? "Creating..." : "Create"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -525,8 +525,8 @@ export default function UserManagement() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
-            <DialogDescription>Cập nhật thông tin tài khoản.</DialogDescription>
+            <DialogTitle>Edit user</DialogTitle>
+            <DialogDescription>Update user account details.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 mt-2">
             <div className="grid grid-cols-1 gap-2">
@@ -578,11 +578,11 @@ export default function UserManagement() {
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Hủy
+                  Cancel
                 </Button>
               </DialogClose>
               <Button type="submit" disabled={isUpdating}>
-                {isUpdating ? "Đang lưu..." : "Lưu"}
+                {isUpdating ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

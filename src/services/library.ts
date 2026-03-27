@@ -368,3 +368,8 @@ export const deleteContent = async (contentId: string) => {
   // Add extra security check if needed by fetching the document first
   await deleteDoc(doc(db, "library_content", contentId));
 };
+
+export const fetchDocumentContent = async (docId: string): Promise<string> => {
+  const res = await apiGet<{ content: string }>(`/library/${docId}/fetch-content`);
+  return res.content;
+};

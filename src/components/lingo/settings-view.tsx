@@ -34,7 +34,8 @@ const SettingsView: FC = () => {
   const { speechRate, setSpeechRate, theme, setTheme } = useSettings();
   const [localRate, setLocalRate] = useState(speechRate);
   const [localTheme, setLocalTheme] = useState(theme);
-  const [localApiKey, setLocalApiKey] = useState(user?.geminiApiKey || "");
+  const [localApiKey, setLocalApiKey] = useState("");
+  const [initialApiKey, setInitialApiKey] = useState("");
   const [allowGemini, setAllowGemini] = useState<boolean | null>(null);
   const [localChatBotId, setLocalChatBotId] = useState("");
   const [initialChatBotId, setInitialChatBotId] = useState("");
@@ -46,7 +47,13 @@ const SettingsView: FC = () => {
     const load = async () => {
       try {
         const remote = await getUserSettings();
-        if (remote?.geminiApiKey) setLocalApiKey(remote.geminiApiKey);
+        if (typeof remote?.geminiApiKey === "string") {
+          setLocalApiKey(remote.geminiApiKey);
+          setInitialApiKey(remote.geminiApiKey);
+        } else {
+          setLocalApiKey("");
+          setInitialApiKey("");
+        }
         if ((remote as any)?.allowGeminiApiKey !== undefined)
           setAllowGemini((remote as any).allowGeminiApiKey);
         if (remote?.chatBotId) {
@@ -164,7 +171,7 @@ const SettingsView: FC = () => {
   };
 
   const isSettingsDirty = speechRate !== localRate || theme !== localTheme;
-  const isApiKeyDirty = localApiKey !== (user?.geminiApiKey || "");
+  const isApiKeyDirty = localApiKey !== initialApiKey;
   const isChatBotDirty = localChatBotId !== initialChatBotId;
 
   return (

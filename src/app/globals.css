@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+.vstep-hl {
+  font-weight: 600;
+}
+
+.vstep-em {
+  font-style: italic;
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }

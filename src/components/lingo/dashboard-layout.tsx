@@ -45,6 +45,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -201,6 +204,11 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
     return item.role.includes(roleIdNormalized);
   });
 
+  const vtepIds = ["vtep-student", "vtep", "vteptests"];
+  const [vtepOpen, setVtepOpen] = useState<boolean>(() =>
+    vtepIds.includes(activeView as string) ? true : false,
+  );
+
   const handleViewChange = (view: View | "guide") => {
     setActiveView(view);
     setOpenMobile(false);
@@ -319,8 +327,8 @@ const DashboardLayoutContent: FC<DashboardLayoutProps> = ({
       </Sidebar>
       <SidebarInset>
         <DashboardHeader
-          activeView={activeView as View | "guide"}
-          setActiveView={setActiveView as (view: View | "guide") => void}
+          activeView={activeView}
+          setActiveView={setActiveView}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>

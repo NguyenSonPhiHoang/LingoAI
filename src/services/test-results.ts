@@ -231,7 +231,7 @@ export const getTestResults = async (userId: string): Promise<TestResult[]> => {
   }
 
   return snapshot.docs.map((doc) => {
-    const data = doc.data();
+    const data = doc.data() as Record<string, any>;
     return {
       id: doc.id,
       ...data,

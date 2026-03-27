@@ -68,7 +68,12 @@ export const useAudioPlayback = ({
   };
 
   const playAudioUrl = async (key: string, url: string): Promise<boolean> => {
-    if (!audioRef.current) return false;
+    console.log('🎵 playAudioUrl called:', { key, url });
+    
+    if (!audioRef.current) {
+      console.error('🎵 audioRef.current is null');
+      return false;
+    }
 
     setActivePlaybackKey(key);
     setHighlightedRange(null);
@@ -80,19 +85,34 @@ export const useAudioPlayback = ({
       // ignore
     }
 
+    console.log('🎵 Setting audio src:', url);
     audioRef.current.src = url;
-    audioRef.current.onended = () => setActivePlaybackKey(null);
-    audioRef.current.onerror = () => {
-      // Recoverable in many cases (e.g., invalid URL) since callers may fall back
-      // to browser TTS. Avoid spamming the console with false alarms.
+    audioRef.current.onended = () => {
       setActivePlaybackKey(null);
+      setIsLoadingAudio((prev) => ({ ...prev, [key]: false }));
+    };
+    audioRef.current.onerror = (e) => {
+      console.error('🎵 Audio error event:', e);
+      console.error('🎵 Audio error - src:', audioRef.current?.src);
+      console.error('🎵 Audio error - networkState:', audioRef.current?.networkState);
+      console.error('🎵 Audio error - readyState:', audioRef.current?.readyState);
+      setActivePlaybackKey(null);
+      setIsLoadingAudio((prev) => ({ ...prev, [key]: false }));
     };
 
     try {
+      console.log('🎵 Attempting to play...');
       await audioRef.current.play();
+      console.log('🎵 Play successful!');
       return true;
     } catch (e) {
-      console.error("Error playing audio from URL:", e);
+      console.error("🎵 Error playing audio from URL:", e);
+      console.error('🎵 Audio element state:', {
+        src: audioRef.current?.src,
+        networkState: audioRef.current?.networkState,
+        readyState: audioRef.current?.readyState,
+        error: audioRef.current?.error
+      });
       setActivePlaybackKey(null);
       return false;
     }
@@ -213,27 +233,44 @@ export const useAudioPlayback = ({
     if (audioRef.current) audioRef.current.pause();
     window.speechSynthesis.cancel();
 
+    console.log('🎵 playAudio called:', { key, text, existingUrl });
+
     if (existingUrl && !isProbablyUnplayableAudioUrl(existingUrl)) {
+      console.log('🎵 Attempting to play existing URL:', existingUrl);
       setIsLoadingAudio((prev) => ({ ...prev, [key]: true }));
-      try {
-        const ok = await playAudioUrl(key, existingUrl);
-        if (ok) return existingUrl;
-      } finally {
+      const ok = await playAudioUrl(key, existingUrl);
+      console.log('🎵 playAudioUrl result:', ok);
+      if (ok) {
+        // Success - keep isLoadingAudio true until onended/onerror callbacks
+        return existingUrl;
+      } else {
+        // Failed to play - clear loading state
         setIsLoadingAudio((prev) => ({ ...prev, [key]: false }));
+        toast({
+          variant: "destructive",
+          title: "Audio playback failed",
+          description: `Could not play audio from: ${existingUrl}`,
+          duration: 5000,
+        });
+        return undefined;
       }
     }
 
     if (audioUrls[key]) {
       setIsLoadingAudio((prev) => ({ ...prev, [key]: true }));
-      try {
-        const ok = await playAudioUrl(key, audioUrls[key]);
-        if (ok) return audioUrls[key];
-      } finally {
+      const ok = await playAudioUrl(key, audioUrls[key]);
+      if (ok) {
+        // Success - keep isLoadingAudio true until callbacks
+        return audioUrls[key];
+      } else {
+        // Failed - clear loading state
         setIsLoadingAudio((prev) => ({ ...prev, [key]: false }));
+        return undefined;
       }
     }
 
     // Browser TTS only (no AI).
+    console.log('🎵 Fallback to browser TTS');
     playWithBrowserTTS(key, text);
     return undefined;
   };
@@ -634,10 +671,22 @@ export const useAudioPlayback = ({
     }
   };
 
+  const stopAudio = (key: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+    }
+    window.speechSynthesis.cancel();
+    setActivePlaybackKey(null);
+    setIsLoadingAudio((prev) => ({ ...prev, [key]: false }));
+  };
+
   return {
     audioRef,
     isLoadingAudio,
     playAudio,
+    stopAudio,
     playWithBrowserTTS,
     playTermAudio,
     playAndSaveUnsavedWord,
