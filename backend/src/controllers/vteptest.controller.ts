@@ -3,7 +3,6 @@ import { VtepTestRepository } from "../repositories/vteptest.repository";
 import { VtepTestItemRepository } from "../repositories/vteptestItem.repository";
 import { TestRepository } from "../repositories/test.repository";
 import { TestItemRepository } from "../repositories/testItem.repository";
-import { VtepSpeakingRepository } from "../repositories/vtepSpeaking.repository";
 import { v4 as uuidv4 } from "uuid";
 
 class VtepTestController {
@@ -37,27 +36,8 @@ class VtepTestController {
 
   static async listAll(req: Request, res: Response) {
     try {
-      // Get both Listening/Reading tests and Speaking tests
-      const listeningReadingTests = await VtepTestRepository.listAll();
-      const speakingTests = await VtepSpeakingRepository.listTests();
-
-      // Add skill field to distinguish test types
-      const allTests = [
-        ...listeningReadingTests.map((t) => ({
-          ...t,
-          skill: t.skill || "Listening/Reading",
-        })),
-        ...speakingTests.map((t) => ({ ...t, skill: "Speaking" })),
-      ];
-
-      // Sort by createdAt descending
-      allTests.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-
-      return res.json(allTests);
+      const rows = await VtepTestRepository.listAll();
+      return res.json(rows);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "list failed" });
@@ -95,32 +75,8 @@ class VtepTestController {
 
   static async listActive(req: Request, res: Response) {
     try {
-      // Get both Listening/Reading tests and Speaking tests
-      const listeningReadingTests = await VtepTestRepository.listActivePublic();
-      const speakingTests = await VtepSpeakingRepository.listTests();
-
-      // Filter speaking tests for active and public only
-      const activeSpeakingTests = speakingTests.filter(
-        (t) => t.isActive && t.isPublic
-      );
-
-      // Add skill field to distinguish test types
-      const allTests = [
-        ...listeningReadingTests.map((t) => ({
-          ...t,
-          skill: t.skill || "Listening/Reading",
-        })),
-        ...activeSpeakingTests.map((t) => ({ ...t, skill: "Speaking" })),
-      ];
-
-      // Sort by createdAt descending
-      allTests.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-
-      return res.json(allTests);
+      const rows = await VtepTestRepository.listActivePublic();
+      return res.json(rows);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "list failed" });
@@ -148,7 +104,6 @@ class VtepTestController {
         id: testId,
         userId: userId,
         type: "vtep",
-        skill: vtepTest.skill || null,
         data: JSON.stringify(testData),
       });
 
@@ -168,9 +123,6 @@ class VtepTestController {
             options: it.optionsJson,
             answer: it.answerJson,
             sourceDocumentId: it.sourceDocumentId,
-            part: it.part || null,
-            skill: it.skill || null,
-            mediaUrl: it.mediaUrl || null, // Include audio/media URL
           }),
         });
       }

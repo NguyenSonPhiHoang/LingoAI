@@ -1,7 +1,7 @@
 "use client";
 import type { FC } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import type { ViewState } from "@/app/page";
+import type { View } from "@/app/page";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -17,8 +17,8 @@ import { User, Settings, LogOut, Users, Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
-  activeView: ViewState["view"];
-  setActiveView: (view: ViewState["view"]) => void;
+  activeView: View | "guide";
+  setActiveView: (view: View | "guide") => void;
 }
 
   const viewTitles: Record<string, string> = {

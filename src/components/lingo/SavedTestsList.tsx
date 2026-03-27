@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
 
 type SavedTest = any;
 
@@ -10,46 +9,33 @@ export default function SavedTestsList({
   items,
   loading,
   onOpen,
-  onDelete,
   initialPageSize = 10,
   renderActions,
   layout = "list",
   itemsOnly = false,
-  showProgress = true,
 }: {
   items: SavedTest[] | null | undefined;
   loading?: boolean;
   onOpen?: (id: string) => void;
-  onDelete?: (id: string) => Promise<void>;
   initialPageSize?: number;
   renderActions?: (t: any) => React.ReactNode;
   layout?: "list" | "card";
   itemsOnly?: boolean;
-  showProgress?: boolean;
 }) {
+  // if itemsOnly is true, component will just render the provided items array
+  // without its own search / pagination controls.
+  // This allows the admin page to reuse the UI rendering while keeping
+  // custom top controls and pagination.
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("takenAt");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [deleting, setDeleting] = useState<string | null>(null);
 
   const list = items || [];
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!onDelete) return;
-    if (!confirm(`Delete test "${title}"?\n\nThis action cannot be undone.`)) return;
-    try {
-      setDeleting(id);
-      await onDelete(id);
-    } catch (err) {
-      console.error("Failed to delete test:", err);
-      alert("Delete failed. Please try again.");
-    } finally {
-      setDeleting(null);
-    }
-  };
-
+  // If itemsOnly was passed, render only the provided items without
+  // the built-in search / filter / pagination controls.
   if (itemsOnly) {
     const provided = list;
     if (provided.length === 0) {
@@ -68,76 +54,24 @@ export default function SavedTestsList({
                 key={t.id}
                 className="p-2 border rounded flex items-center justify-between"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium truncate flex items-center gap-2">
-                      <span>{t.title}</span>
-                      {t.skill && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          t.skill === 'Speaking' 
-                            ? 'bg-purple-100 text-purple-700'
-                            : t.skill === 'Writing'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {t.skill}
-                        </span>
-                      )}
-                      {t.testType && !t.skill && <span> - {t.testType}</span>}
-                    </div>
-                    {showProgress && (
-                      <div className="text-lg font-bold text-blue-600 ml-2">
-                        {t.percentage}%
-                      </div>
-                    )}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">
+                    {t.title} - {t.testType} - {t.percentage}%
                   </div>
-                  {showProgress && (
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                      <div 
-                        className="h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${t.percentage}%`,
-                          backgroundColor: t.percentage >= 80 ? '#22c55e' : t.percentage >= 60 ? '#3b82f6' : t.percentage >= 40 ? '#f59e0b' : '#ef4444'
-                        }}
-                      />
-                    </div>
-                  )}
                   <div className="text-sm text-muted-foreground">
-                    {t.takenAt && new Date(t.takenAt).toLocaleString("vi-VN", {
-                      timeZone: "Asia/Ho_Chi_Minh",
-                    })}
-                    {t.createdAt && !t.takenAt && new Date(t.createdAt).toLocaleString("vi-VN", {
+                    {new Date(t.takenAt).toLocaleString("vi-VN", {
                       timeZone: "Asia/Ho_Chi_Minh",
                     })}{" "}
-                    {t.isPublic !== undefined && (t.isPublic ? "• Public" : "• Private")}
-                    {!showProgress && t.percentage && (
-                      <span> • {t.percentage}%</span>
-                    )}
-                    {t.correctAnswers !== undefined && t.totalQuestions !== undefined && (
-                      <span> • {t.correctAnswers}/{t.totalQuestions} correct</span>
-                    )}
+                    {t.isPublic ? "• Public" : "• Private"}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {renderActions ? (
                     renderActions(t)
                   ) : (
-                    <>
-                      <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
-                        Open
-                      </Button>
-                      {onDelete && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDelete(t.id, t.title)}
-                          disabled={deleting === t.id}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </>
+                    <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
+                      Open
+                    </Button>
                   )}
                 </div>
               </li>
@@ -151,74 +85,25 @@ export default function SavedTestsList({
                 className="border rounded p-4 flex flex-col justify-between"
               >
                 <div>
-                  <div className="font-medium text-lg flex items-center gap-2">
-                    <span>{t.title}</span>
-                    {t.skill && (
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        t.skill === 'Speaking' 
-                          ? 'bg-purple-100 text-purple-700'
-                          : t.skill === 'Writing'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {t.skill}
-                      </span>
-                    )}
-                    {t.testType && !t.skill && <span> - {t.testType}</span>}
+                  <div className="font-medium text-lg">
+                    {t.title} - {t.testType} - {t.percentage}%
                   </div>
-                  {showProgress && (
-                    <>
-                      <div className="text-2xl font-bold text-blue-600 mt-2">
-                        {t.percentage}%
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2 mb-2">
-                        <div 
-                          className="h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${t.percentage}%`,
-                            backgroundColor: t.percentage >= 80 ? '#22c55e' : t.percentage >= 60 ? '#3b82f6' : t.percentage >= 40 ? '#f59e0b' : '#ef4444'
-                          }}
-                        />
-                      </div>
-                    </>
-                  )}
                   <div className="text-sm text-muted-foreground mt-1">
-                    {t.takenAt && new Date(t.takenAt).toLocaleString("vi-VN", {
-                      timeZone: "Asia/Ho_Chi_Minh",
-                    })}
-                    {t.createdAt && !t.takenAt && new Date(t.createdAt).toLocaleString("vi-VN", {
-                      timeZone: "Asia/Ho_Chi_Minh",
-                    })}{" "}
-                    {t.isPublic !== undefined && (t.isPublic ? "• Public" : "• Private")}
-                    {!showProgress && t.percentage && (
-                      <span> • {t.percentage}%</span>
-                    )}
-                    {t.correctAnswers !== undefined && t.totalQuestions !== undefined && (
-                      <div className="mt-1">{t.correctAnswers}/{t.totalQuestions} correct</div>
-                    )}
+                    {t.description || ""}
                   </div>
                 </div>
-                <div className="mt-3">
-                  <div className="flex items-center gap-2">
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    {t.isActive ? "Active" : "Inactive"} •{" "}
+                    {t.isPublic ? "Public" : "Private"}
+                  </div>
+                  <div className="flex items-center gap-3">
                     {renderActions ? (
                       renderActions(t)
                     ) : (
-                      <>
-                        <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
-                          Open
-                        </Button>
-                        {onDelete && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(t.id, t.title)}
-                            disabled={deleting === t.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </>
+                      <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
+                        Open
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -330,63 +215,26 @@ export default function SavedTestsList({
               {pageItems.map((t: any) => (
                 <li
                   key={t.id}
-                  className="p-3 border rounded flex items-center justify-between"
+                  className="p-2 border rounded flex items-center justify-between"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-medium truncate">
-                        {t.title} - {t.testType}
-                      </div>
-                      {showProgress && (
-                        <div className="text-lg font-bold text-blue-600 ml-2">
-                          {t.percentage}%
-                        </div>
-                      )}
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">
+                      {t.title} - {t.testType} - {t.percentage}%
                     </div>
-                    {showProgress && (
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                        <div 
-                          className="h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${t.percentage}%`,
-                            backgroundColor: t.percentage >= 80 ? '#22c55e' : t.percentage >= 60 ? '#3b82f6' : t.percentage >= 40 ? '#f59e0b' : '#ef4444'
-                          }}
-                        />
-                      </div>
-                    )}
                     <div className="text-sm text-muted-foreground">
                       {new Date(t.takenAt).toLocaleString("vi-VN", {
                         timeZone: "Asia/Ho_Chi_Minh",
                       })}{" "}
                       {t.isPublic ? "• Public" : "• Private"}
-                      {!showProgress && t.percentage && (
-                        <span> • {t.percentage}%</span>
-                      )}
-                      {t.correctAnswers !== undefined && t.totalQuestions !== undefined && (
-                        <span> • {t.correctAnswers}/{t.totalQuestions} correct</span>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {renderActions ? (
                       renderActions(t)
                     ) : (
-                      <>
-                        <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
-                          Open
-                        </Button>
-                        {onDelete && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(t.id, t.title)}
-                            disabled={deleting === t.id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </>
+                      <Button size="sm" onClick={() => onOpen && onOpen(t.id)}>
+                        Open
+                      </Button>
                     )}
                   </div>
                 </li>
@@ -401,32 +249,10 @@ export default function SavedTestsList({
                 >
                   <div>
                     <div className="font-medium text-lg">
-                      {t.title} - {t.testType}
+                      {t.title} - {t.testType} - {t.percentage}%
                     </div>
-                    {showProgress && (
-                      <>
-                        <div className="text-2xl font-bold text-blue-600 mt-2">
-                          {t.percentage}%
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2 mb-2">
-                          <div 
-                            className="h-2 rounded-full transition-all duration-300"
-                            style={{
-                              width: `${t.percentage}%`,
-                              backgroundColor: t.percentage >= 80 ? '#22c55e' : t.percentage >= 60 ? '#3b82f6' : t.percentage >= 40 ? '#f59e0b' : '#ef4444'
-                            }}
-                          />
-                        </div>
-                      </>
-                    )}
                     <div className="text-sm text-muted-foreground mt-1">
                       {t.description || ""}
-                      {!showProgress && t.percentage && (
-                        <div className="mt-1">Score: {t.percentage}%</div>
-                      )}
-                      {t.correctAnswers !== undefined && t.totalQuestions !== undefined && (
-                        <div className="mt-1">{t.correctAnswers}/{t.totalQuestions} correct</div>
-                      )}
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
@@ -434,29 +260,16 @@ export default function SavedTestsList({
                       {t.isActive ? "Active" : "Inactive"} •{" "}
                       {t.isPublic ? "Public" : "Private"}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {renderActions ? (
                         renderActions(t)
                       ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => onOpen && onOpen(t.id)}
-                          >
-                            Open
-                          </Button>
-                          {onDelete && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDelete(t.id, t.title)}
-                              disabled={deleting === t.id}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </>
+                        <Button
+                          size="sm"
+                          onClick={() => onOpen && onOpen(t.id)}
+                        >
+                          Open
+                        </Button>
                       )}
                     </div>
                   </div>

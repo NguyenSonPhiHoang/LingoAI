@@ -17,13 +17,6 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import vtepService from "@/services/vtep";
 
@@ -34,9 +27,6 @@ const AddVtepDocumentDialog: FC<{
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [skill, setSkill] = useState<
-    "Listening" | "Reading" | "Writing" | "Speaking"
-  >("Listening");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -52,7 +42,6 @@ const AddVtepDocumentDialog: FC<{
       await vtepService.createVtepDocument(
         title || undefined,
         description || undefined,
-        { skill },
       );
       toast({
         title: "Created",
@@ -60,7 +49,6 @@ const AddVtepDocumentDialog: FC<{
       });
       setTitle("");
       setDescription("");
-      setSkill("Listening");
       setIsOpen(false);
       onCreated?.();
     } catch (err: any) {
@@ -122,29 +110,6 @@ const AddVtepDocumentDialog: FC<{
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Optional title"
               />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Skill</label>
-              <div className="mt-1 max-w-xs">
-                <Select
-                  value={skill}
-                  onValueChange={(v) => setSkill(v as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select skill" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Listening">Listening</SelectItem>
-                    <SelectItem value="Reading">Reading</SelectItem>
-                    <SelectItem value="Writing">Writing</SelectItem>
-                    <SelectItem value="Speaking">Speaking</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Choose the document skill. (Listening/Reading are supported; Writing/Speaking will be added later.)
-              </div>
             </div>
 
             <div>

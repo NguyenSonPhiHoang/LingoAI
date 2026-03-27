@@ -457,7 +457,7 @@ const ProfileView: FC = () => {
   };
 
   const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -496,22 +496,13 @@ const ProfileView: FC = () => {
       | "rejected"
   ];
 
-  const roleKey: "admin" | "user" = (() => {
-    const roleValue =
-      (profile as unknown as { role?: unknown } | null)?.role ??
-      (user as unknown as { role?: unknown } | null)?.role;
-    return roleValue === "admin" ? "admin" : "user";
-  })();
-
-  const roleInfoByKey = {
+  const roleInfo = {
     admin: {
       text: "Administrator",
       color: "bg-primary text-primary-foreground",
     },
     user: { text: "User", color: "bg-secondary text-secondary-foreground" },
-  } satisfies Record<"admin" | "user", { text: string; color: string }>;
-
-  const roleInfo = roleInfoByKey[roleKey];
+  }[user.role || "user"];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">

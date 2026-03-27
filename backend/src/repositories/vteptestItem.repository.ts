@@ -12,8 +12,6 @@ export class VtepTestItemRepository {
       answerJson?: any;
       mediaUrl?: string | null;
       difficulty?: number | null;
-      part?: string | null;
-      skill?: string | null;
       createdByUserId?: string | null;
     }>,
   ) {
@@ -41,11 +39,9 @@ export class VtepTestItemRepository {
         )
         .input("MediaUrl", it.mediaUrl || null)
         .input("Difficulty", it.difficulty ?? null)
-        .input("Part", it.part || null)
-        .input("Skill", it.skill || null)
         .input("CreatedByUserId", it.createdByUserId || null).query(`
-          INSERT INTO dbo.VtepTestItems (Id, VtepTestId, Ord, SourceDocumentId, Prompt, OptionsJson, AnswerJson, MediaUrl, Difficulty, Part, Skill, CreatedByUserId, CreatedAt)
-          VALUES (@Id, @VtepTestId, @Ord, @SourceDocumentId, @Prompt, @OptionsJson, @AnswerJson, @MediaUrl, @Difficulty, @Part, @Skill, @CreatedByUserId, SYSUTCDATETIME())
+          INSERT INTO dbo.VtepTestItems (Id, VtepTestId, Ord, SourceDocumentId, Prompt, OptionsJson, AnswerJson, MediaUrl, Difficulty, CreatedByUserId, CreatedAt)
+          VALUES (@Id, @VtepTestId, @Ord, @SourceDocumentId, @Prompt, @OptionsJson, @AnswerJson, @MediaUrl, @Difficulty, @CreatedByUserId, SYSUTCDATETIME())
         `);
     }
   }
@@ -53,7 +49,7 @@ export class VtepTestItemRepository {
   static async listItemsForTest(vtepTestId: string) {
     const pool = await getPool();
     const res = await pool.request().input("VtepTestId", vtepTestId).query(`
-      SELECT Id as id, VtepTestId as vtepTestId, Ord as ord, SourceDocumentId as sourceDocumentId, Prompt as prompt, OptionsJson as optionsJson, AnswerJson as answerJson, MediaUrl as mediaUrl, Difficulty as difficulty, Part as part, Skill as skill, CreatedByUserId as createdByUserId, CreatedAt as createdAt
+      SELECT Id as id, VtepTestId as vtepTestId, Ord as ord, SourceDocumentId as sourceDocumentId, Prompt as prompt, OptionsJson as optionsJson, AnswerJson as answerJson, MediaUrl as mediaUrl, Difficulty as difficulty, CreatedByUserId as createdByUserId, CreatedAt as createdAt
       FROM dbo.VtepTestItems
       WHERE VtepTestId = @VtepTestId
       ORDER BY Ord ASC, CreatedAt ASC

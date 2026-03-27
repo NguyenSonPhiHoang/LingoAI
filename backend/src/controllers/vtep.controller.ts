@@ -178,20 +178,8 @@ export class VtepController {
 
   static async listDocuments(req: AuthRequest, res: Response) {
     try {
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-      const limit = req.query.limit
-        ? parseInt(req.query.limit as string, 10)
-        : 10;
-      const search = req.query.search as string | undefined;
-      const skill = req.query.skill as string | undefined;
-
-      const result = await VtepRepository.listDocuments({
-        page,
-        limit,
-        search,
-        skill,
-      });
-      return res.json(result);
+      const rows = await VtepRepository.listDocuments();
+      return res.json({ documents: rows });
     } catch (err: any) {
       console.error("VTEP list error:", err?.message || err);
       return res.status(500).json({ error: "failed to list documents" });
@@ -201,20 +189,8 @@ export class VtepController {
   // Public listing for authenticated (student) users
   static async listDocumentsPublic(req: AuthRequest, res: Response) {
     try {
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-      const limit = req.query.limit
-        ? parseInt(req.query.limit as string, 10)
-        : 10;
-      const search = req.query.search as string | undefined;
-      const skill = req.query.skill as string | undefined;
-
-      const result = await VtepRepository.listDocuments({
-        page,
-        limit,
-        search,
-        skill,
-      });
-      return res.json(result);
+      const rows = await VtepRepository.listDocuments();
+      return res.json({ documents: rows });
     } catch (err: any) {
       console.error("VTEP public list error:", err?.message || err);
       return res.status(500).json({ error: "failed to list documents" });
@@ -226,14 +202,7 @@ export class VtepController {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ error: "unauthorized" });
 
-      const { title, description, tocJson, skill } = req.body;
-
-      let nextToc: any = null;
-      if (tocJson && typeof tocJson === "object") {
-        nextToc = tocJson;
-      } else if (typeof skill === "string" && skill.trim()) {
-        nextToc = { skill: skill.trim() };
-      }
+      const { title, description } = req.body;
 
       const doc = await VtepRepository.createDocument({
         title: title || null,
@@ -241,7 +210,7 @@ export class VtepController {
         fileName: title || "manual",
         filePath: null as any,
         pageCount: null,
-        tocJson: nextToc,
+        tocJson: null,
         createdByUserId: userId,
       });
 
@@ -266,16 +235,10 @@ export class VtepController {
         return res.status(400).json({ error: "items array required" });
       }
 
-      // Keep item order stable for this request by assigning a deterministic
-      // per-item SectionKey if the client didn't provide one.
-      const batchKey = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-      const prepared = items.map((it: any, idx: number) => ({
+      const prepared = items.map((it: any) => ({
         documentId,
-        sectionKey:
-          (it.sectionKey ?? null) ||
-          `${batchKey}:${String(idx).padStart(4, "0")}`,
-        skill: (it.skill ?? null) || "Listening",
+        sectionKey: it.sectionKey ?? null,
+        skill: it.skill ?? null,
         part: it.part ?? null,
         prompt: it.prompt ?? null,
         optionsJson:
@@ -307,34 +270,11 @@ export class VtepController {
     }
   }
 
-  static async getDocumentPublic(req: AuthRequest, res: Response) {
-    const id = req.params.id;
-    if (!id) return res.status(400).json({ error: "id required" });
-    try {
-      const doc = await VtepRepository.getDocument(id);
-      if (!doc) return res.status(404).json({ error: "not found" });
-      return res.json({ document: doc });
-    } catch (err: any) {
-      console.error("VTEP getDocumentPublic error:", err?.message || err);
-      return res.status(500).json({ error: "failed to get document" });
-    }
-  }
-
   static async listItems(req: AuthRequest, res: Response) {
     try {
       const id = req.params.id;
       if (!id) return res.status(400).json({ error: "id required" });
-
-      console.log(`🔍 VTEP listItems called for document: ${id}`);
       const items = await VtepRepository.listItemsForDocument(id);
-
-      console.log(`✅ VTEP listItems returning ${items.length} items`);
-      items.forEach((item: any, index: number) => {
-        console.log(
-          `Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`,
-        );
-      });
-
       return res.json({ items });
     } catch (err: any) {
       console.error("VTEP listItems error:", err?.message || err);
@@ -347,17 +287,7 @@ export class VtepController {
     try {
       const id = req.params.id;
       if (!id) return res.status(400).json({ error: "id required" });
-
-      console.log(`🔍 VTEP listItemsPublic called for document: ${id}`);
       const items = await VtepRepository.listItemsForDocument(id);
-
-      console.log(`✅ VTEP listItemsPublic returning ${items.length} items`);
-      items.forEach((item: any, index: number) => {
-        console.log(
-          `Public Item ${index + 1}: ID=${item.id}, Prompt length=${item.prompt?.length || 0}`,
-        );
-      });
-
       return res.json({ items });
     } catch (err: any) {
       console.error("VTEP listItemsPublic error:", err?.message || err);
@@ -426,14 +356,10 @@ export class VtepController {
       const id = req.params.id;
       if (!id) return res.status(400).json({ error: "id required" });
 
-      const { title, description, tocJson } = req.body;
+      const { title, description } = req.body;
       await VtepRepository.updateDocument(id, {
-        title: typeof title === "undefined" ? undefined : (title ?? null),
-        description:
-          typeof description === "undefined"
-            ? undefined
-            : (description ?? null),
-        tocJson: typeof tocJson === "undefined" ? undefined : tocJson,
+        title: title ?? null,
+        description: description ?? null,
       });
       return res.json({ id });
     } catch (err: any) {
