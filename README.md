@@ -180,6 +180,8 @@ The app will be available at **http://localhost:3000**
 ## 👥 Authors
 
 - **Nguyễn Sơn Phi Hoàng** — Developer
+- **Chu Ngọc Sơn** — Developer
+- **Thầy Nguyễn Minh Phúc** —  Thesis Advisor
 - **Lac Hong University** — Faculty of Information Technology
 
 ## 📄 License
