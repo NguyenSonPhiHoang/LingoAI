@@ -1,84 +1,193 @@
+<div align="center">
+  <img src="public/logo.png" alt="LingoAI Logo" width="400" />
 
-# Hướng Dẫn Sử Dụng LingoAI
+  <h3>🤖 AI-Powered Personalized English Learning Platform</h3>
 
-Chào mừng bạn đến với LingoAI, người bạn đồng hành học tiếng Anh được cá nhân hóa bởi trí tuệ nhân tạo. Dưới đây là hướng dẫn chi tiết về các chức năng chính của hệ thống.
+  <p>
+    <strong>LingoAI</strong> uses Generative AI to create personalized English lessons, interactive practice exercises, and intelligent feedback — all tailored to each learner's goals and proficiency level.
+  </p>
 
-## 1. Màn Hình Chính (Dashboard)
+  <p>
+    <a href="https://lingo.fitlhu.com">🌐 Live Demo</a> •
+    <a href="#-features">✨ Features</a> •
+    <a href="#-tech-stack">🛠 Tech Stack</a> •
+    <a href="#-getting-started">🚀 Getting Started</a> •
+    <a href="docs/HUONG_DAN_SU_DUNG.md">📖 User Guide (VN)</a>
+  </p>
 
-Đây là trang tổng quan, nơi bạn có thể thấy:
-- **Tổng quan tiến độ học tập:** Một cái nhìn nhanh về quá trình học của bạn.
-- **Các lối tắt nhanh:** Dễ dàng truy cập vào các khu vực học tập chính như "Khám Phá Bài Học" (All Levels) hoặc nhận "Gợi Ý từ AI" (AI Suggester).
-- **Tiến độ theo kỹ năng:** Theo dõi sự cải thiện của bạn qua 5 kỹ năng chính: Nghe, Nói, Đọc, Viết, và Phát Âm.
+  <p>
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" />
+    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-blue?logo=typescript" />
+    <img alt="Genkit" src="https://img.shields.io/badge/Firebase_Genkit-1.14-orange?logo=firebase" />
+    <img alt="Gemini" src="https://img.shields.io/badge/Gemini_AI-2.0-4285F4?logo=google" />
+    <img alt="SQL Server" src="https://img.shields.io/badge/SQL_Server-2022-red?logo=microsoftsqlserver" />
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-green" />
+  </p>
+</div>
 
-## 2. Tạo Lộ Trình Học Cá Nhân (AI Suggester)
+---
 
-Đây là trái tim của LingoAI, nơi bạn tạo ra một kế hoạch học tập dành riêng cho mình.
-1.  **Chưa biết trình độ?** Hãy làm "Bài Kiểm Tra Trình Độ" (Placement Test). AI sẽ tạo một bài kiểm tra nhanh để đánh giá và gợi ý cấp độ phù hợp cho bạn.
-2.  **Nhập thông tin:**
-    *   **Trình độ tiếng Anh của bạn:** Chọn cấp độ hiện tại (Beginner, Intermediate, Advanced).
-    *   **Mục tiêu học tập:** Nhập mục tiêu của bạn (ví dụ: "Giao tiếp trong công việc", "Luyện thi IELTS", "Du lịch nước ngoài"). Đây cũng sẽ là tên của nhóm bài học.
-    *   **Sở thích (Không bắt buộc):** Thêm các chủ đề bạn yêu thích (ví dụ: "Công nghệ, phim ảnh, du lịch") để AI tạo ra các bài học thú vị hơn.
-3.  **Tạo & Lưu bài học:** Nhấn nút "Generate & Save Lessons". AI sẽ tạo ra một loạt bài học phù hợp và tự động lưu vào mục **"Bài Học Của Tôi" (My Lessons)**.
+## 📋 Overview
 
-## 3. Bài Học Của Tôi (My Lessons)
+LingoAI is a full-stack web application that leverages **Google Gemini AI** through **Firebase Genkit** to deliver a deeply personalized English learning experience. Unlike traditional platforms, LingoAI generates lessons, exercises, and feedback **on-demand** based on each user's proficiency, goals, and interests.
 
-Đây là nơi lưu trữ tất cả các lộ trình và bài học của bạn.
-- **Lọc và tìm kiếm:** Dễ dàng tìm kiếm bài học theo tên, hoặc lọc theo kỹ năng, cấp độ, và nhóm chủ đề.
-- **Chế độ xem:** Chọn xem dưới dạng lưới (Grid) hoặc danh sách (List).
-- **Mở bài học:** Nhấn "Open Lesson" để bắt đầu học.
+> **🎓 Graduation Thesis Project** — Faculty of Information Technology, Lac Hong University
 
-### Bên Trong Một Bài Học (Lesson Detail)
+## ✨ Features
 
-Mỗi bài học được chia làm 2 phần chính:
+### 🎯 Core Learning
+| Feature | Description |
+|---------|-------------|
+| **AI Lesson Generator** | Dynamically creates personalized lessons across 5 skills (Listening, Speaking, Reading, Writing, Pronunciation) |
+| **Smart Placement Test** | AI-generated assessment to determine proficiency level |
+| **Interactive Practice** | Skill-specific exercises with real-time AI feedback |
+| **AI Storybook** | Generates bilingual or code-mixed stories for immersive reading |
 
-**Phần 1: Nội dung học (Learning Content)**
-- Nhấn nút **"Generate Content"**. AI sẽ tạo ra:
-    - **Vocabulary Suggestions:** Các từ vựng quan trọng liên quan đến chủ đề.
-    - **Key Points:** Các ý chính hoặc cụm từ cần nắm.
-    - **Passage/Dialogue:** Một đoạn văn (cho kỹ năng Đọc/Viết) hoặc một đoạn hội thoại (cho kỹ năng Nghe/Nói) về chủ đề bài học.
-- **Lưu ý:** Bạn phải nhấn **"Save Changes"** nếu muốn lưu lại nội dung vừa tạo.
+### 📚 Vocabulary & Review
+| Feature | Description |
+|---------|-------------|
+| **Smart Vocabulary** | AI auto-fills definitions, IPA, examples, and synonyms from a word or phrase |
+| **Image Extraction** | OCR-powered vocabulary extraction from images |
+| **Spaced Review** | Matching & fill-in-the-blank exercises for favorited words |
+| **Topic Grouping** | AI automatically categorizes vocabulary by topic |
 
-**Phần 2: Khu vực luyện tập (Practice Zone)**
-- Sau khi đã có nội dung, nhấn nút **"Start Practice"**. AI sẽ tạo ra một bài tập tương tác dựa trên kỹ năng của bài học đó (Nghe, Nói, Đọc, Viết, hoặc Phát Âm).
-- **Luyện đọc:** Trả lời câu hỏi trắc nghiệm và nhận phản hồi từ AI nếu sai.
-- **Luyện viết:** Dịch câu và nhận phản hồi chi tiết về ngữ pháp, từ vựng từ AI.
-- **Luyện nghe:** Nghe đoạn hội thoại và trả lời câu hỏi.
-- **Luyện nói:** Tham gia một kịch bản hội thoại và tự ghi âm lại giọng nói của mình.
-- **Luyện phát âm:** Luyện tập các cặp từ khó, nhịp điệu câu và ngữ điệu.
+### 📊 Progress & Tools
+| Feature | Description |
+|---------|-------------|
+| **Learning Dashboard** | Visual progress tracking across all skills |
+| **Personal Library** | Save articles, YouTube links, and handwritten notes |
+| **VSTEP Preparation** | Specialized modules for VSTEP exam readiness |
+| **Gamification** | XP system, streaks, and leaderboards |
 
-## 4. Từ Vựng Của Tôi (My Vocabulary)
+## 🛠 Tech Stack
 
-Đây là sổ tay từ vựng cá nhân của bạn.
-- **Thêm từ bằng AI:**
-    - Nhấn **"Add New Word"**.
-    - Gõ một từ, cụm từ hoặc câu bạn muốn học. AI sẽ tự động điền đầy đủ thông tin: định nghĩa (Anh/Việt), phiên âm IPA, ví dụ, từ đồng nghĩa/trái nghĩa...
-    - Bạn cũng có thể dán một hình ảnh có chứa chữ, AI sẽ nhận diện và trích xuất từ vựng từ hình ảnh đó.
-- **Quản lý từ vựng:**
-    - Đánh dấu sao (Favorite) cho những từ quan trọng để ôn tập.
-    - Chỉnh sửa lại định nghĩa hoặc câu ví dụ cho phù hợp với bạn.
-    - Nghe phát âm chuẩn của từ và câu ví dụ.
-- **Nhóm theo chủ đề (Group by Topic):** Bật chế độ "Group" để AI tự động phân loại từ vựng của bạn vào các nhóm chủ đề logic.
+### Frontend
+- **Framework:** Next.js 15 (App Router, Server Actions)
+- **Language:** TypeScript 5
+- **Styling:** Tailwind CSS 3 + Radix UI primitives
+- **Charts:** Recharts
+- **Canvas:** react-sketch-canvas (handwriting notes)
 
-## 5. Ôn Tập (Review)
+### AI / Backend Services
+- **AI Orchestration:** Firebase Genkit 1.14
+- **LLM:** Google Gemini 2.0 (via `@genkit-ai/googleai`)
+- **TTS:** Google Cloud Text-to-Speech
 
-Luyện tập các từ vựng bạn đã đánh dấu "Favorite" qua 2 dạng bài tập:
-- **Matching:** Nối từ với định nghĩa đúng.
-- **Fill-in-the-blank:** Điền từ còn thiếu vào câu.
+### Backend API
+- **Runtime:** Node.js + Express
+- **Database:** Microsoft SQL Server (via `mssql`)
+- **Auth:** JWT + bcrypt
+- **File Upload:** Multer
 
-## 6. Sách Truyện AI (AI Storybook)
+### Deployment
+- **Frontend:** Firebase App Hosting
+- **Backend:** VPS with PM2
+- **Domain:** [lingo.fitlhu.com](https://lingo.fitlhu.com)
 
-Tự tạo ra những câu chuyện song ngữ hoặc truyện chêm để học tiếng Anh một cách thú vị.
-1.  Nhấn **"Generate New Story"**.
-2.  Chọn cấp độ đọc, định dạng truyện (song ngữ hoặc truyện chêm).
-3.  Tạo truyện dựa trên một chủ đề bạn nhập vào, hoặc dựa trên danh sách từ vựng bạn đã lưu.
-4.  Lưu lại truyện để đọc sau trong thư viện cá nhân.
+## 📁 Project Structure
 
-## 7. Thư Viện Của Tôi (My Library)
+```
+LingoAI/
+├── src/
+│   ├── ai/                    # Genkit AI flows & configuration
+│   │   ├── flows/             # 20+ AI generation flows
+│   │   ├── genkit.ts          # Genkit initialization
+│   │   └── model-selector.ts  # Dynamic model selection
+│   ├── app/                   # Next.js App Router pages
+│   │   ├── grammar/           # Grammar exercises
+│   │   ├── library/           # Personal library
+│   │   ├── storybook/         # AI Storybook
+│   │   ├── vtep/              # VSTEP teacher portal
+│   │   ├── vtep-student/      # VSTEP student portal
+│   │   └── page.tsx           # Main dashboard
+│   ├── components/            # Reusable UI components
+│   ├── context/               # React context providers
+│   ├── hooks/                 # Custom React hooks
+│   ├── lib/                   # Utility functions
+│   └── services/              # API service layer
+├── backend/
+│   └── src/
+│       ├── controllers/       # Request handlers
+│       ├── models/            # Data models
+│       ├── repositories/      # Database queries
+│       ├── routes/            # Express routes
+│       ├── services/          # Business logic
+│       └── middleware/        # Auth & validation
+├── public/                    # Static assets & logos
+├── docs/                      # Documentation
+└── package.json
+```
 
-Lưu trữ và sắp xếp các tài liệu học tập của riêng bạn.
-- **Thêm tài liệu:** Lưu các liên kết đến bài báo, video YouTube, hoặc bất kỳ tài nguyên nào bạn thấy hữu ích.
-- **Thêm ghi chú:** Trong mỗi tài liệu, bạn có thể thêm các ghi chú cá nhân.
-    - **Viết tay (Handwriting):** Dùng chuột hoặc bút cảm ứng để viết ghi chú.
-    - **Ghi chú từ hình ảnh/văn bản:** Dán một hình ảnh hoặc đoạn văn bản, AI sẽ giúp bạn trích xuất nội dung và lưu lại.
+## 🚀 Getting Started
 
-Chúc bạn có những giờ học hiệu quả và thú vị cùng LingoAI!
+### Prerequisites
+
+- **Node.js** ≥ 18
+- **SQL Server** 2019+
+- **Google AI API Key** ([Get one here](https://aistudio.google.com/apikey))
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/NguyenSonPhiHoang/LingoAI.git
+cd LingoAI
+git checkout dev
+
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd backend && npm install && cd ..
+```
+
+### 2. Environment Setup
+
+Create `.env` in the project root:
+
+```env
+# Google AI
+GOOGLE_GENAI_API_KEY=your_google_ai_key
+
+# Backend API
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
+
+Create `backend/.env`:
+
+```env
+# Database
+DB_SERVER=localhost
+DB_NAME=LingoAI
+DB_USER=sa
+DB_PASSWORD=your_password
+
+# Auth
+JWT_SECRET=your_jwt_secret
+```
+
+### 3. Run Development Servers
+
+```bash
+# Terminal 1 — Frontend (Next.js)
+npm run dev
+
+# Terminal 2 — Backend (Express)
+cd backend && npm run dev
+```
+
+The app will be available at **http://localhost:3000**
+
+## 👥 Authors
+
+- **Nguyễn Sơn Phi Hoàng** — Developer
+- **Lac Hong University** — Faculty of Information Technology
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ and AI at Lac Hong University</sub>
+</div>
